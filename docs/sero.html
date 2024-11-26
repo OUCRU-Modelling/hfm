@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>HFMD Seroprevalence</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<link href="site_libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+<script src="site_libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+<script src="site_libs/plotly-binding-4.10.4/plotly.js"></script>
+<script src="site_libs/typedarray-0.1/typedarray.min.js"></script>
+<script src="site_libs/jquery-3.5.1/jquery.min.js"></script>
+<link href="site_libs/crosstalk-1.2.1/css/crosstalk.min.css" rel="stylesheet">
+<script src="site_libs/crosstalk-1.2.1/js/crosstalk.min.js"></script>
+<link href="site_libs/plotly-htmlwidgets-css-2.11.1/plotly-htmlwidgets.css" rel="stylesheet">
+<script src="site_libs/plotly-main-2.11.1/plotly-latest.min.js"></script>
+
+
+</head>
+
+<body>
+
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#import-data" id="toc-import-data" class="nav-link active" data-scroll-target="#import-data">Import data</a></li>
+  <li><a href="#function" id="toc-function" class="nav-link" data-scroll-target="#function">Function</a></li>
+  <li><a href="#seroprevalence-by-age" id="toc-seroprevalence-by-age" class="nav-link" data-scroll-target="#seroprevalence-by-age">Seroprevalence by age</a>
+  <ul class="collapse">
+  <li><a href="#fit-by-glm" id="toc-fit-by-glm" class="nav-link" data-scroll-target="#fit-by-glm">Fit by GLM</a></li>
+  </ul></li>
+  <li><a href="#model-age-and-time-at-the-same-time" id="toc-model-age-and-time-at-the-same-time" class="nav-link" data-scroll-target="#model-age-and-time-at-the-same-time">Model age and time at the same time</a>
+  <ul class="collapse">
+  <li><a href="#fit-with-scam-model" id="toc-fit-with-scam-model" class="nav-link" data-scroll-target="#fit-with-scam-model">Fit with SCAM model</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content column-page-left" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">HFMD Seroprevalence</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readxl)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mgcv)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="import-data" class="level1">
+<h1>Import data</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>apr_2023 <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">"D:/OUCRU/hfmd/data/4_2023.xlsx"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>aug_2023 <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">"D:/OUCRU/hfmd/data/08_2023.xlsx"</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>dec_2022 <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">"D:/OUCRU/hfmd/data/12_2022.xls"</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>dec_2023 <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">"D:/OUCRU/hfmd/data/12_2023.xlsx"</span>)</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>t423 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(apr_2023[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>),<span class="dv">10</span><span class="sc">:</span><span class="dv">14</span>])</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>t423<span class="sc">$</span>pos <span class="ot">&lt;-</span> <span class="fu">replace</span>(t423<span class="sc">$</span>...<span class="dv">14</span>,<span class="fu">is.na</span>(t423<span class="sc">$</span>...<span class="dv">14</span>),<span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">str_detect</span>(<span class="fu">regex</span>(<span class="fu">paste</span>(<span class="dv">2</span><span class="sc">^</span>(<span class="dv">4</span><span class="sc">:</span><span class="dv">10</span>), <span class="at">collapse =</span> <span class="st">"|"</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.integer</span>(<span class="fu">as.logical</span>())</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(t423) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"age"</span>,<span class="st">"col_day"</span>,<span class="st">"col_month"</span>,<span class="st">"col_year"</span>,<span class="st">"neutralization"</span>,<span class="st">"pos"</span>)</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>t423<span class="sc">$</span>age <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(t423<span class="sc">$</span>age)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>t823 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(aug_2023[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>),<span class="fu">c</span>(<span class="dv">9</span>,<span class="dv">14</span><span class="sc">:</span><span class="dv">17</span>)])</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>t823<span class="sc">$</span>pos <span class="ot">&lt;-</span> <span class="fu">str_detect</span>(t823<span class="sc">$</span>...<span class="dv">17</span>,<span class="fu">regex</span>(<span class="fu">paste</span>(<span class="dv">2</span><span class="sc">^</span>(<span class="dv">4</span><span class="sc">:</span><span class="dv">10</span>), <span class="at">collapse =</span> <span class="st">"|"</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.integer</span>(<span class="fu">as.logical</span>())</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(t823) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"age"</span>,<span class="st">"col_day"</span>,<span class="st">"col_month"</span>,<span class="st">"col_year"</span>,<span class="st">"neutralization"</span>,<span class="st">"pos"</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>t823<span class="sc">$</span>age <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(t823<span class="sc">$</span>age)</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>t1222 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(dec_2022[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>),<span class="dv">10</span><span class="sc">:</span><span class="dv">14</span>])</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>t1222<span class="sc">$</span>pos <span class="ot">&lt;-</span> <span class="fu">replace</span>(t1222<span class="sc">$</span>...<span class="dv">14</span>,<span class="fu">is.na</span>(t1222<span class="sc">$</span>...<span class="dv">14</span>),<span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">str_detect</span>(<span class="fu">regex</span>(<span class="fu">paste</span>(<span class="dv">2</span><span class="sc">^</span>(<span class="dv">4</span><span class="sc">:</span><span class="dv">10</span>), <span class="at">collapse =</span> <span class="st">"|"</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.integer</span>(<span class="fu">as.logical</span>())</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(t1222) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"age"</span>,<span class="st">"col_day"</span>,<span class="st">"col_month"</span>,<span class="st">"col_year"</span>,<span class="st">"neutralization"</span>,<span class="st">"pos"</span>)</span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>t1222<span class="sc">$</span>age <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(t1222<span class="sc">$</span>age)</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>t1223 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(dec_2023[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>),<span class="fu">c</span>(<span class="dv">9</span>,<span class="dv">14</span><span class="sc">:</span><span class="dv">17</span>)])</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>t1223<span class="sc">$</span>pos <span class="ot">&lt;-</span> <span class="fu">replace</span>(t1223<span class="sc">$</span>...<span class="dv">17</span>,<span class="fu">is.na</span>(t1223<span class="sc">$</span>...<span class="dv">17</span>),<span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">str_detect</span>(<span class="fu">regex</span>(<span class="fu">paste</span>(<span class="dv">2</span><span class="sc">^</span>(<span class="dv">4</span><span class="sc">:</span><span class="dv">10</span>), <span class="at">collapse =</span> <span class="st">"|"</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.integer</span>(<span class="fu">as.logical</span>())</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(t1223) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"age"</span>,<span class="st">"col_day"</span>,<span class="st">"col_month"</span>,<span class="st">"col_year"</span>,<span class="st">"neutralization"</span>,<span class="st">"pos"</span>)</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>t1223<span class="sc">$</span>age <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(t1223<span class="sc">$</span>age)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="function" class="level1">
+<h1>Function</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>predict2 <span class="ot">&lt;-</span> <span class="cf">function</span>(x, <span class="at">ci =</span> .<span class="dv">95</span>, <span class="at">le =</span> <span class="dv">512</span>, <span class="at">m =</span> <span class="dv">100</span>) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> (<span class="dv">1</span> <span class="sc">-</span> ci) <span class="sc">/</span> <span class="dv">2</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  link_inv <span class="ot">&lt;-</span> x<span class="sc">$</span>family<span class="sc">$</span>linkinv</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  dataset <span class="ot">&lt;-</span> x<span class="sc">$</span>data</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">nrow</span>(dataset) <span class="sc">-</span> <span class="fu">length</span>(x<span class="sc">$</span>coefficients)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  age_range <span class="ot">&lt;-</span> <span class="fu">range</span>(dataset<span class="sc">$</span>age)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  ages <span class="ot">&lt;-</span> <span class="fu">seq</span>(age_range[<span class="dv">1</span>], age_range[<span class="dv">2</span>], <span class="at">le =</span> le)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  x <span class="sc">|&gt;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">predict</span>(<span class="fu">data.frame</span>(<span class="at">age =</span> ages), <span class="at">se.fit =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">extract</span>(<span class="fu">c</span>(<span class="st">"fit"</span>, <span class="st">"se.fit"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="fu">c</span>(<span class="at">age =</span> <span class="fu">list</span>(ages), .) <span class="sc">|&gt;</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">lwr =</span> m <span class="sc">*</span> <span class="fu">link_inv</span>(fit <span class="sc">+</span> <span class="fu">qt</span>(    p, n) <span class="sc">*</span> se.fit),</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>           <span class="at">upr =</span> m <span class="sc">*</span> <span class="fu">link_inv</span>(fit <span class="sc">+</span> <span class="fu">qt</span>(<span class="dv">1</span> <span class="sc">-</span> p, n) <span class="sc">*</span> se.fit),</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>           <span class="at">fit =</span> m <span class="sc">*</span> <span class="fu">link_inv</span>(fit)) <span class="sc">|&gt;</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>(<span class="sc">-</span> se.fit)</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="seroprevalence-by-age" class="level1">
+<h1>Seroprevalence by age</h1>
+<section id="fit-by-glm" class="level2">
+<h2 class="anchored" data-anchor-id="fit-by-glm">Fit by GLM</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>eps <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>plot1222 <span class="ot">&lt;-</span>  <span class="fu">glm</span>(pos <span class="sc">~</span> age, binomial, <span class="at">data =</span> t1222) <span class="sc">|&gt;</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict2</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit))<span class="sc">+</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">col =</span> <span class="st">"Dec 2022"</span>))<span class="sc">+</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit,</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymin=</span>lwr, <span class="at">ymax=</span>upr),<span class="at">alpha =</span> <span class="fl">0.5</span>)<span class="sc">+</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>,<span class="dv">101</span>)<span class="sc">+</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">name =</span> <span class="st">"Y series"</span>,</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>                     <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Dec 2022"</span> <span class="ot">=</span> <span class="st">"#0808cf"</span>))<span class="sc">+</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Seroprevalence(%)"</span>)<span class="sc">+</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data=</span> t1222, <span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> m <span class="sc">*</span> pos <span class="sc">+</span> eps),<span class="at">shape =</span> <span class="st">"|"</span>,<span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>             <span class="at">col =</span> <span class="st">"#0808cf"</span>)<span class="sc">+</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.title=</span> <span class="fu">element_blank</span>(),</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"inside"</span>,</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position.inside =</span>  <span class="fu">c</span>(<span class="fl">0.15</span>,<span class="fl">0.80</span>),</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>plot1222 <span class="ot">&lt;-</span>  <span class="fu">glm</span>(pos <span class="sc">~</span> age, binomial, <span class="at">data =</span> t1222) <span class="sc">|&gt;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict2</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit))<span class="sc">+</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">col =</span> <span class="st">"Dec 2022"</span>))<span class="sc">+</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymin=</span>lwr, <span class="at">ymax=</span>upr),<span class="at">alpha =</span> <span class="fl">0.5</span>,<span class="at">fill =</span> <span class="st">"#0808cf"</span>)<span class="sc">+</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>,<span class="dv">101</span>)<span class="sc">+</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">name =</span> <span class="st">"Y series"</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>                     <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Dec 2022"</span> <span class="ot">=</span> <span class="st">"#0808cf"</span>))<span class="sc">+</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Seroprevalence (%)"</span>)<span class="sc">+</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data=</span> t1222, <span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> m <span class="sc">*</span> pos <span class="sc">+</span> eps),<span class="at">shape =</span> <span class="st">"|"</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>             <span class="at">col =</span> <span class="st">"#0808cf"</span>)<span class="sc">+</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"hide"</span>,</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>))<span class="sc">+</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="dv">3</span>, <span class="at">y =</span> <span class="dv">90</span>, <span class="at">label =</span> <span class="fu">c</span>(<span class="st">"Dec 2022"</span>),<span class="at">size =</span> <span class="dv">6</span>)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>plot0423 <span class="ot">&lt;-</span>  <span class="fu">glm</span>(pos <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age <span class="sc">^</span><span class="dv">2</span>), binomial, <span class="at">data =</span> t423) <span class="sc">|&gt;</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict2</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit))<span class="sc">+</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">col =</span> <span class="st">"Apr 2023"</span>))<span class="sc">+</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit,</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymin=</span>lwr, <span class="at">ymax=</span>upr),<span class="at">alpha =</span> <span class="fl">0.5</span>,<span class="at">fill =</span> <span class="st">"#ed097b"</span>)<span class="sc">+</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>,<span class="dv">101</span>)<span class="sc">+</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">name =</span> <span class="st">"Y series"</span>,</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>                     <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Apr 2023"</span> <span class="ot">=</span> <span class="st">"#ed097b"</span>))<span class="sc">+</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Seroprevalence (%)"</span>)<span class="sc">+</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data=</span> t423, <span class="fu">aes</span>(<span class="at">x =</span> age, m <span class="sc">*</span> pos <span class="sc">+</span> eps),</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>             <span class="at">shape =</span> <span class="st">"|"</span>,</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>             <span class="at">col =</span> <span class="st">"#ed097b"</span>)<span class="sc">+</span></span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"hide"</span>,</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>))<span class="sc">+</span></span>
+<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="dv">3</span>, <span class="at">y =</span> <span class="dv">90</span>, <span class="at">label =</span> <span class="fu">c</span>(<span class="st">"Apr 2023"</span>),<span class="at">size =</span> <span class="dv">6</span>)</span>
+<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>plot0823 <span class="ot">&lt;-</span>  <span class="fu">glm</span>(pos <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">3</span>), binomial, <span class="at">data =</span> t823) <span class="sc">|&gt;</span></span>
+<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict2</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit))<span class="sc">+</span></span>
+<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">col =</span> <span class="st">"Aug 2023"</span>))<span class="sc">+</span></span>
+<span id="cb5-50"><a href="#cb5-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit,</span>
+<span id="cb5-51"><a href="#cb5-51" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymin=</span>lwr, <span class="at">ymax=</span>upr),<span class="at">alpha =</span> <span class="fl">0.5</span>,<span class="at">fill =</span> <span class="st">"#ed6b00"</span>)<span class="sc">+</span></span>
+<span id="cb5-52"><a href="#cb5-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>,<span class="dv">101</span>)<span class="sc">+</span></span>
+<span id="cb5-53"><a href="#cb5-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
+<span id="cb5-54"><a href="#cb5-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">name =</span> <span class="st">"Y series"</span>,</span>
+<span id="cb5-55"><a href="#cb5-55" aria-hidden="true" tabindex="-1"></a>                     <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Aug 2023"</span> <span class="ot">=</span> <span class="st">"#ed6b00"</span>))<span class="sc">+</span></span>
+<span id="cb5-56"><a href="#cb5-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Seroprevalence (%)"</span>)<span class="sc">+</span></span>
+<span id="cb5-57"><a href="#cb5-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data=</span> t823, <span class="fu">aes</span>(<span class="at">x =</span> age, m <span class="sc">*</span> pos <span class="sc">+</span> eps),</span>
+<span id="cb5-58"><a href="#cb5-58" aria-hidden="true" tabindex="-1"></a>             <span class="at">shape =</span> <span class="st">"|"</span>,</span>
+<span id="cb5-59"><a href="#cb5-59" aria-hidden="true" tabindex="-1"></a>             <span class="at">col =</span> <span class="st">"#ed6b00"</span>)<span class="sc">+</span></span>
+<span id="cb5-60"><a href="#cb5-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb5-61"><a href="#cb5-61" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-62"><a href="#cb5-62" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-63"><a href="#cb5-63" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"hide"</span>,</span>
+<span id="cb5-64"><a href="#cb5-64" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-65"><a href="#cb5-65" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-66"><a href="#cb5-66" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>))<span class="sc">+</span></span>
+<span id="cb5-67"><a href="#cb5-67" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="dv">3</span>, <span class="at">y =</span> <span class="dv">90</span>, <span class="at">label =</span> <span class="fu">c</span>(<span class="st">"Aug 2023"</span>),<span class="at">size =</span> <span class="dv">6</span>)</span>
+<span id="cb5-68"><a href="#cb5-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-69"><a href="#cb5-69" aria-hidden="true" tabindex="-1"></a>plot1223 <span class="ot">&lt;-</span>  <span class="fu">glm</span>(pos <span class="sc">~</span> age <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">2</span>) <span class="sc">+</span> <span class="fu">I</span>(age<span class="sc">^</span><span class="dv">3</span>), binomial, <span class="at">data =</span> t1223) <span class="sc">|&gt;</span></span>
+<span id="cb5-70"><a href="#cb5-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">predict2</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-71"><a href="#cb5-71" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit))<span class="sc">+</span></span>
+<span id="cb5-72"><a href="#cb5-72" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">col =</span> <span class="st">"Dec 2023"</span>))<span class="sc">+</span></span>
+<span id="cb5-73"><a href="#cb5-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit,</span>
+<span id="cb5-74"><a href="#cb5-74" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymin=</span>lwr, <span class="at">ymax=</span>upr),<span class="at">alpha =</span> <span class="fl">0.5</span>,<span class="at">fill =</span> <span class="st">"#33516b"</span>)<span class="sc">+</span></span>
+<span id="cb5-75"><a href="#cb5-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ylim</span>(<span class="dv">0</span>,<span class="dv">101</span>)<span class="sc">+</span></span>
+<span id="cb5-76"><a href="#cb5-76" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
+<span id="cb5-77"><a href="#cb5-77" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">name =</span> <span class="st">"Y series"</span>,</span>
+<span id="cb5-78"><a href="#cb5-78" aria-hidden="true" tabindex="-1"></a>                     <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"Dec 2023"</span> <span class="ot">=</span> <span class="st">"#33516b"</span>))<span class="sc">+</span></span>
+<span id="cb5-79"><a href="#cb5-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">y =</span> <span class="st">"Seroprevalence (%)"</span>)<span class="sc">+</span></span>
+<span id="cb5-80"><a href="#cb5-80" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data=</span> t1223, <span class="fu">aes</span>(<span class="at">x =</span> age, m <span class="sc">*</span> pos <span class="sc">+</span> eps),</span>
+<span id="cb5-81"><a href="#cb5-81" aria-hidden="true" tabindex="-1"></a>             <span class="at">shape =</span> <span class="st">"|"</span>,</span>
+<span id="cb5-82"><a href="#cb5-82" aria-hidden="true" tabindex="-1"></a>             <span class="at">col =</span> <span class="st">"#33516b"</span>)<span class="sc">+</span></span>
+<span id="cb5-83"><a href="#cb5-83" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb5-84"><a href="#cb5-84" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-85"><a href="#cb5-85" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-86"><a href="#cb5-86" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.position =</span> <span class="st">"hide"</span>,</span>
+<span id="cb5-87"><a href="#cb5-87" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend.text =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-88"><a href="#cb5-88" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>),</span>
+<span id="cb5-89"><a href="#cb5-89" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">15</span>))<span class="sc">+</span></span>
+<span id="cb5-90"><a href="#cb5-90" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">"text"</span>, <span class="at">x =</span> <span class="dv">3</span>, <span class="at">y =</span> <span class="dv">90</span>, <span class="at">label =</span> <span class="fu">c</span>(<span class="st">"Dec 2023"</span>),<span class="at">size =</span> <span class="dv">6</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>plot1222 <span class="sc">+</span> plot0423 <span class="sc">+</span> plot0823 <span class="sc">+</span> plot1223</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="sero_files/figure-html/unnamed-chunk-6-1.svg" style="width:100.0%;height:100.0%"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="model-age-and-time-at-the-same-time" class="level1">
+<h1>Model age and time at the same time</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotly)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(scam)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>atdf <span class="ot">&lt;-</span> <span class="fu">rbind</span>(t1222,t423,t823,t1223) <span class="sc">%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">col_date =</span> <span class="fu">make_date</span>(<span class="at">year =</span> col_year,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">month =</span> col_month,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                              <span class="at">day =</span> col_day)) <span class="sc">%&gt;%</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(age,col_date,pos)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(atdf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         age   col_date pos
+1 0.36986301 2022-12-28   0
+2 0.33150685 2022-12-27   0
+3 0.07671233 2023-01-04   0
+4 0.43835616 2022-12-27   0
+5 0.93150685 2023-01-03   0
+6 1.95616438 2022-12-26   1</code></pre>
+</div>
+</div>
+<section id="fit-with-scam-model" class="level2">
+<h2 class="anchored" data-anchor-id="fit-with-scam-model">Fit with SCAM model</h2>
+<p>mpi is monotone increasing SCOP-splines: bs=“mpi”. To achieve monotone increasing smooths this reparameterizes the coefficients so that they form an increasing sequence.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>s1 <span class="ot">&lt;-</span> <span class="fu">scam</span>(pos<span class="sc">~</span><span class="fu">s</span>(age,<span class="at">bs =</span> <span class="st">"mpi"</span>)<span class="sc">+</span><span class="fu">s</span>(col_date),<span class="at">family=</span>binomial,</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>           <span class="fu">mutate</span>(atdf, <span class="fu">across</span>(col_date, as.numeric)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>age_val <span class="ot">&lt;-</span> <span class="fu">c</span>(.<span class="dv">1</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">14</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>collection_date_val <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="fu">min</span>(atdf<span class="sc">$</span>col_date),</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">max</span>(atdf<span class="sc">$</span>col_date), <span class="at">le =</span> <span class="dv">20</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>new_data <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(<span class="at">age =</span> age_val,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>                        <span class="at">col_date =</span> <span class="fu">as.numeric</span>(collection_date_val))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>scamf <span class="ot">&lt;-</span> <span class="fu">cbind</span>(new_data, <span class="at">fit =</span> <span class="dv">100</span> <span class="sc">*</span> <span class="fu">predict</span>(s1, new_data,<span class="st">"response"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_ly</span>(scamf, <span class="at">x =</span> <span class="sc">~</span><span class="fu">sort</span>(<span class="fu">unique</span>(<span class="fu">as.Date</span>(col_date))),</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>        <span class="at">y =</span> <span class="sc">~</span><span class="fu">sort</span>(<span class="fu">unique</span>(age)),</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">z =</span> <span class="sc">~</span><span class="fu">matrix</span>(fit, <span class="dv">15</span>),</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>        <span class="at">showscale =</span> F) <span class="sc">%&gt;%</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_surface</span>()<span class="sc">%&gt;%</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layout</span>(<span class="at">scene =</span> <span class="fu">list</span>(</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">xaxis =</span> <span class="fu">list</span>(<span class="at">title =</span> <span class="st">"Collection date"</span>),</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">yaxis =</span> <span class="fu">list</span>(<span class="at">title =</span> <span class="st">"Age"</span>),</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">zaxis =</span> <span class="fu">list</span>(<span class="at">title =</span> <span class="st">"Seroprevalence"</span>,<span class="at">range =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">100</span>))</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  ))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-fc392f5da9bd0c3bccb9" style="width:100%;height:100%;"></div>
+<script type="application/json" data-for="htmlwidget-fc392f5da9bd0c3bccb9">{"x":{"visdat":{"58f42344e1c":["function () ","plotlyVisDat"]},"cur_data":"58f42344e1c","attrs":{"58f42344e1c":{"x":{},"y":{},"z":{},"showscale":false,"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"surface","inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"scene":{"xaxis":{"title":"Collection date"},"yaxis":{"title":"Age"},"zaxis":{"title":"Seroprevalence","range":[0,100]}},"hovermode":"closest","showlegend":false},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"colorbar":{"title":"matrix(fit, 15)","ticklen":2},"colorscale":[["0","rgba(68,1,84,1)"],["0.0416666666666667","rgba(70,19,97,1)"],["0.0833333333333333","rgba(72,32,111,1)"],["0.125","rgba(71,45,122,1)"],["0.166666666666667","rgba(68,58,128,1)"],["0.208333333333333","rgba(64,70,135,1)"],["0.25","rgba(60,82,138,1)"],["0.291666666666667","rgba(56,93,140,1)"],["0.333333333333333","rgba(49,104,142,1)"],["0.375","rgba(46,114,142,1)"],["0.416666666666667","rgba(42,123,142,1)"],["0.458333333333333","rgba(38,133,141,1)"],["0.5","rgba(37,144,140,1)"],["0.541666666666667","rgba(33,154,138,1)"],["0.583333333333333","rgba(39,164,133,1)"],["0.625","rgba(47,174,127,1)"],["0.666666666666667","rgba(53,183,121,1)"],["0.708333333333333","rgba(79,191,110,1)"],["0.75","rgba(98,199,98,1)"],["0.791666666666667","rgba(119,207,85,1)"],["0.833333333333333","rgba(147,214,70,1)"],["0.875","rgba(172,220,52,1)"],["0.916666666666667","rgba(199,225,42,1)"],["0.958333333333333","rgba(226,228,40,1)"],["1","rgba(253,231,37,1)"]],"showscale":false,"x":["2022-12-06","2022-12-25","2023-01-14","2023-02-03","2023-02-23","2023-03-15","2023-04-04","2023-04-24","2023-05-14","2023-06-03","2023-06-23","2023-07-13","2023-08-02","2023-08-22","2023-09-11","2023-10-01","2023-10-21","2023-11-10","2023-11-30","2023-12-20"],"y":[0.10000000000000001,1,2,3,4,5,6,7,8,9,10,11,12,13,14],"z":[[7.7787158358284714,7.9479909184849733,8.1218133099590464,8.298077168804797,8.4738369341902651,8.6459363614086335,8.8110065323191264,8.965923703052324,9.1085946160152051,9.2359334051247917,9.3446401308522642,9.4313992024402111,9.4929372862802026,9.5261857899858686,9.5310137519290148,9.5123017915298682,9.4757132245419555,9.4269468769839015,9.3716575383810223,9.3151479728834872],[11.834532352259973,12.080505749126733,12.332597826393361,12.587726232235935,12.841620662453558,13.089740982705472,13.327276000598816,13.549800296935178,13.7543917405347,13.936720290293641,14.092164838458107,14.216089633798527,14.303916320478791,14.351343151991406,14.358228458180697,14.331540676983288,14.279340370462149,14.209732959782716,14.130768841800654,14.050011423900596],[17.631415582679782,17.973311737278092,18.322745753432272,18.675396121089253,19.025353874300013,19.366405571684105,19.692033611938104,19.996311659908908,20.275411614301962,20.523612424405886,20.734824316472569,20.902950478999117,21.021964817667886,21.086185502927801,21.095506123484704,21.059375025258468,20.988673383192125,20.894332072760434,20.787222069015449,20.677583539819853],[24.019760408082259,24.44876515186094,24.885898909635131,25.325700020234933,25.760802407519069,26.183552759001433,26.586011660074192,26.961051794053891,27.304185845707845,27.608632641197449,27.867191769026611,28.072668105311976,28.217941127931169,28.296268881595516,28.307633298515128,28.263574368377427,28.177319550681457,28.062142357536953,27.931262131088115,27.797166196067341],[30.091132727622561,30.58492488790754,31.086628077215721,31.589926423969295,32.086406771248342,32.567425820590437,33.02411010800887,33.448591268752857,33.836042360866067,34.179077744452229,34.469870446107123,34.700610732400101,34.863557790056397,34.951350525795192,34.964084450774848,34.914710753222558,34.818009804852601,34.688798375499729,34.541851868002801,34.391163836182962],[35.176478816790009,35.711092739254774,36.25296766367839,36.795249569258708,37.328898714168609,37.844714577833422,38.33333301960046,38.786536854571175,39.19940031660731,39.564295731723838,39.873150297029078,40.117916869396737,40.2906065572164,40.383592692916345,40.397076656810739,40.344790229458134,40.24234879551252,40.10539301928371,39.949536332538052,39.78959744048661],[39.104833777259444,39.662621228754539,40.2269378741384,40.790626497299129,41.344317171907647,41.878541643901869,42.383727118410107,42.851541649743552,43.277083800457206,43.652684690895164,43.970234531370707,44.221654095934262,44.398911200194071,44.494313400907799,44.508145204631177,44.454506413791414,44.349387610395397,44.208794939106518,44.048719387913991,43.884362466671554],[42.083856420198735,42.654372248326908,43.230757155037267,43.805689861154264,44.36963797545576,44.913021280541507,45.426202307826863,45.900845170645368,46.332118614063646,46.712398824672377,47.033627668918477,47.287780199858794,47.466868653764934,47.563223854288886,47.57719193162945,47.523022001465357,47.416841349311831,47.274785116976297,47.112982725709216,46.946785752370666],[44.336240874427531,44.9136119474135,45.496305041312169,46.076912627399707,46.645829070221154,47.193440047178292,47.710110355958314,48.187545769104936,48.620994845186821,49.002908027246598,49.325308081658136,49.580252278860677,49.759827011800198,49.856419376504604,49.870420413852898,49.81612065356488,49.709669821666779,49.567219608468605,49.404923122501167,49.238168331014187],[46.036511311516676,46.617480802171066,47.203337252153176,47.786629576335834,48.357724772401092,48.907010888988069,49.424882571769388,49.903101246522105,50.336989765684748,50.719076076170388,51.041466305877513,51.296301695445123,51.47574625298099,51.572250301747303,51.586237475964793,51.531989980191781,51.425629874654064,51.283276750626804,51.121056947177856,50.954343286532698],[47.355354705955435,47.938182528374561,48.525549105538474,49.109982319331067,49.681844308877274,50.231541290989632,50.749507261561035,51.227560595710145,51.661089557546127,52.042694273870957,52.364558053408615,52.618899561596791,52.797955176813183,52.894235989814973,52.908189992383484,52.854069995354315,52.747950848267287,52.605901523798195,52.444001815090694,52.277588137772355],[48.444114359656723,49.027862782965919,49.615856633601737,50.200614811404677,50.7725061266148,51.321962372682798,51.839460451666838,52.316874539818713,52.749651754480034,53.130459426440183,53.451552478468557,53.705221242680892,53.883769527198922,53.979766024325201,53.993678152747307,53.939719618557945,53.833909683043125,53.692258948493432,53.530792146692782,53.364799700248412],[49.417705768516107,50.001807827395197,50.589889272480903,51.17446738059288,51.745925048150397,52.294724932770421,52.811390133126714,53.287851275958687,53.719611654607661,54.099404327645139,54.419554093537506,54.672421094672288,54.85037512306409,54.946041900905648,54.959905652602757,54.906133911133395,54.800683713361877,54.659500979952604,54.498548671610372,54.333064058328937],[50.328601966718921,50.912633712374955,51.500393301973659,52.084401962751002,52.655062665039907,53.202873693139182,53.718407945281534,54.193654331094166,54.624171609794928,55.002759000976695,55.321811511706329,55.573759337044926,55.751038718288569,55.846333327155385,55.860142595113984,55.806581396100754,55.70153800449922,55.560887310622732,55.400523920885924,55.235625231424898],[51.213725245966302,51.797317383455507,52.384390988020336,52.967476180201544,53.537001779271655,54.083506866815391,54.597618723654037,55.071387841812914,55.500429461713075,55.877611285501906,56.195400883910793,56.446300777952004,56.622816019339226,56.717690733840755,56.731438624289964,56.678114737571271,56.573530897597301,56.433483373446272,56.273790702342787,56.109562822238999]],"type":"surface","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
