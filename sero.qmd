@@ -248,19 +248,29 @@ head(atdf)
 
 mpi is monotone increasing SCOP-splines: bs="mpi". To achieve monotone increasing smooths this reparameterizes the coefficients so that they form an increasing sequence.
 
+Model
+
 ```{r}
-s1 <- scam(pos~s(age,bs = "mpi")+s(col_date),family=binomial,
+s1 <- scam(pos~s(age)+s(col_date,bs = "mpi"),family=binomial,
            mutate(atdf, across(col_date, as.numeric)))
 ```
 
+## 3D plot
+
 ```{r}
-age_val <- c(.1, 1:14)
+age_val <- c(.1,1:14)
+
 collection_date_val <- seq(min(atdf$col_date),
-                           max(atdf$col_date), le = 20)
+                           max(atdf$col_date), le = 512)
+
 new_data <- expand.grid(age = age_val,
                         col_date = as.numeric(collection_date_val))
 
-scamf <- cbind(new_data, fit = 100 * predict(s1, new_data,"response"))
+scamf <- cbind(new_data,
+               fit = 100 * predict(s1, new_data,"response"))
+
+scamf$col_date <- as.Date(scamf$col_date)
+
 ```
 
 ```{r}
@@ -273,7 +283,206 @@ plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
     xaxis = list(title = "Collection date"),
     yaxis = list(title = "Age"),
     zaxis = list(title = "Seroprevalence",range = c(0,100))
-  )) %>% layout(autosize = F, width = 1000, height = 1500, margin = m)
+  ))%>% layout(autosize = F, width = 900, height = 1000, margin = m)
+```
+
+## 2-D plot
+
+```{r}
+predict2 <- function(x, ci = .95, le = 512, m = 100){
+  p <- (1 - ci) / 2
+  link_inv <- x$family$linkinv
+  dataset <- x$model
+  n <- nrow(dataset) - length(x$coefficients)
+  age_range <- range(dataset$age)
+  ages <- seq(age_range[1], age_range[2], le = le)
+  date_range <- range(dataset$col_date)
+  dates <- seq(date_range[1], date_range[2], le = le)
+
+out <- x |>
+  predict(expand.grid(age = ages,
+                        col_date = dates), se.fit = TRUE) |>
+  extract(c("fit", "se.fit")) %>%
+  c(expand.grid(age = ages,
+               date = dates),
+    .) |>
+  as_tibble() |>
+  mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |>
+  select(-se.fit)
+
+return(out)
+}
+```
+
+```{r}
+out <- predict2(s1)
+
+out$date <- as.Date(out$date)
+```
+
+```{r}
+s1222 <- out %>% filter(month(date) == 12 & year(date) == 2022) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2022"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#0808cf")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2022" = "#0808cf"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Dec 2022"),size = 6)
+
+s423 <- out %>% filter(month(date) == 4 & year(date) == 2023) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Apr 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#ed097b")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Apr 2023" = "#ed097b"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Apr 2023"),size = 6)
+
+s823 <- out %>% filter(month(date) == 8 & year(date) == 2023) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Aug 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#ed6b00")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Aug 2023" = "#ed6b00"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Aug 2023"),size = 6)
+
+s1223 <- out %>% filter(month(date) == 12 & year(date) == 2023) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#33516b")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2023" = "#33516b"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Dec 2023"),size = 6)
+```
+
+## Case 
+
+```{r}
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx", 
+                  col_types = c("date", "numeric", "text", 
+                                "text", "text", "date", "date", "date", 
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
+
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>% 
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both") 
+
+df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
+  filter(!is.na(adm_week) ) %>%
+  count(adm_week) %>% as.data.frame()
+
+ts <- ggplot()+
+  geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
+           alpha = 0.5) +
+  labs(x = "Admission week","Cases")+
+  geom_vline(xintercept = as.Date("2022-12-01"),
+             alpha = 0.4,col = "#0808cf")+
+  geom_vline(xintercept = as.Date("2022-12-30"),
+             alpha = 0.4,col = "#0808cf")+
+  geom_vline(xintercept = as.Date("2023-04-01"),
+             alpha = 0.4,col = "#ed097b")+
+  geom_vline(xintercept = as.Date("2023-04-30"),
+             alpha = 0.4,col = "#ed097b")+
+  geom_vline(xintercept = as.Date("2023-08-01"),
+             alpha = 0.4,col = "#ed6b00")+
+  geom_vline(xintercept = as.Date("2023-08-30"),
+             alpha = 0.4,col = "#ed6b00")+
+  geom_vline(xintercept = as.Date("2023-12-01"),
+             alpha = 0.4,col = "#33516b")+
+  geom_vline(xintercept = as.Date("2023-12-30"),
+             alpha = 0.4,col = "#33516b")+
+  xlim(as.Date("2022-11-24"),as.Date("2024-01-01"))+theme_classic()
+```
+
+```{r}
+#| fig-width: 13
+#| fig-height: 8
+#| out-width: "100%"
+result_sero <- s1222 | s423 | s823 | s1223
+
+result_sero/
+  ts
+```
+
+
+
+```{r,echo=FALSE}
+# plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
+#         y = ~sort(unique(age)),
+#         z = ~matrix(fit, 15),
+#         showscale = F) %>%
+#   add_surface()%>%
+#   layout(scene = list(
+#     xaxis = list(title = "Collection date"),
+#     yaxis = list(title = "Age"),
+#     zaxis = list(title = "Seroprevalence",range = c(0,100))
+#   )) %>% layout(autosize = F, width = 1000, height = 1500, margin = m)
 ```
 
 

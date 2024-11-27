@@ -8,6 +8,7 @@ library(magrittr)
 library(mgcv)
 library(tidyverse)
 library(patchwork)
+Sys.setlocale("LC_TIME", "English")
 ### data
 apr_2023 <- read_excel("D:/OUCRU/hfmd/data/4_2023.xlsx")
 aug_2023 <- read_excel("D:/OUCRU/hfmd/data/08_2023.xlsx")
@@ -509,5 +510,172 @@ plot_ly(prdcts, x = ~sort(unique(col_date)),
     zaxis = list(title = "Seroprevalence",range = c(0,100))
     ))
 
+###
+
+scamf$col_date <- as.Date(scamf$col_date)
+
+scamf$age2 <- factor(scamf$age,
+                     labels=c('(0,1)','[1,2)','[2,3)','[3,4)','[4,5)',
+                              '[5,6)','[6,7)','[7,8)','[8,9)','[9,10)',
+                              '[10,11)','[11,12)','[12,13)','[13,14)','14+'))
+
+scamf %>% ggplot(aes(x = col_date,y = fit,colour = age2)) +
+  geom_line()+
+  ylim(0,100)+
+  theme_classic()+
+  labs(x = "Collection date", y = "Seroprevalence (%)",colour = "Age group")+
+  guides(fill=guide_legend(ncol=2))
+
+s1 <- scam(pos~s(age)+s(col_date,bs = "mpi"),family=binomial,
+           mutate(atdf, across(col_date, as.numeric)))
+
+age_val <- seq(0, 14, le = 512)
+
+collection_date_val <- seq(min(atdf$col_date),
+                           max(atdf$col_date), le = 512)
+
+new_data <- expand.grid(age = age_val,
+                        col_date = as.numeric(collection_date_val))
+
+scamf <- cbind(new_data,
+               fit = 100 * predict(s1, new_data,"response",se.fit = "TRUE")$fit,
+               se = 100 * predict(s1, new_data,"response",se.fit = "TRUE")$se.fit)
+scamf$col_date <- as.Date(scamf$col_date)
+
+
+plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(fit, 15),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+##
+
+s2 <- scam(pos~s(age)+s(col_date,bs = "mpi"),family=binomial,atdf)
+
+predict2 <- function(x, ci = .95, le = 512, m = 100){
+  p <- (1 - ci) / 2
+  link_inv <- x$family$linkinv
+  dataset <- x$model
+  n <- nrow(dataset) - length(x$coefficients)
+  age_range <- range(dataset$age)
+  ages <- seq(age_range[1], age_range[2], le = le)
+  date_range <- range(dataset$col_date)
+  dates <- seq(date_range[1], date_range[2], le = le)
+
+out <- x |>
+  predict(expand.grid(age = ages,
+                        col_date = dates), se.fit = TRUE) |>
+  extract(c("fit", "se.fit")) %>%
+  c(expand.grid(age = ages,
+               date = dates),
+    .) |>
+  as_tibble() |>
+  mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |>
+  select(-se.fit)
+
+return(out)
+}
+
+out <- predict2(s1)
+
+out$date <- as.Date(out$date)
+
+s1222 <- out %>% filter(month(date) == 12 & year(date) == 2022) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2022"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#0808cf")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2022" = "#0808cf"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Dec 2022"),size = 6)
+
+s423 <- out %>% filter(month(date) == 4 & year(date) == 2023) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Apr 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#ed097b")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Apr 2023" = "#ed097b"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Apr 2023"),size = 6)
+
+s823 <- out %>% filter(month(date) == 8 & year(date) == 2023) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Aug 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#ed6b00")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Aug 2023" = "#ed6b00"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Aug 2023"),size = 6)
+
+s1223 <- out %>% filter(month(date) == 12 & year(date) == 2023) %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#33516b")+
+  ylim(0,101)+
+  theme_minimal()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2023" = "#33516b"))+
+  labs(y = "Seroprevalence (%)")+
+  # geom_point(data= t1222, aes(x = age, m * pos + 1),
+  #            shape = "|",
+  #            col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Dec 2023"),size = 6)
+
+s1222 + s423 + s823 + s1223
 
 
