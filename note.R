@@ -529,7 +529,7 @@ scamf %>% ggplot(aes(x = col_date,y = fit,colour = age2)) +
 s1 <- scam(pos~s(age)+s(col_date,bs = "mpi"),family=binomial,
            mutate(atdf, across(col_date, as.numeric)))
 
-age_val <- seq(0, 14, le = 512)
+age_val <- c(.1,1:14)
 
 collection_date_val <- seq(min(atdf$col_date),
                            max(atdf$col_date), le = 512)
@@ -540,6 +540,9 @@ new_data <- expand.grid(age = age_val,
 scamf <- cbind(new_data,
                fit = 100 * predict(s1, new_data,"response",se.fit = "TRUE")$fit,
                se = 100 * predict(s1, new_data,"response",se.fit = "TRUE")$se.fit)
+scamf <- cbind(new_data,
+               fit = 100 * predict(s1, new_data,"response"))
+
 scamf$col_date <- as.Date(scamf$col_date)
 
 
@@ -555,8 +558,6 @@ plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
   ))
 
 ##
-
-s2 <- scam(pos~s(age)+s(col_date,bs = "mpi"),family=binomial,atdf)
 
 predict2 <- function(x, ci = .95, le = 512, m = 100){
   p <- (1 - ci) / 2
@@ -584,7 +585,7 @@ out <- x |>
 return(out)
 }
 
-out <- predict2(s1)
+out <- predict2(s2)
 
 out$date <- as.Date(out$date)
 
@@ -677,5 +678,142 @@ s1223 <- out %>% filter(month(date) == 12 & year(date) == 2023) %>%
   annotate("text", x = 3, y = 90, label = c("Dec 2023"),size = 6)
 
 s1222 + s423 + s823 + s1223
+
+##
+
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
+                  col_types = c("date", "numeric", "text",
+                                "text", "text", "date", "date", "date",
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
+
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>%
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both")
+
+df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
+  filter(!is.na(adm_week) ) %>%
+  count(adm_week) %>% as.data.frame()
+
+ts <- ggplot()+
+  geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
+           alpha = 0.5) +
+  labs(x = "Admission week","Cases")+
+  geom_vline(xintercept = as.Date("2022-12-01"),
+             alpha = 0.4,col = "#0808cf")+
+  geom_vline(xintercept = as.Date("2022-12-30"),
+             alpha = 0.4,col = "#0808cf")+
+  geom_vline(xintercept = as.Date("2023-04-01"),
+             alpha = 0.4,col = "#ed097b")+
+  geom_vline(xintercept = as.Date("2023-04-30"),
+             alpha = 0.4,col = "#ed097b")+
+  geom_vline(xintercept = as.Date("2023-08-01"),
+             alpha = 0.4,col = "#ed6b00")+
+  geom_vline(xintercept = as.Date("2023-08-30"),
+             alpha = 0.4,col = "#ed6b00")+
+  geom_vline(xintercept = as.Date("2023-12-01"),
+             alpha = 0.4,col = "#33516b")+
+  geom_vline(xintercept = as.Date("2023-12-30"),
+             alpha = 0.4,col = "#33516b")+
+  xlim(as.Date("2022-11-24"),as.Date("2024-01-01"))+theme_classic()
+
+result_sero <- s1222 | s423 | s823 | s1223
+
+result_sero/
+  ts
+
+
+plot_ly(data.frame(out),
+        x = ~date,
+        y = ~age,
+        z = ~fit,
+        type = "mesh3d") %>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+### test another hypothesis
+
+
+t1223a <- t1223 %>%
+  mutate(col_date = make_date(year = col_year,
+                                          month = col_month,
+                                          day = col_day))
+t1222a <-  t1222 %>%
+  mutate(col_date = make_date(year = col_year,
+                              month = col_month,
+                              day = col_day))
+t423a <- t423 %>%
+  mutate(col_date = make_date(year = col_year,
+                              month = col_month,
+                              day = col_day))
+t823a <- t823 %>%
+  mutate(col_date = make_date(year = col_year,
+                              month = col_month,
+                              day = col_day))
+
+
+sw <- t1223a$col_date
+t1223a$col_date <- t1222a$col_date
+t1222a$col_date <- sw
+
+
+
+atdfa <- rbind(t1223a,t423a,t823a,t1222a)
+
+library(scam)
+library(plotly)
+library(mgcv)
+
+sa <- scam(pos~s(age)+s(col_date,bs= "mpi"),family=binomial,
+           mutate(atdf, across(col_date, as.numeric)))
+
+age_val <- c(.1,1:14)
+
+collection_date_val <- seq(min(atdf$col_date),
+                           max(atdf$col_date), le = 512)
+
+new_data <- expand.grid(age = age_val,
+                        col_date = as.numeric(collection_date_val))
+
+scamf <- cbind(new_data,
+               fit = 100 * predict(sa, new_data,"response"))
+
+scamf$col_date <- as.Date(scamf$col_date)
+
+plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(fit, 15),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+# %>% layout(autosize = F, width = 900, height = 1000, margin = m)
+
+adf <- additive.mpspline.fitter(response=atdf$pos,x.var=atdf$age,z.var=as.numeric(atdf$col_date),ps.intervals=20,degree=3,order=2,link="logit",
+                         family="binomial",alpha=2,kappa=1e8)
+
+str(adf)
+
+adf$yhat %>% View()
+adf$x
+
+
+
+
 
 
