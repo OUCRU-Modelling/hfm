@@ -775,10 +775,24 @@ library(scam)
 library(plotly)
 library(mgcv)
 
-sa <- scam(pos~s(age)+s(col_date,bs= "mpi"),family=binomial,
+knots <- list(col_date = as.numeric(kd))
+
+
+sa <- scam(pos~s(age,bs = "bs",k = 15)+s(col_date,bs= "mpi",k = 15),
+           # knots = knots,
+           family=binomial,
            mutate(atdf, across(col_date, as.numeric)))
 
 age_val <- c(.1,1:14)
+
+kd <- seq(range(min(atdf$col_date),max(atdf$col_date))[1],
+    range(min(atdf$col_date),max(atdf$col_date))[2],le = 19)
+
+kd <- seq(19395.2,
+          19647.8,le = 19)
+
+# as.numeric(kd)
+
 
 collection_date_val <- seq(min(atdf$col_date),
                            max(atdf$col_date), le = 512)
@@ -802,15 +816,7 @@ plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
     zaxis = list(title = "Seroprevalence",range = c(0,100))
   ))
 
-# %>% layout(autosize = F, width = 900, height = 1000, margin = m)
 
-adf <- additive.mpspline.fitter(response=atdf$pos,x.var=atdf$age,z.var=as.numeric(atdf$col_date),ps.intervals=20,degree=3,order=2,link="logit",
-                         family="binomial",alpha=2,kappa=1e8)
-
-str(adf)
-
-adf$yhat %>% View()
-adf$x
 
 
 

@@ -4,7 +4,7 @@
     "href": "sero.html",
     "title": "HFMD Seroprevalence",
     "section": "",
-    "text": "library(readxl)\nlibrary(dplyr)\nlibrary(stringr)\nlibrary(purrr)\nlibrary(tidyr)\nlibrary(lubridate)\nlibrary(magrittr)\nlibrary(mgcv)\nlibrary(tidyverse)\nlibrary(patchwork)"
+    "text": "library(readxl)\nlibrary(dplyr)\nlibrary(stringr)\nlibrary(purrr)\nlibrary(tidyr)\nlibrary(lubridate)\nlibrary(magrittr)\nlibrary(mgcv)\nlibrary(tidyverse)\nlibrary(patchwork)\ninvisible(Sys.setlocale(\"LC_TIME\", \"English\"))"
   },
   {
     "objectID": "sero.html#fit-by-glm",

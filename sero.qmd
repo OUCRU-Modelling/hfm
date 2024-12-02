@@ -26,6 +26,7 @@ library(magrittr)
 library(mgcv)
 library(tidyverse)
 library(patchwork)
+invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
 # Import data
