@@ -1,3 +1,31 @@
 project:
-  type: website
+  type: book
   output-dir: docs
+
+execute:
+  echo: true
+  warning: false
+  message: false
+
+knitr:
+  opts_chunk:
+    out.width: "100%"
+    out.height: "100%"
+
+book:
+  title: "HFMD 2023"
+  chapters:
+    - index.qmd
+    - sero.qmd
+
+format:
+  html:
+    theme: cosmo
+    code-fold: true
+    code-copy: true
+    fig-format: svg
+  pdf:
+    documentclass: scrreprt
+
+editor: visual
+

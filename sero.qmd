@@ -1,19 +1,5 @@
----
-title: "HFMD Seroprevalence"
-format: 
-  html:
-    page-layout: full
-    toc: true
-    fig-format: svg
-knitr:
-  opts_chunk:
-    out.width: "100%"
-    out.height: "100%"
-editor: visual
-echo: true
-warning: false
-message: false
----
+# HFMD Seroprevalence
+
 
 ```{r}
 library(readxl)
