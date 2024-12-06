@@ -793,7 +793,6 @@ kd <- seq(19395.2,
 
 # as.numeric(kd)
 
-
 collection_date_val <- seq(min(atdf$col_date),
                            max(atdf$col_date), le = 512)
 
@@ -816,9 +815,216 @@ plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
     zaxis = list(title = "Seroprevalence",range = c(0,100))
   ))
 
+##
+
+t1222
+
+mod <- gam(pos~s(age,bs = "bs"),
+           method = "REML",family = "binomial",data = t1222)
+ou <- list()
+predict2 <- function(x, ci = .95, le = 512, m = 100) {
+  p <- (1 - ci) / 2
+
+  link_inv <- x$family$linkinv
+  dataset <- x$model
+  n <- nrow(dataset) - length(x$coefficients)
+  age_range <- range(dataset$age)
+
+  ages <- seq(age_range[1], age_range[2], le = le)
+
+  x |>
+    predict(data.frame(age = ages), se.fit = TRUE) |>
+    extract(c("fit", "se.fit")) %>%
+    c(age = list(ages), .) |>
+    as_tibble() |>
+    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |>
+    select(- se.fit)
+}
+
+plot_gam <- function(x,date){
+
+  clo <- case_when(date == 1222 ~ "Dec 2022",
+                   date == 423 ~ "Apr 2023",
+                   date == 823 ~ "Aug 2023",
+                   date == 1223 ~ "Dec 2023")
+  clo2 <- case_when(date == 1222 ~ "#0808cf",
+                    date == 423 ~ "#ed097b",
+                    date == 823 ~ "#ed6b00",
+                    date == 1223 ~ "#33516b")
+
+  x %>% as.data.frame() %>%
+    ggplot(aes(x = age,y = fit))+
+    geom_line(aes(col = clo))+
+    geom_ribbon(aes(x = age,y = fit,
+                    ymin=lwr, ymax=upr),alpha = 0.5,fill = clo2)+
+    ylim(0,101)+
+    theme_minimal() +
+  scale_color_manual(name = "Y series",
+                     values = c(clo = clo2))+
+    labs(y = "Seroprevalence (%)")+
+    geom_point(data= t1223, aes(x = age, m * pos + 1),
+               shape = "|",
+               col = clo2)+
+    theme(
+      axis.text.x = element_text(size = 15),
+      axis.text.y = element_text(size = 15),
+      legend.position = "hide",
+      legend.text = element_text(size = 15),
+      axis.title.x = element_text(size = 15),
+      axis.title.y = element_text(size = 15))+
+    annotate("text", x = 3, y = 90, label = c(clo),size = 6)
+}
+
+mod <- gam(pos~s(age,bs = "bs"),
+           method = "REML",family = "binomial",data = t423)
+
+g1222 <- gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t1222) %>%
+  predict2() %>% plot_gam(date = 1222)
+
+gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t423) %>%
+  predict2() %>% plot_gam(date = 423)
+
+gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t823) %>%
+  predict2() %>% plot_gam(date = 823)
+
+gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t1223) %>%
+  predict2() %>% plot_gam(date = 1223)
+
+
+tes1222 <- gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t1222) %>%
+  predict2()
+
+tes0423 <- gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t423) %>%
+  predict2()
+
+tes0823 <- gam(pos~s(age,bs = "bs"),method = "REML",
+               family = "binomial",data = t823) %>%
+  predict2()
+
+tes1223 <- gam(pos~s(age,bs = "bs"),method = "REML",
+               family = "binomial",data = t1223) %>%
+  predict2()
+
+
+contrain <- function(data1,data2){
+  new_data <- data.frame(age = data2$age,
+                         fit = rep(0,nrow(data2)),
+                         lwr = rep(0,nrow(data2)),
+                         up = rep(0,nrow(data2)))
+  for (i in 1:512){
+    if(data2$fit[i] < data1$fit[i]){
+      new_data$fit[i] <- data1$fit[i]
+      new_data$lwr[i] <- data1$lwr[i]
+      new_data$upr[i] <- data1$upr[i]
+    } else{
+      new_data$fit[i] <- data2$fit[i]
+      new_data$lwr[i] <- data2$lwr[i]
+      new_data$upr[i] <- data2$upr[i]
+    }
+  }
+
+  new_data$fit <- gam(fit ~ s(age),data = new_data)$fitted.values
+  new_data$lwr <- gam(lwr ~ s(age),data = new_data)$fitted.values
+  new_data$upr <- gam(upr ~ s(age),data = new_data)$fitted.values
+
+  return(new_data)
+}
+
+## contrain 423 by 1222
+
+con423 <- contrain(tes1222,tes0423)
+
+con823 <- contrain(con423,tes0823)
+
+con1223 <- contrain(con823,tes1223)
+
+con423 %>% plot_gam(date = 423)
+
+con823 %>% plot_gam(date = 423)
+
+mod <- gam(fit ~ s(age),data = con1223)
+
+p <- predict(mod, type = "link", se.fit = TRUE)
+
+confint(mod,parm = "age", type = "confidence")
+
+data.frame(fit = p$fit,
+           upr = upr,
+           lwr = lwr)
+upr <- p$fit + (2 * p$se.fit)
+lwr <- p$fit - (2 * p$se.fit)
+
+predictg <- function(x, ci = .95, le = 512, m = 100) {
+  p <- (1 - ci) / 2
+
+  link_inv <- x$family$linkinv
+  dataset <- x$model
+  n <- nrow(dataset) - length(x$coefficients)
+  age_range <- range(dataset$age)
+
+  ages <- seq(age_range[1], age_range[2], le = le)
+
+  x |>
+    predict(data.frame(age = ages), se.fit = TRUE) |>
+    extract(c("fit", "se.fit")) %>%
+    c(age = list(ages), .) |>
+    as_tibble() |>
+    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |>
+    select(- se.fit)
+}
 
 
 
+g1222 | ac423 | ac823 | ac1223
+
+tt %>%  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(x = age,y = fit))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "blue")+
+  ylim(0,101)+
+  theme_minimal()
+
+con423 %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(x = age,y = fit))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "blue")+
+  ylim(0,101)+
+  theme_minimal()
+
+## contrain 823 by 423
+
+con823 <- contrain(con423,tes0823)
+
+con823 %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(x = age,y = fit))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "blue")+
+  ylim(0,101)+
+  theme_minimal()
+
+## contrain 1223 by 823
+
+con1223 <- contrain(con823,tes1223)
+
+con1223 %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(x = age,y = fit))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "blue")+
+  ylim(0,101)+
+  theme_minimal()
 
 
 

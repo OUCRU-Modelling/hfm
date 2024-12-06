@@ -17,6 +17,8 @@ invisible(Sys.setlocale("LC_TIME", "English"))
 
 # Import data
 
+## Serology data
+
 ```{r}
 apr_2023 <- read_excel("D:/OUCRU/hfmd/data/4_2023.xlsx")
 aug_2023 <- read_excel("D:/OUCRU/hfmd/data/08_2023.xlsx")
@@ -53,6 +55,55 @@ t1223$pos <- replace(t1223$...17,is.na(t1223$...17),0) %>%
 colnames(t1223) <- c("age","col_day","col_month","col_year","neutralization","pos")
 t1223$age <- as.numeric(t1223$age)
 ```
+
+## Case 
+
+```{r}
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx", 
+                  col_types = c("date", "numeric", "text", 
+                                "text", "text", "date", "date", "date", 
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
+
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>% 
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both") 
+
+df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
+  filter(!is.na(adm_week) ) %>%
+  count(adm_week) %>% as.data.frame()
+
+ts <- ggplot()+
+  geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
+           alpha = 0.5) +
+  labs(x = "Admission week","Cases")+
+  geom_vline(xintercept = as.Date("2022-12-01"),
+             alpha = 0.4,col = "#0808cf")+
+  geom_vline(xintercept = as.Date("2022-12-30"),
+             alpha = 0.4,col = "#0808cf")+
+  geom_vline(xintercept = as.Date("2023-04-01"),
+             alpha = 0.4,col = "#ed097b")+
+  geom_vline(xintercept = as.Date("2023-04-30"),
+             alpha = 0.4,col = "#ed097b")+
+  geom_vline(xintercept = as.Date("2023-08-01"),
+             alpha = 0.4,col = "#ed6b00")+
+  geom_vline(xintercept = as.Date("2023-08-30"),
+             alpha = 0.4,col = "#ed6b00")+
+  geom_vline(xintercept = as.Date("2023-12-01"),
+             alpha = 0.4,col = "#33516b")+
+  geom_vline(xintercept = as.Date("2023-12-30"),
+             alpha = 0.4,col = "#33516b")+
+  xlim(as.Date("2022-11-24"),as.Date("2024-01-01"))+theme_classic()
+```
+
 
 # Function
 
@@ -249,6 +300,11 @@ plot_gam <- function(x,date){
                     date == 823 ~ "#ed6b00",
                     date == 1223 ~ "#33516b")
   
+  dtaa <- case_when(date == 1222 ~ t1222,
+                    date == 423 ~ t423,
+                    date == 823 ~ t823,
+                    date == 1223 ~ t1223)
+  
   x %>% as.data.frame() %>%
     ggplot(aes(x = age,y = fit))+
     geom_line(aes(col = clo))+
@@ -259,7 +315,7 @@ plot_gam <- function(x,date){
   scale_color_manual(name = "Y series",
                      values = c(clo = clo2))+
     labs(y = "Seroprevalence (%)")+
-    geom_point(data= t1223, aes(x = age, m * pos + 1),
+    geom_point(data= dtaa, aes(x = age, m * pos + 1),
                shape = "|",
                col = clo2)+
     theme(
@@ -291,12 +347,75 @@ g1223 <-gam(pos~s(age,bs = "bs"),method = "REML",
 ```
 
 ```{r}
-#| fig-width: 13
-#| fig-height: 8
+#| fig-width: 15
+#| fig-height: 6
 #| out-width: "100%"
-g1222 + g423 + g823 + g1223
+g1222 | g423 | g823 | g1223
 ```
 
+## Constrain in each time point
+
+```{r}
+## Constrain function
+contrain <- function(data1,data2){
+  new_data <- data.frame(age = data2$age,
+                         fit = rep(0,nrow(data2)),
+                         lwr = rep(0,nrow(data2)),
+                         up = rep(0,nrow(data2)))
+  for (i in 1:512){
+    if(data2$fit[i] < data1$fit[i]){
+      new_data$fit[i] <- data1$fit[i]
+      new_data$lwr[i] <- data1$lwr[i]
+      new_data$upr[i] <- data1$upr[i]
+    } else{
+      new_data$fit[i] <- data2$fit[i]
+      new_data$lwr[i] <- data2$lwr[i]
+      new_data$upr[i] <- data2$upr[i]
+    }
+  }
+  
+  new_data$fit <- gam(fit ~ s(age),data = new_data)$fitted.values
+  new_data$lwr <- gam(lwr ~ s(age),data = new_data)$fitted.values
+  new_data$upr <- gam(upr ~ s(age),data = new_data)$fitted.values
+  
+  return(new_data)
+}
+
+tes1222 <- gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t1222) %>% 
+  predictg() 
+tes0423 <- gam(pos~s(age,bs = "bs"),method = "REML",
+    family = "binomial",data = t423) %>% 
+  predictg() 
+tes0823 <- gam(pos~s(age,bs = "bs"),method = "REML",
+               family = "binomial",data = t823) %>% 
+  predictg() 
+tes1223 <- gam(pos~s(age,bs = "bs"),method = "REML",
+               family = "binomial",data = t1223) %>% 
+  predictg() 
+
+## contrain 
+con423 <- contrain(tes1222,tes0423)
+con823 <- contrain(con423,tes0823)
+con1223 <- contrain(con823,tes1223)
+
+
+c423 <- con423 %>% plot_gam(date = 423) 
+c823 <- con823 %>% plot_gam(date = 823) 
+c1223 <- con1223 %>% plot_gam(date = 1223) 
+
+```
+
+```{r}
+#| fig-width: 15
+#| fig-height: 8
+#| out-width: "100%"
+
+gam_contrain <- g1222 | c423 | c823 | c1223
+
+gam_contrain/
+  ts
+```
 
 # Model age and time at the same time
 
@@ -487,53 +606,7 @@ s1223 <- out %>% filter(month(date) == 12 & year(date) == 2023) %>%
   annotate("text", x = 3, y = 90, label = c("Dec 2023"),size = 6)
 ```
 
-## Case 
 
-```{r}
-df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx", 
-                  col_types = c("date", "numeric", "text", 
-                                "text", "text", "date", "date", "date", 
-                                "text", "text", "text"))
-colnames(df1) <- c("dob", "age", "gender", "commune", "district",
-                   "reported_date", "onset_date","adm_date",
-                   "medi_cen","inout","severity")
-df1$dob <- df1$dob %>% as_date()
-df1$adm_date <- df1$adm_date %>% as_date()
-
-df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
-df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
-df1$district <- df1$district %>% str_replace_all(
-  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
-df1$district <- df1$district %>% 
-  str_remove("Quận|Huyện|Thành phố") %>%
-  trimws(which = "both") 
-
-df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
-  filter(!is.na(adm_week) ) %>%
-  count(adm_week) %>% as.data.frame()
-
-ts <- ggplot()+
-  geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
-           alpha = 0.5) +
-  labs(x = "Admission week","Cases")+
-  geom_vline(xintercept = as.Date("2022-12-01"),
-             alpha = 0.4,col = "#0808cf")+
-  geom_vline(xintercept = as.Date("2022-12-30"),
-             alpha = 0.4,col = "#0808cf")+
-  geom_vline(xintercept = as.Date("2023-04-01"),
-             alpha = 0.4,col = "#ed097b")+
-  geom_vline(xintercept = as.Date("2023-04-30"),
-             alpha = 0.4,col = "#ed097b")+
-  geom_vline(xintercept = as.Date("2023-08-01"),
-             alpha = 0.4,col = "#ed6b00")+
-  geom_vline(xintercept = as.Date("2023-08-30"),
-             alpha = 0.4,col = "#ed6b00")+
-  geom_vline(xintercept = as.Date("2023-12-01"),
-             alpha = 0.4,col = "#33516b")+
-  geom_vline(xintercept = as.Date("2023-12-30"),
-             alpha = 0.4,col = "#33516b")+
-  xlim(as.Date("2022-11-24"),as.Date("2024-01-01"))+theme_classic()
-```
 
 ```{r}
 #| fig-width: 13
