@@ -1026,6 +1026,118 @@ con1223 %>% as.data.frame() %>%
   ylim(0,101)+
   theme_minimal()
 
+### cgam model
+# install.packages("cgam")
+# install.packages("gam")
+library(cgam)
+library(tidyverse)
+library(gam)
+library(plotly)
+library(scam)
+# cgg <- cgam(pos ~ s.incr(col_date, k =20)+ s(age, k = 20),
+#            family=binomial,data = mutate(atdf, across(col_date, as.numeric)))
+
+# cgg <- scam(pos ~ s(col_date, bs = "mpi", m = 6) + s(age),
+#             family=binomial,data = mutate(atdf, across(col_date, as.numeric)))
 
 
 
+
+knots <- list(col_date = as.numeric(c(as.Date("2023-04-01"),
+                                      as.Date("2023-08-01"),
+                                      as.Date("2023-12-01"))))
+fitted(cgg)
+cgg <- gam(pos ~ s(col_date, m =4) + s(age,m = 4),
+           knots = knots,
+           family=binomial,data = mutate(atdf, across(col_date, as.numeric)))
+
+age_val <- c(.1,1:14)
+collection_date_val <- seq(min(atdf$col_date),
+                           max(atdf$col_date), le = 512)
+
+new_data <- expand.grid(age = age_val,
+                        col_date = as.numeric(collection_date_val))
+
+# cgp <- predict(cgg, new_data,interval = "confidence", level = 0.95)
+#
+# scamf <- cbind(new_data,
+#                fit = 100 *cgp$fit,
+#                lwr = 100 *cgp$lower,
+#                upr = 100 *cgp$upper)
+
+scamf <- cbind(new_data,
+               fit = 100 * predict(cgg, new_data,"response"))
+
+scamf$col_date <- as.Date(scamf$col_date)
+
+
+plot_ly(scamf, x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(fit, 15),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+additive.mpspline.fitter(response=atdf$pos,x.var=atdf$age,z.var=as.numeric(atdf$col_date),
+                         ps.intervals=20,degree=3,order=2,link="logit",
+                         family="binomial",alpha=2,kappa=1e8)
+atdf$pos
+
+## separate age group
+library(tidyverse)
+library(scam)
+rm(a1)
+fn <- data.frame()
+for (i in 1:15){
+  a1 <- atdf %>% filter(age >= i-1 & age <=i)
+  fa1 <- scam(pos ~s(col_date,bs = "mpi", by = age),
+              family=binomial,data = mutate(a1, across(col_date, as.numeric)))
+  collection_date_val <- seq(min(atdf$col_date),
+                             max(atdf$col_date), le = 512)
+  age_val <- seq(i-1,i,le = 512)
+  new_data <- data.frame(age = age_val,
+                          col_date = as.numeric(collection_date_val))
+  a2 <- cbind(new_data,fit = 100*predict(fa1,newdata = new_data,"response"))
+  a2$col_date <- as.Date(a2$col_date)
+  fn <- rbind(fn,a2)
+}
+
+
+
+d122 <- fn %>%  filter(month(col_date) == 12 & year(col_date) == 2022) %>%
+ggplot()+
+  geom_line(aes(x = age,y = fit))+
+  xlim(0,15)+
+  ylim(0,100)
+d43 <- fn %>%  filter(month(col_date) == 4 & year(col_date) == 2023) %>%
+  ggplot()+
+  geom_line(aes(x = age,y = fit))+
+  xlim(0,15)+
+  ylim(0,100)
+d83 <- fn %>%  filter(month(col_date) == 8 & year(col_date) == 2023) %>%
+  ggplot()+
+  geom_line(aes(x = age,y = fit))+
+  xlim(0,15)+
+  ylim(0,100)
+d123 <- fn %>%  filter(month(col_date) == 12 & year(col_date) == 2023) %>%
+  ggplot()+
+  geom_line(aes(x = age,y = fit))+
+  xlim(0,15)+
+  ylim(0,100)
+
+d122 + d43 + d83 + d123
+
+  plot_ly(fn, x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(fit, 15),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
