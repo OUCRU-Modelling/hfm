@@ -197,6 +197,7 @@ smooth_plot <- function(data,month,year){
     annotate("text", x = 3, y = 90, label = c(clo),size = 6)
 }
 
+
 p1222 <- smooth_plot(data = df_c,month = 12,year = 2022)
 p423 <- smooth_plot(data = df_c,month = 4,year = 2023)
 p823 <- smooth_plot(data = df_c,month = 8,year = 2023)
