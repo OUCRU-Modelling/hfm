@@ -17,6 +17,7 @@ book:
   chapters:
     - index.qmd
     - sero.qmd
+    - model.qmd
 
 format:
   html:
