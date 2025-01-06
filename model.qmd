@@ -161,9 +161,9 @@ after_cal <- function(par){
 iii <- after_cal(beta_mle$par) %>% mutate(ca = case$n[-53]/N1)
 
 
-ggplot(iii) +
-  geom_line(aes(x = t,y=prev*250))+
-  geom_point(aes(x = t,y=ca))
+# ggplot(iii) +
+#   geom_line(aes(x = t,y=prev*250))+
+#   geom_point(aes(x = t,y=ca))
 ```
 
 # Gathering data on timing children go to school
