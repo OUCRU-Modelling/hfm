@@ -211,7 +211,7 @@ plot1222 <-  glm(pos ~ age, binomial, data = t1222) |>
     legend.text = element_text(size = 15))
 
 
-plot0423 <-  glm(pos ~ age + I(age ^2), binomial, data = t423) |>
+plot0423 <-  glm(pos ~ age + I(age ^2), binomial, data = rbind(t1222,t423)) |>
   predict2() %>% as.data.frame() %>%
   ggplot(aes(x = age,y = fit))+
   geom_line(aes(col = "Apr 2023"))+
@@ -233,7 +233,7 @@ plot0423 <-  glm(pos ~ age + I(age ^2), binomial, data = t423) |>
     legend.position.inside =  c(0.15,0.80),
     legend.text = element_text(size = 15))
 
-plot0823 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = t823) |>
+plot0823 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = rbind(t1222,t423,t823)) |>
   predict2() %>% as.data.frame() %>%
   ggplot(aes(x = age,y = fit))+
   geom_line(aes(col = "Aug 2023"))+
@@ -255,7 +255,7 @@ plot0823 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = t823) |>
     legend.position.inside =  c(0.15,0.80),
     legend.text = element_text(size = 15))
 
-plot1223 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = t1223) |>
+plot1223 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = rbind(t1222,t423,t823,t1223)) |>
   predict2() %>% as.data.frame() %>%
   ggplot(aes(x = age,y = fit))+
   geom_line(aes(col = "Dec 2023"))+

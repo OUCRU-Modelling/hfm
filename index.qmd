@@ -774,6 +774,7 @@ hmc <- ggplot(data=w23$wdat, aes(x=date, y=age)) +
 #| fig-height: 8
 #| out-width: "100%"
 #| fig-format: png
+#| label: agestr
 c/
 atk/
 hmc
