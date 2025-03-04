@@ -83,6 +83,8 @@ data_pt$age_gr2 <- cut(data_pt$age+0.00000001, breaks = seq(0, 15, by = 3),
                                   "<9 & ≤12 yo",
                                   "<12 & ≤15 yo"))
 
+data_pt$age_gr3 <- cut(data_pt$age+0.00000001, breaks = seq(0, 15, by = 3))
+                       
 ```
 
 
@@ -132,14 +134,14 @@ data_pt %>% group_by(qhchuan) %>%
   left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
   ggplot() +
     geom_sf(aes(fill = pre),show.legend = T)+
-    scale_fill_gsea(na.value = "white",
-                    breaks = seq(0,0.12,by = 0.03),
-                    limits = c(0, 0.12),
-                    name = "Percentage",
-                    labels = scales::label_percent())+
+    scale_fill_continuous(low="yellow", high="red",
+                          guide="colorbar",na.value="white",
+                          name = "Percentage",
+                          limits = c(0,0.12),
+                          labels = scales::label_percent())+
     geom_sf_text(aes(label = nl_name_2),size=2)+
     geom_sf(data = tdnd1, shape = 17,
-           color = "yellow", size = 2)+
+           color = "blue", size = 2)+
     theme_void()  +
     ggspatial::annotation_north_arrow(
     location = "tr", which_north = "true",
@@ -176,43 +178,53 @@ data_pt %>%
   theme_bw()
 ```
 
-Fig 1 shows the details of the serum samples for each district’s collection times, and Fig 2 shows the age structure of each district’s collection times. I divided continuous age variables into five groups: <0 & ≤3 years old,<3 & ≤6 years old,<6 & ≤9 years old, <9 & ≤12 years old,<12 & ≤15 years old to facilitate the visualization (instead of visualizing 15 age group). By doing this, we can see which district has enough samples from 4 collection times and the age structure of each collection time. 
-
-Then, I selected districts to analyse the seroprevalence based on two criteria:
-
-  - Districts have enough four collection times
-  
-  - Districts have at least two age groups for each collection
-  
-And selected districts were: district 10, district 11, district 12, district 8, binh chanh, binh tan, cu chi, hoc mon, tan binh, tan phu.
+## Age serological profiles of each districts 
 
 ```{r}
 #| fig-width: 13
 #| fig-height: 10
 #| out-width: "100%"
 #| fig-cap: "Fig 2"
-data_pt %>%
-  ggplot() +
-  geom_bar(aes(fill = age_gr2,x = factor(col_time,levels = c("Dec 2022",
-                                                             "Apr 2023",
-                                                             "Aug 2023",
-                                                             "Dec 2023"))))+
-  scale_y_continuous(breaks = seq(0,14,by=4),
-                     limits = c(0,14))+
-  scale_x_discrete(limits = c("Dec 2022",
-                              "Apr 2023",
-                              "Aug 2023",
-                              "Dec 2023"))+
+
+# data_pt %>%
+#   ggplot() +
+#   geom_bar(aes(fill = age_gr2,x = factor(col_time,levels = c("Dec 2022",
+#                                                              "Apr 2023",
+#                                                              "Aug 2023",
+#                                                              "Dec 2023"))))+
+#   scale_y_continuous(breaks = seq(0,14,by=4),
+#                      limits = c(0,14))+
+#   scale_x_discrete(limits = c("Dec 2022",
+#                               "Apr 2023",
+#                               "Aug 2023",
+#                               "Dec 2023"))+
+#   facet_wrap(~qhchuan,
+#              ncol = 5)+
+#   labs(fill = "Age group",y = "Number of samples",
+#        x ="Collection date")+
+#   theme_bw()+
+  ## axis.text.x = element_text(vjust = 0.5,angle = 45)
+  # theme(legend.position = "top")
+
+# data_pt %>% ggplot() +
+#   geom_density(aes(x = age))+
+#   facet_wrap(~qhchuan,
+#              ncol = 5)+
+#   labs(x = "Age group",y = "Number of samples")+
+#   theme_bw()
+
+data_pt %>% ggplot() +
+  geom_bar(aes(x = age_gr3))+
   facet_wrap(~qhchuan,
              ncol = 5)+
-  labs(fill = "Age group",y = "Number of samples",
-       x ="Collection date")+
-  theme_bw()+
-  ## axis.text.x = element_text(vjust = 0.5,angle = 45)
-  theme(legend.position = "top")
+  scale_y_continuous(breaks = seq(0,10,by = 2),
+                     limits = c(0,10))+
+  labs(x = "Age group",y = "Number of samples")+
+  theme_bw()
+
 ```
 
-## Age structure of each districts 
+Fig 2 shows the age structure of each district’s collection times. I divided continuous age variables into five groups: <0 & ≤3 years old,<3 & ≤6 years old,<6 & ≤9 years old, <9 & ≤12 years old,<12 & ≤15 years old to facilitate the visualization (instead of visualizing 15 age group).
 
 ```{r}
 select_dis <- c("10", "11", "12", "8", "binh chanh", "binh tan", "cu chi", "hoc mon", "tan binh", "tan phu")
@@ -225,31 +237,39 @@ binomial_smooth <- function(...) {
 }
 ```
 
-In this part, I used a generalized linear model for selected districts to fit the seropositive by age with formula $seropositive \sim age + age^{2}$. 
+In this part, I used a generalized linear model for districts to fit the seropositive by age with formula $seropositive \sim age + age^{2}$. 
 
 ```{r}
-#| fig-width: 8
-#| fig-height: 20
+#| fig-width: 13
+#| fig-height: 10
 #| out-width: "100%"
 #| fig-cap: "Fig 3"
  
-data_sle  %>% 
+# data_sle  %>% 
+#   ggplot(aes(x = age, y = pos)) +
+#   geom_jitter(height = 0.05)+
+#   facet_wrap(vars(qhchuan,
+#                   factor(col_time,levels = c("Dec 2022",
+#                                              "Apr 2023",
+#                                              "Aug 2023",
+#                                              "Dec 2023"))),ncol=4)+
+#   binomial_smooth(formula = y ~ x + I(x^2) )+
+#   labs(x = "Collection date", y  = "Seroprevalence")+
+#   theme_bw()
+
+data_pt %>% 
   ggplot(aes(x = age, y = pos)) +
   geom_jitter(height = 0.05)+
-  facet_wrap(vars(qhchuan,
-                  factor(col_time,levels = c("Dec 2022",
-                                             "Apr 2023",
-                                             "Aug 2023",
-                                             "Dec 2023"))),ncol=4)+
-  binomial_smooth(formula = y ~ x + I(x^2) )+
-  labs(x = "Collection date", y  = "Seroprevalence")+
+  # geom_point(shape = "|",size = 2,
+  #            col = "#0808cf")+
+  facet_wrap(~qhchuan,
+             ncol=5)+
+  binomial_smooth(formula = y ~ x + I(x^2))+
+  labs(x = "Age", y  = "Seroprevalence")+
   theme_bw()
 ```
 
 Fig 3 shows the result of the fitting process: visualization with seroprevalence (solid line) with a 95% confidence interval (coloured area) and serum sample (point). 
-
-In my opinion, the shape of seroprevalence is very weird and 95% confident interval is wide because the small sample of each model. 
-
 
 ## Seroprevalence in the same age group over time
 
@@ -261,33 +281,33 @@ data_pt$age_gr <- factor(data_pt$age_gr,
 
 
 ```{r}
-#| fig-width: 13
-#| fig-height: 8
-#| out-width: "100%"
-#| fig-cap: "Fig 4"
+# | fig-width: 13
+# | fig-height: 8
+# | out-width: "100%"
+# | fig-cap: "Fig 4"
 
-ggplot(data_pt,
-       aes(x = col_date, y = pos)) +
-  geom_jitter(height = 0.05)+
-  facet_wrap(~age_gr,
-             ncol = 5)+
-  binomial_smooth(formula = y ~ x + I(x^2))+
-  labs(x = "Collection date", y  = "Seroprevalence")+
-  theme_bw()+
-  theme(axis.text.x = element_text(vjust = 0.5,angle = 45))
+# ggplot(data_pt,
+#        aes(x = col_date, y = pos)) +
+#   geom_jitter(height = 0.05)+
+#   facet_wrap(~age_gr,
+#              ncol = 5)+
+#   binomial_smooth(formula = y ~ x + I(x^2))+
+#   labs(x = "Collection date", y  = "Seroprevalence")+
+#   theme_bw()+
+#   theme(axis.text.x = element_text(vjust = 0.5,angle = 45))
+
+##Fig 4 gives information on the seroprevalence of the 15 age groups. The seroprevalence of the age group 1-5 years old increased, which reflect the outbreak's impact in seroprevalence. The outbreak began in June, and 95% of symptomatic cases were aged 0-6 years old; and seroprevalence result also increased in 1-6 years old. However, there is a contrast; our serological shows an increase in the 2-3 years old age group in the 2nd peak (September), while the leading symptomatic group contributing to this peak is children aged 0-2 years old.
 ```
 
-I combined all samples for four collection times and fitted the GLM model with formula $seropositive \sim age + age^{2}$ for each age group. Fig 4 and Fig 5 show the seroprevalence over time in the same age group. 
+I combined all samples for four collection times and fitted the GLM model with formula $seropositive \sim age + age^{2}$ for each age group. Fig 4 show the seroprevalence over time in the same age group. 
 
-Fig 4 gives information on the seroprevalence of the 15 age groups. The seroprevalence of the age group 1-5 years old increased, which reflect the outbreak's impact in seroprevalence. The outbreak began in June, and 95% of symptomatic cases were aged 0-6 years old; and seroprevalence result also increased in 1-6 years old. However, there is a contrast; our serological shows an increase in the 2-3 years old age group in the 2nd peak (September), while the leading symptomatic group contributing to this peak is children aged 0-2 years old.
-
-For our assumption, asymptomatic cases of children who went to school infected their siblings. As you can see, children aged 7-15 had a significant seroprevalence at the beginning of 2023 (>25%), which may cause a silent infection to their siblings.
+For our assumption, asymptomatic cases of children who went to school infected their siblings. As you can see, the high seroprevalence of children at school age at the beginning of 2023 may cause the infection in their siblings aged 0-6, who have low seroprevalence simultaneously.
 
 ```{r}
 #| fig-width: 13
 #| fig-height: 6
 #| out-width: "100%"
-#| fig-cap: "Fig 5"
+#| fig-cap: "Fig 4"
 ggplot(data_pt,
        aes(x = col_date, y = pos)) +
   geom_jitter(height = 0.05)+
@@ -295,7 +315,7 @@ ggplot(data_pt,
              ncol = 5)+
   binomial_smooth(formula = y ~ x + I(x^2))+
   labs(x = "Collection date", y  = "Seroprevalence")+
-  theme_bw()
+  theme_bw()+
+  theme(axis.text.x = element_text(vjust = 0.5,angle = 45))
 ```
 
-After transforming 15 age groups into five age groups, we can see the dynamic of seroprevalence more easier (Fig 5).  The high seroprevalence of children at school age at the beginning of 2023 may cause the infection in their siblings aged 0-6, who have low seroprevalence simultaneously.

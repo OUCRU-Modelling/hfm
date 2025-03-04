@@ -275,3 +275,30 @@ data_sle  %>%
   labs(x = "Collection date", y  = "Seroprevalence")+
   theme_bw()
 
+## fix fig 2
+
+data_pt %>% ggplot() +
+  geom_density(aes(x = age))+
+  facet_wrap(~qhchuan,
+             ncol = 5)+
+  labs(x = "Age group",y = "Number of samples")+
+  theme_bw()
+
+data_pt %>% ggplot() +
+  geom_bar(aes(x = age_gr3))+
+  facet_wrap(~qhchuan,
+             ncol = 5)+
+  labs(x = "Age group",y = "Number of samples")+
+  theme_bw()
+
+data_pt$age_gr2
+
+data_pt %>%
+  ggplot(aes(x = age, y = pos)) +
+  geom_jitter(height = 0.05)+
+  facet_wrap(~qhchuan,
+             ncol=5)+
+  binomial_smooth(formula = y ~ x + I(x^2))+
+  labs(x = "Age", y  = "Seroprevalence")+
+  theme_bw()
+
