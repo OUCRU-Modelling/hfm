@@ -28,7 +28,6 @@ df1$district <- df1$district %>%
   trimws(which = "both")
 ```
 
-
 ## Data description
 
 ```{r}
@@ -235,6 +234,7 @@ tshm(wwww,c(0,6))
 ```
 
 ## tSIR model
+
 ```{r}
 library(tidyverse)
 library(lubridate)
@@ -559,7 +559,6 @@ w23 <- slide_age(time1 = df23$adm_date,
                   w1 = 7, s1=7)
 ```
 
-
 ```{r}
 pop <- readRDS("D:/OUCRU/hfmd/data/count_dangky.rds")
 pop_a <- pop %>% group_by(birth_month, birth_year) %>%
@@ -779,7 +778,3 @@ c/
 atk/
 hmc
 ```
-
-
-
-

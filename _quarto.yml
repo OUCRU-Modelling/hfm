@@ -19,6 +19,7 @@ book:
     - sero.qmd
     # - model.qmd
     - sero_description.qmd
+    - fig_manu.qmd
 
 format:
   html:
