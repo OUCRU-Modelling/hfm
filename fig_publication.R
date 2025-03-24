@@ -425,28 +425,21 @@ cali_plot_df <- df23 %>%
 library(predtools)
 
 
-model_clb <- glm(atr*100000 ~ sp,data = cali_plot_df)
+# model_clb <- glm(atr*100000 ~ sp,data = cali_plot_df)
+#
+# model_clb$pred <- predict.glm(model_clb, type = 'response')
 
-model_clb$pred <- predict.glm(model_clb, type = 'response')
+# calibration_plot(data = data.frame(y = model_clb$y,pred = model_clb$pred),
+#                  obs = "y", pred = "pred")
 
-
-
-calibration_plot(data = data.frame(y = model_clb$y,pred = model_clb$pred),
-                 obs = "y", pred = "pred")
-
-
-
-data.frame(
-  x = seq(0,1,by=0.1),
-  pred = predict(model_clb,newdata = data.frame(sp = seq(0,1,by=0.1)))
-) %>%
-  ggplot(aes(x = x,y = pred))+
-  geom_point()
+cali_plot_df %>% ungroup() %>% select(-c(2,3)) %>%
+  pivot_longer(cols = -age_cali,names_to = "type",values_to = "value") %>%
+  mutate(variable = ifelse(type == "atr", value*100000, value*100)) %>%
+  ggplot() +
+  geom_col(aes(x  = age_cali, y = variable),position = "dodge")+
+  facet_wrap(~type,scales = "free",ncol = 1)+
+  # scale_y_continuous(sec.axis = sec_axis(~ ./100, name = "NDVI"))
+  {}
 
 
-
-cali_plot_df %>%
-  ggplot(aes(x = sp,y = atr*100000)) +
-  geom_point()+
-  geom_smooth()
 

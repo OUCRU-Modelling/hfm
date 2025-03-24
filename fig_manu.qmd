@@ -10,6 +10,7 @@ library(stringr)
 library(mgcv)
 library(janitor)
 library(predtools)
+library(magrittr)
 invisible(Sys.setlocale("LC_TIME", "English"))
 
 ## data import
@@ -342,56 +343,242 @@ atk_rate/
   sp_agr
 ```
 
-
-## Figure 3: Calibration plot
+## Figure 3: seroepidemiology
 
 ```{r}
-correct_lv <- c("0≤ & <1","1≤ & <2","2≤ & <3","3≤ & <4","4≤ & <5",
-                "5≤ & <6","6≤ & <7","7≤ & <8","8≤ & <9","9≤ & <10",
-                "10≤ & <11","11≤ & <12","12≤ & <13","13≤ & <14","14≤ & <15")
+predict2 <- function(x, ci = .95, le = 512, m = 100) {
+  p <- (1 - ci) / 2
 
-cali_sero <- sero %>% group_by(age_gr) %>%
-            count(pos) %>%
-            pivot_wider(names_from = pos,values_from = n) %>%
-            clean_names() %>%
-            mutate(sp = x1/sum(x0,x1)) %>%
-            select(-c(x0,x1)) %>%
-            ungroup()
+  link_inv <- x$family$linkinv
+  dataset <- x$data
+  n <- nrow(dataset) - length(x$coefficients)
+  age_range <- range(dataset$age)
 
-cali_sero$age_gr <- factor(cali_sero$age_gr,levels = correct_lv)
+  ages <- seq(age_range[1], age_range[2], le = le)
 
-## case noti
-df23$age_cali <- cut(df23$age1+0.00000001, breaks = c(seq(0, 15, by = 1),82),
-                    labels = c(correct_lv,
-                               "16+"))
-
-## population
-hcm19$age_cali <- cut(hcm19$age2,breaks = c(seq(0, 15, by = 1),82),
-                      labels = c(correct_lv,
-                                 "16+"))
-
-pop_agegr_cali <- hcm19 %>%
-                  group_by(age_cali) %>%
-                  summarise(n = sum(n))
-
-cali_plot_df <- df23 %>%
-                select(age_cali) %>%
-                group_by(age_cali) %>%
-                count() %>% na.omit() %>%
-                left_join(pop_agegr_cali,by = join_by(age_cali == age_cali)) %>%
-                # group_by(age_gr2) %>%
-                mutate(atr = n.x/n.y) %>%
-                filter(age_cali != "16+")  %>%
-                left_join(cali_sero,by = join_by(age_cali == age_gr))
-
-model_clb <- glm(atr*100000 ~ sp,data = cali_plot_df)
-
-model_clb$pred <- predict.glm(model_clb, type = 'response')
+  x |>
+    predict(data.frame(age = ages), se.fit = TRUE) |>
+    extract(c("fit", "se.fit")) %>%
+    c(age = list(ages), .) |>
+    as_tibble() |>
+    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |>
+    select(- se.fit)
+}
 ```
 
 ```{r}
-calibration_plot(data = data.frame(y = model_clb$y,pred = model_clb$pred),
-                 obs = "y", pred = "pred")
+m <- 100
+eps <- 1
+
+plot1222 <-  glm(pos ~ age, binomial, data = t1222) |>
+  predict2() %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2022"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5)+
+  ylim(0,101)+
+  theme_classic()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2022" = "#0808cf"))+
+  labs(y = "Seroprevalence(%)")+
+  geom_point(data= t1222, aes(x = age,y = m * pos + eps),shape = "|",size = 3,
+             col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.title= element_blank(),
+    legend.position = "inside",
+    legend.position.inside =  c(0.15,0.80),
+    legend.text = element_text(size = 15))
+```
+
+```{r}
+plot1222 <-  glm(pos ~ age, binomial, data = t1222) |>
+  predict2() %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2022"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#0808cf")+
+  ylim(0,101)+
+  theme_classic()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2022" = "#0808cf"))+
+  labs(y = "Seroprevalence (%)")+
+  geom_point(data= t1222, aes(x = age,y = m * pos + eps),shape = "|",
+             col = "#0808cf")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Dec 2022"),size = 6)
+
+plot0423 <-  glm(pos ~ age + I(age ^2), binomial, data = t423) |>
+  predict2() %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Apr 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#ed097b")+
+  ylim(0,101)+
+  theme_classic()+
+  scale_color_manual(name = "Y series",
+                     values = c("Apr 2023" = "#ed097b"))+
+  labs(y = "Seroprevalence (%)")+
+  geom_point(data= t423, aes(x = age, m * pos + eps),
+             shape = "|",
+             col = "#ed097b")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Apr 2023"),size = 6)
+
+plot0823 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = t823) |>
+  predict2() %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Aug 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#ed6b00")+
+  ylim(0,101)+
+  theme_classic()+
+  scale_color_manual(name = "Y series",
+                     values = c("Aug 2023" = "#ed6b00"))+
+  labs(y = "Seroprevalence (%)")+
+  geom_point(data= t823, aes(x = age, m * pos + eps),
+             shape = "|",
+             col = "#ed6b00")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Aug 2023"),size = 6)
+
+plot1223 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = t1223) |>
+  predict2() %>% as.data.frame() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line(aes(col = "Dec 2023"))+
+  geom_ribbon(aes(x = age,y = fit,
+                  ymin=lwr, ymax=upr),alpha = 0.5,fill = "#33516b")+
+  ylim(0,101)+
+  theme_classic()+
+  scale_color_manual(name = "Y series",
+                     values = c("Dec 2023" = "#33516b"))+
+  labs(y = "Seroprevalence (%)")+
+  geom_point(data= t1223, aes(x = age, m * pos + eps),
+             shape = "|",
+             col = "#33516b")+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 15),
+    legend.position = "hide",
+    legend.text = element_text(size = 15),
+    axis.title.x = element_text(size = 15),
+    axis.title.y = element_text(size = 15))+
+  annotate("text", x = 3, y = 90, label = c("Dec 2023"),size = 6)
+```
+
+
+```{r}
+
+df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
+  filter(!is.na(adm_week) ) %>%
+  count(adm_week) %>% as.data.frame()
+
+ts2 <- ggplot()+
+  geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
+           alpha = 0.5) +
+  labs(x = "Admission week",y = "Cases")+
+  annotate("rect", fill = "#0808cf",
+           xmin = as.Date("2022-12-01"), xmax = as.Date("2022-12-30"), 
+           ymin = 0, ymax = Inf, alpha = .2)+
+  annotate("rect", fill = "#ed097b",
+           xmin = as.Date("2023-04-01"), xmax = as.Date("2023-04-30"), 
+           ymin = 0, ymax = Inf, alpha = .2)+
+  annotate("rect", fill = "#ed6b00",
+           xmin = as.Date("2023-08-01"), xmax = as.Date("2023-08-30"), 
+           ymin = 0, ymax = Inf, alpha = .2)+
+  annotate("rect", fill = "#33516b",
+           xmin = as.Date("2023-12-01"), xmax = as.Date("2023-12-30"), 
+           ymin = 0, ymax = Inf, alpha = .2)+
+  xlim(as.Date("2022-11-24"),as.Date("2024-01-01"))+
+  theme_classic()+
+  scale_y_continuous(breaks = seq(0,3000,by = 1000),
+                         limit =c(0,3000))
+```
+
+
+
+```{r}
+#| fig-width: 15
+#| fig-height: 7
+#| out-width: "100%"
+
+glmfit <- plot1222 | plot0423 | plot0823 | plot1223
+
+glmfit/
+  ts2
+```
+
+
+
+```{r}
+## Figure 3: Calibration plot
+# correct_lv <- c("0≤ & <1","1≤ & <2","2≤ & <3","3≤ & <4","4≤ & <5",
+#                 "5≤ & <6","6≤ & <7","7≤ & <8","8≤ & <9","9≤ & <10",
+#                 "10≤ & <11","11≤ & <12","12≤ & <13","13≤ & <14","14≤ & <15")
+# 
+# cali_sero <- sero %>% group_by(age_gr) %>%
+#             count(pos) %>%
+#             pivot_wider(names_from = pos,values_from = n) %>%
+#             clean_names() %>%
+#             mutate(sp = x1/sum(x0,x1)) %>%
+#             select(-c(x0,x1)) %>%
+#             ungroup()
+# 
+# cali_sero$age_gr <- factor(cali_sero$age_gr,levels = correct_lv)
+# 
+# ## case noti
+# df23$age_cali <- cut(df23$age1+0.00000001, breaks = c(seq(0, 15, by = 1),82),
+#                     labels = c(correct_lv,
+#                                "16+"))
+# 
+# ## population
+# hcm19$age_cali <- cut(hcm19$age2,breaks = c(seq(0, 15, by = 1),82),
+#                       labels = c(correct_lv,
+#                                  "16+"))
+# 
+# pop_agegr_cali <- hcm19 %>%
+#                   group_by(age_cali) %>%
+#                   summarise(n = sum(n))
+# 
+# cali_plot_df <- df23 %>%
+#                 select(age_cali) %>%
+#                 group_by(age_cali) %>%
+#                 count() %>% na.omit() %>%
+#                 left_join(pop_agegr_cali,by = join_by(age_cali == age_cali)) %>%
+#                 # group_by(age_gr2) %>%
+#                 mutate(atr = n.x/n.y) %>%
+#                 filter(age_cali != "16+")  %>%
+#                 left_join(cali_sero,by = join_by(age_cali == age_gr))
+# 
+# model_clb <- glm(atr*100000 ~ sp,data = cali_plot_df)
+# 
+# model_clb$pred <- predict.glm(model_clb, type = 'response')
+```
+
+```{r}
+# calibration_plot(data = data.frame(y = model_clb$y,pred = model_clb$pred),
+#                  obs = "y", pred = "pred")
 ```
 
 
