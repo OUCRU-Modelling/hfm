@@ -165,26 +165,27 @@ leb_month <- c("Jan",rep("",3),"Feb",rep("",3),"Mar",rep("",4),"Apr",rep("",3),
                "Sep",rep("",3),"Oct",rep("",3),"Nov",rep("",4),"Dec",rep("",3))
 
 ts <- data.frame(wwww$wdat$date,wwww$wdat$age) %>%
-      filter(!is.na(wwww$wdat$date) & !is.na(wwww$wdat$age)) %>%
-      count(wwww$wdat$date) %>%
-      set_colnames(c("time","n")) %>% 
-      mutate(peak = c(rep("1st",36),rep("2nd",nrow(.)-36))) %>% 
-      ggplot(aes(x =time, y = n,fill = peak)) +
-      geom_bar(stat = "identity",alpha = 0.6,color="black") +
-      theme_minimal()+
-      scale_y_continuous(name = "Cases",
-                         breaks = seq(0,3000,by = 1000),
-                         limit =c(0,3000))+
-      scale_fill_manual(values = c("#582C83FF","#FFC72CFF"))+
-      labs(tag = "A")+ 
-      geom_vline(xintercept = "2023-09-06")+ 
-      theme(axis.title.x = element_blank(),
-            axis.text.x = element_blank(),
-            axis.ticks.x = element_blank(),
-            legend.position = "none",
-            plot.tag = element_text(face = "bold", size = 18),
-            axis.title.y = element_text(size = 18),
-            axis.text.y = element_text(size = 18))
+  filter(!is.na(wwww$wdat$date) & !is.na(wwww$wdat$age)) %>%
+  count(wwww$wdat$date) %>%
+  set_colnames(c("time","n")) %>% 
+  mutate(peak = c(rep("1st",36),rep("2nd",nrow(.)-36))) %>% 
+  ggplot(aes(x = time, y = n,fill = peak)) +
+  geom_col(alpha = 0.6,color="black") +
+  geom_vline(xintercept = 36.5) +
+  theme_minimal()+
+  scale_y_continuous(name = "Cases",
+                     breaks = seq(0,3000,by = 1000),
+                     limit =c(0,3000), 
+                     minor_breaks = NULL)+
+  scale_fill_manual(values = c("#582C83FF","#FFC72CFF"))+
+  labs(tag = "A")+ 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18))
 
 hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
       stat_density(
@@ -196,7 +197,7 @@ hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
       # scale_fill_gradient(low="#040404FF", high= "#FFFE9EFF")+
       # scale_fill_distiller(palette = "Blues")+
       theme_minimal()+
-      scale_y_reverse(name = "Age",lim= rev(c(0,6)),breaks = seq(0,6))+
+      scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
       scale_x_discrete(name = "Admission week",labels = leb_month)+
       labs(tag = "B",fill = "Density")+
       # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
@@ -206,11 +207,11 @@ hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
                 group = 1,lwd = 0.25,alpha = 0.8)+
       geom_line(data = ch,aes(x = date,y = c2),col = "white",
                 group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c3),col = "black",
+      geom_line(data = ch,aes(x = date,y = c3),col = "white",
                 group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c4),col = "black",
+      geom_line(data = ch,aes(x = date,y = c4),col = "white",
                 group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c5),col = "black",
+      geom_line(data = ch,aes(x = date,y = c5),col = "white",
                 group = 1,lwd = 0.25,alpha = 0.8)+
       theme(axis.title.y = element_text(size = 18),
             axis.ticks.x = element_blank(),
@@ -231,8 +232,8 @@ se_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
            !is.na(adm_date) & !is.na(age1))
 
 data <- data.frame(
-  peak = c( rep("1st half",nrow(data.frame(se_peak$age1))),
-            rep("2nd half",nrow(data.frame(fi_peak$age1)))),
+  peak = c( rep("1st wave",nrow(data.frame(se_peak$age1))),
+            rep("2nd wave",nrow(data.frame(fi_peak$age1)))),
   age = c( fi_peak$age1, se_peak$age1 )
 )
 
@@ -241,7 +242,9 @@ data <- data.frame(
 ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
       geom_density(alpha = 0.6) +
       scale_fill_manual(values = c("#582C83FF","#FFC72CFF")) +
-      scale_x_reverse(limit = c(6,0),breaks = seq(0,6,by=1))+
+      scale_x_reverse(limit = c(6,0),breaks = seq(0,6,by=1), 
+                      minor_breaks = NULL)+
+      scale_y_continuous(minor_breaks = NULL)+
       coord_flip()+
       theme_minimal()+
       labs(x = "Age", y ="Density",tag = "C",fill = "Outbreak")+
@@ -257,8 +260,8 @@ ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
 ```
 
 ```{r}
-#| fig-width: 14
-#| fig-height: 7
+#| fig-width: 15
+#| fig-height: 9
 #| out-width: "100%"
 #| fig-format: png
 
@@ -266,7 +269,15 @@ ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
   plot_layout(widths = c(2.5,1))
 
 ggsave("./fig_manuscript/fig1.svg",
-       width = 14,height = 7,dpi = 500)
+       width = 15,height = 8,dpi = 500)
+```
+
+```{r}
+data %>% 
+  tbl_summary(by = peak,
+              digits = list(all_continuous() ~ 3)) %>% 
+  add_overall() %>% 
+  add_p()
 ```
 
 
@@ -340,7 +351,7 @@ atk_rate <- df23 %>%
   left_join(pop_agegr,by = join_by(age_gr2 == age3)) %>%
   group_by(age_gr2) %>%
   mutate(pop = n.y - cumsum(lag(n.x, default = 0)),
-         atr = n.x/pop)  %>%
+         atr = cumsum(n.x)/pop)  %>%
   select(-n.y) %>% 
   mutate(
     attack_rate_ma = slide_dbl(
@@ -358,11 +369,12 @@ atk_rate <- df23 %>%
   geom_line()+
   facet_wrap(vars(age_gr2),ncol = 5)+
   scale_x_date(breaks = seq(as.Date("2022-12-01"),as.Date("2023-12-31"), le = 4),
-               date_labels = "%b %Y")+
+               date_labels = "%b %Y", minor_breaks = NULL)+
+  scale_y_continuous(minor_breaks = NULL)+
   # scale_x_date(date_breaks = "4 months",date_labels = "%b %Y")+
-  coord_cartesian(ylim = c(-2.5,7.5),xlim = as.Date(c("2022-12-01","2023-12-31")))+
+  coord_cartesian(ylim = c(-2.5,9.5),xlim = as.Date(c("2022-12-01","2023-12-31")))+
   theme_bw()+
-  labs(x = "Admission week",y= "Log attack rate",tag = "A")+ 
+  labs(x = "Admission week",y= "Log cumulative attack rate",tag = "A")+ 
   theme(axis.title.x = element_text(size = 18),
         axis.text.x = element_blank(),
         plot.tag = element_text(face = "bold", size = 18),
@@ -391,21 +403,48 @@ sero$age_gr2 <- factor(sero$age_gr2,
                                     "<9 & ≤12 years",
                                     "<12 & ≤15 years"))
 
+## observation seroprevalence
+te_sp <- sero %>% 
+  group_by(age_gr2,col_time) %>% 
+  count(pos) %>% 
+  pivot_wider(names_from = pos, values_from = n) %>%
+  ungroup() %>% 
+  mutate(tot = `0`+`1`,
+         sp = `1`/(`0`+`1`)) %>% 
+  as.data.frame()
+
+for (i in 1:nrow(te_sp)) {
+  te_sp$lwr[i] <- prop.test(te_sp$`1`[i],te_sp$tot[i],correct=TRUE)$conf.int[1]
+  te_sp$upr[i] <- prop.test(te_sp$`1`[i],te_sp$tot[i],correct=TRUE)$conf.int[2]
+}
+
+
+col_ddd<- sero %>% 
+  group_by(age_gr2,col_time) %>% 
+  summarise(mean = mean(col_date)) %>%
+  ungroup()
+
+te_sp$col_date <- col_ddd$mean
 
 sp_agr <- ggplot(sero,
-                 aes(x = col_date, y = pos)) +
+       aes(x = col_date, y = pos)) +
   # geom_jitter(height = 0.05)+
   geom_point(aes(x = col_date, pos),
              shape = "|")+
-  facet_wrap(~age_gr2,
-             ncol = 5)+
   geom_smooth(fill = "blue",alpha = 1/10,
               method = mgcv::gam,formula = y ~ s(x, bs = "bs"),
-              method.args = list(method = "REML",link = "logit"))+
+              method.args = list(method = "REML",link = "logit",
+                                 family = "binomial"))+
+  geom_point(data = te_sp,
+             aes(x  = col_date,y = sp))+
+  geom_errorbar(data = te_sp,
+                aes(x  = col_date,y = sp,ymin = lwr, ymax = upr),alpha = .5)+
+  facet_wrap(~age_gr2,
+             ncol = 5)+
   labs(x = "Collection date", y  = "Seroprevalence (%)",tag = "B")+
   scale_x_date(breaks = seq(as.Date("2022-12-01"),as.Date("2023-12-31"), le = 4),
-               date_labels = "%b %y")+
-  scale_y_continuous(labels = scales::label_percent())+
+               date_labels = "%b %y", minor_breaks = NULL)+
+  scale_y_continuous(labels = scales::label_percent(), minor_breaks = NULL)+
   # scale_x_date(date_breaks = "4 months",date_labels = "%b %Y")+
   coord_cartesian(ylim = c(0, 1),xlim = as.Date(c("2022-12-01","2023-12-31")))+
   theme_bw()+
@@ -416,6 +455,7 @@ sp_agr <- ggplot(sero,
         axis.title.y = element_text(size = 18),
         axis.text.y = element_text(size = 18),
         strip.text.x = element_text(size = 18))
+
 ```
 
 ```{r}
@@ -430,6 +470,76 @@ atk_rate/
 ggsave("./fig_manuscript/fig3.svg",
        width = 12,height = 7,dpi = 500)
 ```
+
+<!-- ### Extract data -->
+
+<!-- ::: panel-tabset -->
+
+
+<!-- ### 0-3 age group -->
+
+<!-- ```{r} -->
+<!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+<!--   filter(PANEL == 1) %>% select(x,y,ymin,ymax)  %>%  -->
+<!--   mutate(y = y*100 , -->
+<!--          ymin = ymin*100, -->
+<!--          ymax= ymax*100) -->
+<!-- ``` -->
+
+
+<!-- ### 3-6 age group -->
+
+
+<!-- ```{r} -->
+
+<!-- ## 3-6 age group -->
+
+<!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+<!--   filter(PANEL == 2) %>% select(x,y,ymin,ymax)  %>%  -->
+<!--   mutate(y = y*100 , -->
+<!--          ymin = ymin*100, -->
+<!--          ymax= ymax*100) -->
+<!-- ``` -->
+
+<!-- ### 6-9 age group -->
+
+<!-- ```{r} -->
+<!-- ## 6-9 age group -->
+
+<!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+<!--   filter(PANEL == 3) %>% select(x,y,ymin,ymax)  %>%  -->
+<!--   mutate(y = y*100 , -->
+<!--          ymin = ymin*100, -->
+<!--          ymax= ymax*100) -->
+<!-- ``` -->
+
+<!-- ### 9-12 age group -->
+
+<!-- ```{r} -->
+<!-- ## 9-12 age group -->
+
+<!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+<!--   filter(PANEL == 4) %>% select(x,y,ymin,ymax)  %>%  -->
+<!--   mutate(y = y*100 , -->
+<!--          ymin = ymin*100, -->
+<!--          ymax= ymax*100) -->
+<!-- ``` -->
+
+
+
+<!-- ### 12-15 age group -->
+
+<!-- ```{r} -->
+<!-- ## 12-15 age group -->
+
+<!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+<!--   filter(PANEL == 5) %>% select(x,y,ymin,ymax)  %>%  -->
+<!--   mutate(y = y*100 , -->
+<!--          ymin = ymin*100, -->
+<!--          ymax= ymax*100) -->
+<!-- ``` -->
+
+<!-- ::: -->
 
 ## Figure 3: seroepidemiology
 
@@ -563,7 +673,7 @@ df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
 ts2 <- ggplot()+
   geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
            alpha = 0.5) +
-  labs(x = "Admission week",y = "Cases")+
+  labs(x = "Admission week",y = "Cases",tag = "B")+
   annotate("rect", fill = "blue",
            xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
            xmax = as.Date(c("2022-12-30","2023-04-30","2023-08-30","2023-12-30")), 
@@ -576,6 +686,7 @@ ts2 <- ggplot()+
     axis.text.x = element_text(size = 18),
     axis.text.y = element_text(size = 18),
     legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18))
 ```
@@ -651,6 +762,7 @@ fig2m <- lapply(df.list, function(x)
   scale_fill_paletteer_d("nbapalettes::thunder")+
   ylim(0,101)+
   labs(y = "Seroprevalence (%)",x = "Age",tag = "Manually")+
+  scale_x_continuous(breaks = seq(0,15,by = 3))+
   theme_bw()+
   facet_wrap(~factor(col_date,levels = c("Dec 2022","Apr 2023",
                                          "Aug 2023","Dec 2023")),
@@ -678,7 +790,8 @@ fig2a <- df.list %>% bind_rows(.id = "label") %>%
                       method.args = list(method = "REML",link = "logit",
                                          family = "binomial"))+
           labs(y = "Seroprevalence (%)",x = "Age",tag = "A")+
-          scale_y_continuous(labels = scales::label_percent())+
+          scale_x_continuous(breaks = seq(0,15,by = 3), minor_breaks = NULL)+
+          scale_y_continuous(labels = scales::label_percent(), minor_breaks = NULL)+
           coord_cartesian(ylim = c(0, 1))+
           theme_bw()+ 
           theme(axis.title.x = element_text(size = 18),
@@ -692,8 +805,8 @@ fig2a <- df.list %>% bind_rows(.id = "label") %>%
 ```
 
 ```{r}
-#| fig-width: 15
-#| fig-height: 10
+#| fig-width: 13
+#| fig-height: 8
 #| out-width: "100%"
 
 fig2m/
@@ -762,6 +875,38 @@ ggsave("./fig_manuscript/fig2.svg",
 ```{r}
 # calibration_plot(data = data.frame(y = model_clb$y,pred = model_clb$pred),
 #                  obs = "y", pred = "pred")
+```
+
+## Change different knots to fit Aug 2023 age seroprevalence
+
+```{r}
+x <- t823$age
+y <- t823$pos
+
+deg <- 3
+
+a <- min(x)
+b <- max(x)
+
+xs <- c(2,4,6,8,10,12)
+xd <- c(a, xs, b)
+my.k <- length(xs) + deg + 1
+left.aux <- rep(a, deg)
+right.aux <- rep(b, deg)
+
+my.knots <- c(left.aux, xd, right.aux)
+
+ttt <- gam(y ~ s(x, bs = 'bs', k = my.k),
+              method = "REML",
+              family = "binomial",
+              knots = list(x = my.knots))
+
+ttt$smooth[[1]]$knots
+
+data.frame(x = x, y = ttt$fitted.values) %>% 
+ggplot(aes(x = x,y = y))+
+  geom_line()+
+  ylim(0,1)
 ```
 
 
