@@ -6,8 +6,6 @@ lapply(df.list, function(x)
   bind_rows(.id = "label")
 
 
-
-
 gam(pos~s(col_date,bs = "bs"),method = "REML",family = "binomial",
     data = sero %>%
       filter(age_gr2 == "<0 & ≤3 years") %>%
@@ -221,7 +219,7 @@ lapply(df.list, function(x)
 
 
 
-knots = list(x = xs))  ## provide interior knots
+knots = list(x = xs)  ## provide interior knots
 
 x <- c(20.70, 20.44, 20.58, 21.02, 19.90,  6.20,  8.20,  6.92,  5.86,  6.44,  6.34,  8.48,  8.46,  9.00,  9.06,  9.00,  9.06, 17.98, 18.42, 19.18, 22.88, 24.16,20.20, 23.50)
 
@@ -352,4 +350,175 @@ ggplot(sero,
         strip.text.x = element_text(size = 18))
 
 ##
+
+atdf <- rbind(t1222,t423,t823,t1223) %>%
+  mutate(col_date = make_date(year = col_year,
+                              month = col_month,
+                              day = col_day))
+
+library(Iso)
+
+atdf %>%
+  group_by(age_gr, col_date) %>%
+  summarise(
+    n = n(),
+    pos = sum(pos),
+    seroprev = pos / n,
+    .groups = "drop"
+  ) %>%
+  mutate(time_numeric = as.numeric(difftime(col_date, min(col_date), units = "days"))) %>%
+  group_by(age_gr) %>%
+  arrange(time_numeric) %>%
+  mutate(
+    seroprev_monotonic = pava(seroprev, time_numeric, decreasing = FALSE)
+  ) %>% ggplot(aes(x = col_date)) +
+  geom_point(aes(y = seroprev), color = "gray") +
+  geom_line(aes(y = seroprev_monotonic), color = "blue") +
+  facet_wrap(~age_gr) +
+  labs(y = "Seroprevalence", x = "Date") +
+  theme_minimal()
+
+
+## scam
+
+s1 <- scam(pos~s(age)+s(col_date,bs = "mpi"),family=binomial,
+           mutate(atdf, across(col_date, as.numeric)))
+
+age_val <- c(.1,1:14)
+
+collection_date_val <- seq(min(atdf$col_date),
+                           max(atdf$col_date), le = 512)
+
+new_data <- expand.grid(age = age_val,
+                        col_date = as.numeric(collection_date_val))
+
+scamf <- cbind(new_data,
+               fit = 100 * predict(s1, new_data,"response"))
+
+scamf$col_date <- as.Date(scamf$col_date)
+
+## scar package
+library(scar)
+atdf$col_date2 <- as.numeric(atdf$col_date)
+x <- atdf[,c("age","col_date2")] %>% as.matrix()
+
+out <- scar(x, atdf$pos, shape = rep("in",2),
+     family = binomial())
+
+pred <- predict(out, as.matrix(new_data), type = c("response"), rule=2)
+
+scar <-cbind(new_data,
+      pred)
+
+scar$col_date <- as.Date(scar$col_date)
+
+plot_ly(scar, x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(pred, 15),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,1))
+  ))
+
+plot(out$x,out$y)
+
+mod1 <- glm(pos ~ age * col_date +
+              I(age ^ 2) * col_date, binomial,
+            mutate(atdf, across(col_date, as.numeric)))
+
+
+age_val <- c(.1, seq(1,15,0.5))
+collection_date_val <- seq(min(atdf$col_date),
+                           max(atdf$col_date))
+
+new_data <- expand.grid(age = age_val, col_date = as.numeric(collection_date_val))
+
+prdcts <- cbind(new_data, fit = 100 * predict(mod1, new_data, "response")) |>
+  as_tibble() |>
+  arrange(col_date) |>
+  mutate(across(col_date, as_date))
+
+plot_ly(prdcts, x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(fit, length(age_val)),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+out <- prdcts %>%
+  mutate(time_numeric = as.numeric(col_date)) %>%
+  group_by(age) %>%
+  arrange(time_numeric) %>%
+  mutate(
+    seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE)
+  )
+
+plot_ly(out,x = ~sort(unique(as.Date(col_date))),
+          y = ~sort(unique(age)),
+          z = ~matrix(seroprev_monotonic, length(age_val)),
+          showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+
+sp1222 <- out %>% filter(month(col_date) == 12 & year(col_date) == 2022) %>%
+  group_by(age) %>%
+  summarise(
+    sp = mean(seroprev_monotonic),
+  ) %>% ggplot(aes(x = age,y = sp))+
+  geom_line()+
+  ylim(c(0,100))+
+  labs(tag = "Dec 2022",y = "Seroprevalence (%)")+
+  theme_minimal()
+
+
+
+sp0423 <-out %>% filter(month(col_date) == 04 & year(col_date) == 2023) %>%
+  group_by(age) %>%
+  summarise(
+    sp = mean(seroprev_monotonic),
+  ) %>% ggplot(aes(x = age,y = sp))+
+  geom_line()+
+  ylim(c(0,100))+
+  labs(tag = "Apr 2023",y = "Seroprevalence (%)")+
+  theme_minimal()
+
+sp0823 <- out %>% filter(month(col_date) == 08 & year(col_date) == 2023) %>%
+  group_by(age) %>%
+  summarise(
+    sp = mean(seroprev_monotonic),
+  ) %>% ggplot(aes(x = age,y = sp))+
+  geom_line()+
+  ylim(c(0,100))+
+  labs(tag = "Aug 2023",y = "Seroprevalence (%)")+
+  theme_minimal()
+
+sp1223 <- out %>% filter(month(col_date) == 12 & year(col_date) == 2023) %>%
+  group_by(age) %>%
+  summarise(
+    sp = mean(seroprev_monotonic),
+  ) %>% ggplot(aes(x = age,y = sp))+
+  geom_line()+
+  ylim(c(0,100))+
+  labs(tag = "Dec 2023",y = "Seroprevalence (%)")+
+  theme_minimal()
+
+sp1222 | sp0423 | sp0823 | sp1223
+
+out %>% filter(month(col_date) %in% c(4,8,12)) %>%
+  mutate(col_time = ymd(year(col_date),month(col_date)))
+  group_by(age)
+
+
 
