@@ -832,87 +832,87 @@ sp1222 | sp0423 | sp0823 | sp1223
 # Spatial distribution of serum sample
 
 ```{r}
-cleaned <- read_csv("D:/OUCRU/HCDC/project phân tích sero quận huyện/cleaned.csv")
-
-sero <- rbind(t1222,t1223,t423,t823)
-
-sero_add <- full_join(cleaned,sero, by =  c("id" = "id"))
-
-data_pt <- sero_add %>% filter(!is.na(age)&!is.na(qhchuan)) %>% 
-  select(qhchuan,age,col_month,col_year,pos) %>% 
-  as.data.frame()
-
-# HCMC map
-map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
-vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
-
-vn_qh1 <- vn_qh %>%
-  clean_names() %>%     ## cho thành chữ thường
-  filter(
-    str_detect(
-      name_1,
-      "Hồ Chí Minh"
-    )
-  )
-qhtp <- vn_qh1[-c(14,21),]
-
-qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
-  st_union()
-
-qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
-library(stringi)
-qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
-  tolower() %>%
-  str_remove("district") %>%
-  trimws(which = "both")
-
-qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
-                    "HM","NB","PN","1","10","11","12",
-                    "3","4","5","6","7","8","TB",
-                    "TP","TĐ")
+# cleaned <- read_csv("D:/OUCRU/HCDC/project phân tích sero quận huyện/cleaned.csv")
+# 
+# sero <- rbind(t1222,t1223,t423,t823)
+# 
+# sero_add <- full_join(cleaned,sero, by =  c("id" = "id"))
+# 
+# data_pt <- sero_add %>% filter(!is.na(age)&!is.na(qhchuan)) %>% 
+#   select(qhchuan,age,col_month,col_year,pos) %>% 
+#   as.data.frame()
+# 
+# # HCMC map
+# map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
+# vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
+# 
+# vn_qh1 <- vn_qh %>%
+#   clean_names() %>%     ## cho thành chữ thường
+#   filter(
+#     str_detect(
+#       name_1,
+#       "Hồ Chí Minh"
+#     )
+#   )
+# qhtp <- vn_qh1[-c(14,21),]
+# 
+# qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
+#   st_union()
+# 
+# qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
+# library(stringi)
+# qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
+#   tolower() %>%
+#   str_remove("district") %>%
+#   trimws(which = "both")
+# 
+# qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
+#                     "HM","NB","PN","1","10","11","12",
+#                     "3","4","5","6","7","8","TB",
+#                     "TP","TĐ")
 ```
 
 ```{r}
-## function
-get_sp <- function(month,year){
-  data_pt %>% filter(col_month == month & col_year == year) %>% 
-    select(-age) %>% group_by(qhchuan) %>% count()  %>% 
-    as.data.frame() %>%
-    dplyr::mutate(pre = n / sum(n))  
-}
-
-plot_cover <- function(data,map){
-  output <- left_join(map, data.frame(data), by = join_by(varname_2 == qhchuan))
-  output %>% ggplot() +
-    geom_sf(aes(fill = pre),show.legend = T)+
-    # scale_fill_continuous(low="yellow", high="red",
-    #                       guide="colorbar",na.value="white",
-    #                       name = "Percentage",
-    #                       limits = c(0,20))+
-    # geom_sf_text(aes(label = nl_name_2),size=2.5)+
-    scale_fill_gsea(na.value = "white",
-                    breaks = seq(0,0.2,by = 0.05),
-                    limits = c(0, 0.2),
-                    name = "Percentage",
-                    labels = scales::label_percent())+
-    theme_void()  
-}
+# ## function
+# get_sp <- function(month,year){
+#   data_pt %>% filter(col_month == month & col_year == year) %>% 
+#     select(-age) %>% group_by(qhchuan) %>% count()  %>% 
+#     as.data.frame() %>%
+#     dplyr::mutate(pre = n / sum(n))  
+# }
+# 
+# plot_cover <- function(data,map){
+#   output <- left_join(map, data.frame(data), by = join_by(varname_2 == qhchuan))
+#   output %>% ggplot() +
+#     geom_sf(aes(fill = pre),show.legend = T)+
+#     # scale_fill_continuous(low="yellow", high="red",
+#     #                       guide="colorbar",na.value="white",
+#     #                       name = "Percentage",
+#     #                       limits = c(0,20))+
+#     # geom_sf_text(aes(label = nl_name_2),size=2.5)+
+#     scale_fill_gsea(na.value = "white",
+#                     breaks = seq(0,0.2,by = 0.05),
+#                     limits = c(0, 0.2),
+#                     name = "Percentage",
+#                     labels = scales::label_percent())+
+#     theme_void()  
+# }
 ```
 
 ```{r}
-sp1222 <- get_sp(12,2022)
-sp0423 <- get_sp(4,2023)
-sp0823 <- get_sp(8,2023)
-sp1223 <- get_sp(12,2023)
-
-p1222 <- plot_cover(data = sp1222,map = qhtp)
-p423 <- plot_cover(data = sp0423,map = qhtp)
-p823 <- plot_cover(data = sp0823,map = qhtp)
-p1223 <- plot_cover(data = sp1223,map = qhtp)
-
-serum_dis <- plot_grid(p1222,p423,p823,p1223,
-          # labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023"),
-          ncol = 4)
+# sp1222 <- get_sp(12,2022)
+# sp0423 <- get_sp(4,2023)
+# sp0823 <- get_sp(8,2023)
+# sp1223 <- get_sp(12,2023)
+# 
+# p1222 <- plot_cover(data = sp1222,map = qhtp)
+# p423 <- plot_cover(data = sp0423,map = qhtp)
+# p823 <- plot_cover(data = sp0823,map = qhtp)
+# p1223 <- plot_cover(data = sp1223,map = qhtp)
+# 
+# serum_dis <- plot_grid(p1222,p423,p823,p1223,
+#           # labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023"),
+#           ncol = 4)
 ```
 
 # Final visualization
@@ -920,17 +920,17 @@ serum_dis <- plot_grid(p1222,p423,p823,p1223,
 ## Unconstrained fit
 
 ```{r}
-#| fig-width: 15
-#| fig-height: 8
-#| out-width: "100%"
-glmfit <- plot1222 | plot0423 | plot0823 | plot1223
-
-serum_dis/
-  glmfit/
-  ts
-
-ggsave("D:/OUCRU/hfmd/figure/EV71 present/uncon.svg",dpi = 500,width = 15,height = 8,bg = "white")
-ggsave("D:/OUCRU/hfmd/figure/EV71 present/uncon.png",dpi = 500,width = 15,height = 8,bg = "white")
+# #| fig-width: 15
+# #| fig-height: 8
+# #| out-width: "100%"
+# glmfit <- plot1222 | plot0423 | plot0823 | plot1223
+# 
+# serum_dis/
+#   glmfit/
+#   ts
+# 
+# ggsave("D:/OUCRU/hfmd/figure/EV71 present/uncon.svg",dpi = 500,width = 15,height = 8,bg = "white")
+# ggsave("D:/OUCRU/hfmd/figure/EV71 present/uncon.png",dpi = 500,width = 15,height = 8,bg = "white")
 ```
 
 
