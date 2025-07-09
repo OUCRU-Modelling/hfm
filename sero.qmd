@@ -28,32 +28,38 @@ aug_2023 <- read_excel("D:/OUCRU/hfmd/data/08_2023.xlsx")
 dec_2022 <- read_excel("D:/OUCRU/hfmd/data/12_2022.xls")
 dec_2023 <- read_excel("D:/OUCRU/hfmd/data/12_2023.xlsx")
 
-t423 <- data.frame(apr_2023[-c(1,2),c(6,10:14)])
+t423 <- data.frame(apr_2023[-c(1,2),c(6,8,10:14)])
 t423$pos <- replace(t423$...14,is.na(t423$...14),0) %>%
   str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
   as.integer(as.logical())
-colnames(t423) <- c("id","age","col_day","col_month","col_year","neutralization","pos")
+colnames(t423) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
 t423$age <- as.numeric(t423$age)
+t423$col_time <- rep("Apr 2023",nrow(t423))
 
-t823 <- data.frame(aug_2023[-c(1,2),c(6,9,14:17)])
+
+t823 <- data.frame(aug_2023[-c(1,2),c(6,8,9,14:17)])
 t823$pos <- str_detect(t823$...17,regex(paste(2^(4:10), collapse = "|"))) %>%
   as.integer(as.logical())
-colnames(t823) <- c("id","age","col_day","col_month","col_year","neutralization","pos")
+colnames(t823) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
 t823$age <- as.numeric(t823$age)
+t823$col_time <- rep("Aug 2023",nrow(t823))
 
-t1222 <- data.frame(dec_2022[-c(1,2),c(6,10:14)])
+t1222 <- data.frame(dec_2022[-c(1,2),c(6,8,10:14)])
 t1222$pos <- replace(t1222$...14,is.na(t1222$...14),0) %>%
   str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
   as.integer(as.logical())
-colnames(t1222) <- c("id","age","col_day","col_month","col_year","neutralization","pos")
+colnames(t1222) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
 t1222$age <- as.numeric(t1222$age)
+t1222$col_time <- rep("Dec 2022",nrow(t1222))
 
-t1223 <- data.frame(dec_2023[-c(1,2),c(6,9,14:17)])
+
+t1223 <- data.frame(dec_2023[-c(1,2),c(6,8,9,14:17)])
 t1223$pos <- replace(t1223$...17,is.na(t1223$...17),0) %>%
   str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
   as.integer(as.logical())
-colnames(t1223) <- c("id","age","col_day","col_month","col_year","neutralization","pos")
+colnames(t1223) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
 t1223$age <- as.numeric(t1223$age)
+t1223$col_time <- rep("Dec 2023",nrow(t1223))
 ```
 
 ## Case
@@ -425,8 +431,7 @@ library(scam)
 atdf <- rbind(t1222,t423,t823,t1223) %>%
   mutate(col_date = make_date(year = col_year,
                               month = col_month,
-                              day = col_day)) %>%
-  select(age,col_date,pos)
+                              day = col_day))
 ```
 
 ```{r}
@@ -636,7 +641,7 @@ mod1 <- glm(pos ~ age * col_date +
 </details>
 
 ```{r}
-age_val <- c(.1, seq(1,14,0.5))
+age_val <- c(.1, seq(1,15,0.5))
 collection_date_val <- seq(min(atdf$col_date),
                            max(atdf$col_date))
 
@@ -695,49 +700,89 @@ plot_ly(out_pava,x = ~sort(unique(as.Date(col_date))),
 #| fig-height: 4
 #| out-width: "100%"
 
-sp1222 <- out_pava %>% filter(month(col_date) == 12 & year(col_date) == 2022) %>% 
-  group_by(age) %>% 
-  summarise(
-    sp = mean(seroprev_monotonic),
-  ) %>% ggplot(aes(x = age,y = sp))+
-  geom_line()+
-  ylim(c(0,100))+
-  labs(tag = "Dec 2022",y = "Seroprevalence (%)")+
-  theme_minimal()
+## boostrap 
+
+bootstrap <- function(data, new_data) {
+  # Step 1: resample
+  boot_data <- data %>% slice_sample(n = nrow(data), replace = TRUE)
   
+  # Step 2: refit model
+  mod <- glm(pos ~ age * col_date + I(age^2) * col_date, 
+             family = binomial, 
+             data = mutate(boot_data, col_date = as.numeric(col_date)))
+  
+  # Step 3: predict
+  preds <- predict(mod, new_data, type = "response") * 100  # seroprev %
+  preds_df <- bind_cols(new_data, fit = preds) |> 
+    mutate(col_date = as_date(col_date))
+  
+  # Step 4: apply PAVA per age
+  preds_df %>%
+    mutate(time_numeric = as.numeric(col_date)) %>%
+    group_by(age) %>%
+    arrange(time_numeric) %>%
+    summarise(
+      col_date = col_date,
+      seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE),
+      .groups = "keep"
+    )
+}
 
 
-sp0423 <- out_pava %>% filter(month(col_date) == 04 & year(col_date) == 2023) %>% 
-  group_by(age) %>% 
+B <- 500  # number of bootstrap iterations
+
+set.seed(42)  # for reproducibility
+boot_results <- map_dfr(1:B, ~bootstrap(atdf, new_data) %>% 
+                          mutate(bootstrap = .x))
+
+point_est <- out_pava %>% 
+  mutate(col_time = case_when(
+    month(col_date) == 12 & year(col_date) == 2022 ~ "Dec 2022",
+    month(col_date) == 04 & year(col_date) == 2023 ~ "Apr 2023",
+    month(col_date) == 08 & year(col_date) == 2023 ~ "Aug 2023",
+    month(col_date) == 12 & year(col_date) == 2023 ~ "Dec 2023"
+  )) %>% na.omit() %>% 
+  group_by(col_time,age) %>%
   summarise(
-    sp = mean(seroprev_monotonic),
-  ) %>% ggplot(aes(x = age,y = sp))+
-  geom_line()+
-  ylim(c(0,100))+
-  labs(tag = "Apr 2023",y = "Seroprevalence (%)")+
-  theme_minimal()
+    sp = mean(seroprev_monotonic)
+  )
 
-sp0823 <- out_pava %>% filter(month(col_date) == 08 & year(col_date) == 2023) %>% 
-  group_by(age) %>% 
+sp_ci <- boot_results %>% 
+  mutate(col_time = case_when(
+    month(col_date) == 12 & year(col_date) == 2022 ~ "Dec 2022",
+    month(col_date) == 04 & year(col_date) == 2023 ~ "Apr 2023",
+    month(col_date) == 08 & year(col_date) == 2023 ~ "Aug 2023",
+    month(col_date) == 12 & year(col_date) == 2023 ~ "Dec 2023"
+  )) %>% na.omit() %>% 
+  group_by(col_time,age) %>%
   summarise(
-    sp = mean(seroprev_monotonic),
-  ) %>% ggplot(aes(x = age,y = sp))+
-  geom_line()+
-  ylim(c(0,100))+
-  labs(tag = "Aug 2023",y = "Seroprevalence (%)")+
-  theme_minimal()
+    lower = quantile(seroprev_monotonic, 0.025),
+    upper = quantile(seroprev_monotonic, 0.975),
+    .groups = "drop"
+  )  
 
-sp1223 <- out_pava %>% filter(month(col_date) == 12 & year(col_date) == 2023) %>% 
-  group_by(age) %>% 
-  summarise(
-    sp = mean(seroprev_monotonic),
-  ) %>% ggplot(aes(x = age,y = sp))+
-  geom_line()+
-  ylim(c(0,100))+
-  labs(tag = "Dec 2023",y = "Seroprevalence (%)")+
-  theme_minimal()
+# df.list <- list(t1222,t423,t823,t1223)
 
-sp1222 | sp0423 | sp0823 | sp1223
+ggplot() +
+  geom_line(data = point_est,aes(x = age, y = sp), color = "blue") +
+  geom_ribbon(data = sp_ci, aes(x = age,ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) +
+  geom_point(aes(x = age, pos*100),
+             shape = "|",data = atdf)+
+  labs(y = "Seroprevalence (%)", x = "Age (years)") +
+  facet_wrap(~factor(col_time,levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             nrow = 1) +
+  scale_x_continuous(breaks = seq(0,15,by = 3), minor_breaks = NULL)+
+  scale_y_continuous(limits = c(0,100),breaks = seq(0,100,by = 25),
+                     labels = scales::label_percent(scale = 1), minor_breaks = NULL)+
+  theme_bw()+ 
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        strip.text.x = element_text(size = 18))
+
 ```
 
 ## GAM with PAVA algorithm
