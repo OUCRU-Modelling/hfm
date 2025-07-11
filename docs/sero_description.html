@@ -172,6 +172,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#number-of-samples-per-district" id="toc-number-of-samples-per-district" class="nav-link active" data-scroll-target="#number-of-samples-per-district"><span class="header-section-number">3.1</span> Number of samples per district</a></li>
   <li><a href="#age-serological-profiles-of-each-districts" id="toc-age-serological-profiles-of-each-districts" class="nav-link" data-scroll-target="#age-serological-profiles-of-each-districts"><span class="header-section-number">3.2</span> Age serological profiles of each districts</a></li>
   <li><a href="#seroprevalence-in-the-same-age-group-over-time" id="toc-seroprevalence-in-the-same-age-group-over-time" class="nav-link" data-scroll-target="#seroprevalence-in-the-same-age-group-over-time"><span class="header-section-number">3.3</span> Seroprevalence in the same age group over time</a></li>
+  <li><a href="#investigate-location-of-0-3-year-old-serosample" id="toc-investigate-location-of-0-3-year-old-serosample" class="nav-link" data-scroll-target="#investigate-location-of-0-3-year-old-serosample"><span class="header-section-number">3.4</span> Investigate location of 0-3 year-old serosample</a>
+  <ul class="collapse">
+  <li><a href="#total-collected-samples" id="toc-total-collected-samples" class="nav-link" data-scroll-target="#total-collected-samples"><span class="header-section-number">3.4.1</span> Total collected samples</a></li>
+  <li><a href="#total-collected-positive-samples" id="toc-total-collected-positive-samples" class="nav-link" data-scroll-target="#total-collected-positive-samples"><span class="header-section-number">3.4.2</span> Total collected positive samples</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -550,8 +555,90 @@ Geodetic CRS:  WGS 84</code></pre>
 </div>
 </div>
 </div>
+</section>
+<section id="investigate-location-of-0-3-year-old-serosample" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="investigate-location-of-0-3-year-old-serosample"><span class="header-section-number">3.4</span> Investigate location of 0-3 year-old serosample</h2>
+<section id="total-collected-samples" class="level3" data-number="3.4.1">
+<h3 data-number="3.4.1" class="anchored" data-anchor-id="total-collected-samples"><span class="header-section-number">3.4.1</span> Total collected samples</h3>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Split by col_time</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>df_part <span class="ot">&lt;-</span> data_pt <span class="sc">%&gt;%</span> <span class="fu">filter</span>(age_gr3 <span class="sc">==</span> <span class="st">"(0,3]"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(col_time,qhchuan) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() </span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>df_plot2 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>()</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>){</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  df_plot <span class="ot">&lt;-</span> df_part <span class="sc">%&gt;%</span> <span class="fu">filter</span>(col_time <span class="sc">==</span> <span class="fu">unique</span>(df_part<span class="sc">$</span>col_time)[i]) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(qhtp, ., <span class="at">by =</span> <span class="fu">join_by</span>(varname_2 <span class="sc">==</span> qhchuan)) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">col_time =</span> <span class="fu">unique</span>(df_part<span class="sc">$</span>col_time)[i])</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  df_plot2 <span class="ot">&lt;-</span> <span class="fu">rbind</span>(df_plot2,df_plot)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>df_plot2 <span class="sc">%&gt;%</span> </span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> n),<span class="at">show.legend =</span> T)<span class="sc">+</span></span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_continuous</span>(<span class="at">low=</span><span class="st">"yellow"</span>, <span class="at">high=</span><span class="st">"red"</span>,</span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>                        <span class="at">guide=</span><span class="st">"colorbar"</span>,<span class="at">na.value=</span><span class="st">"white"</span>)<span class="sc">+</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> nl_name_2),<span class="at">size=</span><span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span><span class="fu">factor</span>(col_time,<span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Dec 2022"</span>,</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">"Apr 2023"</span>,</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">"Aug 2023"</span>,</span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">"Dec 2023"</span>)),<span class="at">nrow =</span> <span class="dv">1</span>)<span class="sc">+</span></span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Number of samples"</span>,<span class="at">fill =</span> <span class="st">"Total number"</span>)<span class="sc">+</span></span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>()<span class="sc">+</span></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="sero_description_files/figure-html/unnamed-chunk-11-1.svg" style="width:100.0%;height:100.0%"></p>
+</div>
+</div>
+</section>
+<section id="total-collected-positive-samples" class="level3" data-number="3.4.2">
+<h3 data-number="3.4.2" class="anchored" data-anchor-id="total-collected-positive-samples"><span class="header-section-number">3.4.2</span> Total collected positive samples</h3>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>df_part <span class="ot">&lt;-</span> data_pt <span class="sc">%&gt;%</span> <span class="fu">filter</span>(age_gr3 <span class="sc">==</span> <span class="st">"(0,3]"</span> <span class="sc">&amp;</span> pos <span class="sc">==</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(col_time,qhchuan) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>() <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>() </span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>df_plot2 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>()</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>){</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  df_plot <span class="ot">&lt;-</span> df_part <span class="sc">%&gt;%</span> <span class="fu">filter</span>(col_time <span class="sc">==</span> <span class="fu">unique</span>(df_part<span class="sc">$</span>col_time)[i]) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(qhtp, ., <span class="at">by =</span> <span class="fu">join_by</span>(varname_2 <span class="sc">==</span> qhchuan)) <span class="sc">%&gt;%</span> </span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">col_time =</span> <span class="fu">unique</span>(df_part<span class="sc">$</span>col_time)[i])</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  df_plot2 <span class="ot">&lt;-</span> <span class="fu">rbind</span>(df_plot2,df_plot)</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>df_plot2 <span class="sc">%&gt;%</span> </span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> n),<span class="at">show.legend =</span> T)<span class="sc">+</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_continuous</span>(<span class="at">low=</span><span class="st">"yellow"</span>, <span class="at">high=</span><span class="st">"red"</span>,</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>                        <span class="at">guide=</span><span class="st">"colorbar"</span>,<span class="at">na.value=</span><span class="st">"white"</span>)<span class="sc">+</span></span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> nl_name_2),<span class="at">size=</span><span class="dv">2</span>)<span class="sc">+</span></span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span><span class="fu">factor</span>(col_time,<span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Dec 2022"</span>,</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">"Apr 2023"</span>,</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">"Aug 2023"</span>,</span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>                                         <span class="st">"Dec 2023"</span>)),<span class="at">nrow =</span> <span class="dv">1</span>)<span class="sc">+</span></span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Number of positive samples"</span>,<span class="at">fill =</span> <span class="st">"Total number"</span>)<span class="sc">+</span></span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>()<span class="sc">+</span></span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="sero_description_files/figure-html/unnamed-chunk-12-1.svg" style="width:100.0%;height:100.0%"></p>
+</div>
+</div>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->

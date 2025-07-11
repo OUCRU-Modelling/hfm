@@ -1,0 +1,327 @@
+---
+title: "2023 HCMC HMFD outbreak"
+format: html
+editor: visual
+---
+
+```{r}
+data_file <- "D:/OUCRU/hfmd/data/hfmd_sero.rds"
+```
+
+```{r message = FALSE}
+library(dplyr)
+library(stringr)
+library(purrr)
+library(tidyr)
+library(magrittr)
+library(mgcv)
+library(scam)
+```
+
+```{r}
+gam2 <- function(..., data) {
+  out <- mgcv::gam(..., data = data, method = "REML")
+  out$data <- data
+  out
+}
+```
+
+```{r}
+scam2 <- function(..., data) {
+  out <- scam::scam(..., data = data)
+  out$data <- data
+  out
+}
+```
+
+```{r}
+hfmd <- data_file |>
+  readRDS() |> 
+  as_tibble() |> 
+  mutate(collection = id |>
+           str_remove(".*-") |> 
+           as.numeric() |> 
+           divide_by(1e4) |> 
+           round(),
+         col_date2 = as.numeric(col_date),
+         across(pos, ~ .x > 0))
+```
+
+```{r}
+predict2 <- function(x, ci = .95, le = 512, m = 100) {
+  p <- (1 - ci) / 2
+  
+  link_inv <- x$family$linkinv
+  dataset <- x$data
+  n <- nrow(dataset) - length(x$coefficients)
+  age_range <- range(dataset$age)
+  
+  ages <- seq(age_range[1], age_range[2], le = le)
+  
+  x |> 
+    predict(data.frame(age = ages), se.fit = TRUE) |> 
+    extract(c("fit", "se.fit")) %>%
+    c(age = list(ages), .) |>
+    as_tibble() |> 
+    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |> 
+    select(- se.fit)
+}
+```
+
+```{r}
+plot_predictions <- function(x) {
+  with(x, {
+    plot(age, fit, ylim = c(0, 100), type = "n",
+         xlab = "age (years)", ylab = "seroprevalence")
+    polygon(c(age, rev(age)), c(lwr, rev(upr)), border = NA, col = adjustcolor(4, .2))
+    lines(age, fit, col = 4)
+  })
+}
+```
+
+```{r}
+hfmd |> 
+  filter(collection < 7) %>%
+  gam2(pos ~ s(age), binomial, data = .) |> 
+  predict2() |> 
+  plot_predictions()
+```
+
+```{r}
+hfmd |> 
+  filter(collection < 7) %>%
+  scam2(pos ~ s(age, bs = "mpi"), binomial, data = .) |> 
+  predict2() |> 
+  plot_predictions()
+```
+
+```{r}
+m <- scam2(pos ~ s(age) + s(col_date2, bs = "mpi"), binomial, data = hfmd)
+```
+
+```{r}
+mean_col_dates <- hfmd |> 
+  group_by(collection) |> 
+  summarise(mean_col_date = mean(col_date2)) |> 
+  pull(mean_col_date)
+```
+
+```{r}
+predict3 <- function(x, newdata, ci = .95, le = 512, m = 100) {
+  p <- (1 - ci) / 2
+  
+  link_inv <- x$family$linkinv
+  dataset <- x$data
+  n <- nrow(dataset) - length(x$coefficients)
+
+  x |> 
+    predict(newdata, se.fit = TRUE) |> 
+    extract(c("fit", "se.fit")) %>%
+    c(age = list(ages), .) |>
+    as_tibble() |> 
+    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
+           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
+           fit = m * link_inv(fit)) |> 
+    select(- se.fit)
+}
+```
+
+```{r}
+ages <- seq(0, 15, le = 512)
+p <- map(mean_col_dates, ~ predict3(m, data.frame(age = ages, col_date2 = .x))) 
+```
+
+```{r}
+plot_predictions(p[[1]])
+```
+
+```{r}
+plot_predictions(p[[2]])
+```
+
+```{r}
+plot_predictions(p[[3]])
+```
+
+```{r}
+plot_predictions(p[[4]])
+```
+
+## New method
+
+```{r}
+beta_from_alpha <- function(alpha, mu) alpha * (1 - mu) / mu
+
+beta_parameters <- function(L, U, mu, ci = .95, interval = c(.01, 1e3), ...) {
+  p <- (1 - ci) / 2
+  objective <- function(alpha) {
+    beta <- beta_from_alpha(alpha, mu)
+    q025 <- qbeta(p, alpha, beta)
+    q975 <- qbeta(1 - p, alpha, beta)
+    (q025 - L)^2 + (q975 - U)^2
+  }
+  alpha_est <- optimize(objective, interval, ...)$minimum
+  c(alpha = alpha_est, beta = beta_from_alpha(alpha_est, mu))
+}
+```
+
+```{r}
+simulate_values <- function(col = 6, ages = seq(0, 15, le = 512),
+                            ci = .95, interval = c(.01, 1e3), n = 100, ...) {
+  p <- (1 - ci) / 2
+  dat <- filter(hfmd, collection == col)
+  mod <- gam(pos ~ s(age), binomial, dat)
+  df <- nrow(dat) - length(coef(mod))
+  link_inv <- family(mod)$linkinv
+  predict(mod, list(age = ages), se.fit = TRUE) |> 
+    magrittr::extract(c("fit", "se.fit")) %>%
+    c(age = list(ages), .) |>
+    as_tibble() |> 
+    mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
+           upr = link_inv(fit + qt(1 - p, df) * se.fit),
+           fit = link_inv(fit)) |> 
+    select(- se.fit) |> 
+    mutate(est = pmap(list(lwr, upr, fit), beta_parameters, ci, interval, ...)) |> 
+    unnest_wider(est) |> 
+    mutate(meancheck = map2_dbl(alpha, beta, ~ .x / (.x + .y)),
+           rndvalues = map2(alpha, beta, ~ rbeta(n, .x, .y)))
+}
+```
+
+```{r}
+mean_col_dates <- hfmd |> 
+  group_by(collection) |> 
+  summarise(mean_col_date = mean(col_date2)) |> 
+  pull(mean_col_date)
+```
+
+```{r}
+simulations <- map(6:9, simulate_values)
+```
+
+```{r}
+l <- length(simulations[[1]]$rndvalues[[1]])
+
+sim_data <- map2(simulations, mean_col_dates,
+                 ~ .x |>
+                   select(age, rndvalues) |> 
+                   mutate(coll_time = list(rep(.y, l)))) |> 
+  bind_rows()
+```
+
+```{r}
+N <- length(mean_col_dates) * l
+ci <- .95
+
+p <- (1 - ci) / 2
+
+mod <- sim_data |> 
+  filter(age == 0) |> 
+  select(-age) |> 
+  map(unlist) |> 
+  as_tibble() |> 
+  mutate(pos = rbinom(N, 1, rndvalues)) %>%
+  scam(pos ~ s(coll_time, bs = "mpi"), binomial, .)
+
+df <- N - length(coef(mod))
+
+mod |> 
+  predict(list(coll_time = mean_col_dates), se.fit = TRUE) |> 
+  magrittr::extract(c("fit", "se.fit")) %>%
+    c(coll_time = list(mean_col_dates), .) |>
+    as_tibble() |> 
+    mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
+           upr = link_inv(fit + qt(1 - p, df) * se.fit),
+           fit = link_inv(fit)) |> 
+    select(- se.fit)
+```
+
+28":
+
+```{r}
+models <- sim_data |> 
+  group_by(age) |> 
+  group_map(~ .x |>
+              map(unlist) |> 
+              as_tibble() |> 
+              mutate(pos = rbinom(N, 1, rndvalues)) %>%
+              scam(pos ~ s(coll_time, bs = "mpi"), binomial, .))
+```
+
+```{r}
+a <- map2(models,
+          N - map_int(models, ~ length(coef(.x))),
+          ~ .x |> 
+            predict(list(coll_time = mean_col_dates), se.fit = TRUE) |> 
+            magrittr::extract(c("fit", "se.fit")) %>%
+            c(coll_time = list(mean_col_dates), .) |>
+            as_tibble() |> 
+            mutate(lwr = link_inv(fit + qt(    p, .y) * se.fit),
+                   upr = link_inv(fit + qt(1 - p, .y) * se.fit),
+                   fit = link_inv(fit)) |> 
+            select(- se.fit)) |> 
+  setNames(unique(sim_data$age)) |> 
+  bind_rows(.id = "age") |> 
+  mutate(across(age, as.numeric))
+```
+
+```{r}
+a |> arrange(coll_time, age)
+```
+
+```{r}
+a |> 
+  filter(coll_time < 19350) |> 
+  with({
+    plot(age, fit)
+  })
+```
+
+```{r}
+a |> 
+  mutate(across(coll_time, round)) |> 
+  filter(coll_time == 19349) |> 
+  with({
+    plot(age, fit, ylim = 0:1)
+  })
+```
+
+```{r}
+ages <- seq(0, 15, le = 512)
+
+a |> 
+  mutate(across(coll_time, round)) |> 
+  filter(coll_time == 19349) %>%
+  gam(fit ~ s(age), betar, .) |> 
+  predict(list(age = ages), "response") %>%
+  lines(ages, .)
+```
+
+```{r}
+a |> 
+  mutate(across(coll_time, round)) |> 
+  filter(coll_time == 19457) |> 
+  with({
+    plot(age, fit, ylim = 0:1)
+  })
+```
+
+```{r}
+a |> 
+  mutate(across(coll_time, round)) |> 
+  filter(coll_time == 19580) |> 
+  with({
+    plot(age, fit, ylim = 0:1)
+  })
+```
+
+```{r}
+a |> 
+  mutate(across(coll_time, round)) |> 
+  filter(coll_time == 19700) |> 
+  with({
+    plot(age, fit, ylim = 0:1)
+  })
+```

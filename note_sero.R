@@ -521,4 +521,29 @@ out %>% filter(month(col_date) %in% c(4,8,12)) %>%
   group_by(age)
 
 
+###
 
+out_pava <- prdcts %>%
+  mutate(time_numeric = as.numeric(col_date)) %>%
+  group_by(age) %>%
+  arrange(time_numeric) %>%
+  mutate(
+    seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE)
+  )
+
+
+library(plotly)
+plot_ly(out_pava,x = ~sort(unique(as.Date(col_date))),
+        y = ~sort(unique(age)),
+        z = ~matrix(seroprev_monotonic, length(age_val)),
+        showscale = F) %>%
+  add_surface()%>%
+  layout(scene = list(
+    xaxis = list(title = "Collection date"),
+    yaxis = list(title = "Age"),
+    zaxis = list(title = "Seroprevalence",range = c(0,100))
+  ))
+
+matrix(out_pava$seroprev_monotonic, length(age_val)) %>% View()
+
+out_pava
