@@ -290,12 +290,12 @@ df23$agr <- factor(df23$agr, labels = c("[0-1)", "[1-2)", "[2-3)",
                                         "[3-4)","[4-5)","[5-6)","6+"))
 
 df23$age_gr2 <- cut(df23$age1+0.00000001, breaks = c(seq(0, 15, by = 3),82),
-                       labels = c("<0 & ≤3 years",
-                                  "<3 & ≤6 years",
-                                  "<6 & ≤9 years",
-                                  "<9 & ≤12 years",
-                                  "<12 & ≤15 years",
-                                  "16+"))
+                       labels = c("<0 & ≤3 year-old",
+                                  "<3 & ≤6 year-old",
+                                  "<6 & ≤9 year-old",
+                                  "<9 & ≤12 year-old",
+                                  "<12 & ≤15 year-old",
+                                  "16+ "))
 
 hcm19 <- census2019 %>% filter(province == "Thành phố Hồ Chí Minh")
 
@@ -311,11 +311,11 @@ hcm19$district <- hcm19$district %>%
 hcm19$age2 <- word(hcm19$age,end = 1) |> as.numeric()
 
 hcm19$age3 <- cut(hcm19$age2,breaks = c(seq(0, 15, by = 3),82),
-                     labels = c("<0 & ≤3 years",
-                                "<3 & ≤6 years",
-                                "<6 & ≤9 years",
-                                "<9 & ≤12 years",
-                                "<12 & ≤15 years",
+                     labels = c("<0 & ≤3 year-old",
+                                "<3 & ≤6 year-old",
+                                "<6 & ≤9 year-old",
+                                "<9 & ≤12 year-old",
+                                "<12 & ≤15 year-old",
                                 "16+"))
 
 pop_agegr <- hcm19 %>%
@@ -365,7 +365,7 @@ atk_rate <- df23 %>%
     )
   ) %>%
   ungroup() %>% na.omit() %>% filter(age_gr2 != "16+") %>% 
-  ggplot(aes(x = adm_week,y=log(attack_rate_ma*100000))) +
+  ggplot(aes(x = adm_week,y=log10(attack_rate_ma))) +
   # geom_bar(stat = "identity")+
   geom_line()+
   facet_wrap(vars(age_gr2),ncol = 5)+
@@ -373,15 +373,15 @@ atk_rate <- df23 %>%
                date_labels = "%b %Y", minor_breaks = NULL)+
   scale_y_continuous(minor_breaks = NULL)+
   # scale_x_date(date_breaks = "4 months",date_labels = "%b %Y")+
-  coord_cartesian(ylim = c(-2.5,9.5),xlim = as.Date(c("2022-12-01","2023-12-31")))+
+  coord_cartesian(xlim = as.Date(c("2022-12-01","2023-12-31")))+
   theme_bw()+
-  labs(x = "Admission week",y= "Log cumulative attack rate",tag = "A")+ 
+  labs(x = "Admission week",y= "Log 10 cumulative attack rate",tag = "A")+ 
   theme(axis.title.x = element_text(size = 18),
         axis.text.x = element_blank(),
         plot.tag = element_text(face = "bold", size = 18),
         axis.title.y = element_text(size = 18),
         axis.text.y = element_text(size = 18),
-        strip.text.x = element_text(size = 18))
+        strip.text.x = element_text(size = 15))
 
 
 ## sero_prevalence by age group
@@ -389,20 +389,20 @@ atk_rate <- df23 %>%
 sero <- rbind(t1222,t1223,t423,t823)
 
 sero$age_gr2 <- cut(sero$age+0.00000001, breaks = seq(0, 15, by = 3),
-                       labels = c("<0 & ≤3 years",
-                                  "<3 & ≤6 years",
-                                  "<6 & ≤9 years",
-                                  "<9 & ≤12 years",
-                                  "<12 & ≤15 years"))
+                       labels = c("<0 & ≤3 year-old",
+                                  "<3 & ≤6 year-old",
+                                  "<6 & ≤9 year-old",
+                                  "<9 & ≤12 year-old",
+                                  "<12 & ≤15 year-old"))
 
 sero$col_date <- make_date(sero$col_year,sero$col_month,sero$col_day)
 
 sero$age_gr2 <- factor(sero$age_gr2,
-                         levels = c("<0 & ≤3 years",
-                                    "<3 & ≤6 years",
-                                    "<6 & ≤9 years",
-                                    "<9 & ≤12 years",
-                                    "<12 & ≤15 years"))
+                         levels = c("<0 & ≤3 year-old",
+                                    "<3 & ≤6 year-old",
+                                    "<6 & ≤9 year-old",
+                                    "<9 & ≤12 year-old",
+                                    "<12 & ≤15 year-old"))
 
 ## observation seroprevalence
 te_sp <- sero %>% 
@@ -455,7 +455,7 @@ sp_agr <- ggplot(sero,
         plot.tag = element_text(face = "bold", size = 18),
         axis.title.y = element_text(size = 18),
         axis.text.y = element_text(size = 18),
-        strip.text.x = element_text(size = 18))
+        strip.text.x = element_text(size = 15))
 
 ```
 
@@ -671,18 +671,28 @@ df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
   filter(!is.na(adm_week) ) %>%
   count(adm_week) %>% as.data.frame()
 
+atdf <- rbind(t1222,t423,t823,t1223) %>%
+  mutate(col_date = make_date(year = col_year,
+                              month = col_month,
+                              day = col_day))
+
 ts2 <- ggplot()+
   geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
            alpha = 0.5) +
+  geom_point(aes(x = as.Date(col_date), y =  pos*3000),
+            shape = "|",data = atdf)+
   labs(x = "Admission week",y = "Cases",tag = "B")+
   annotate("rect", fill = "blue",
            xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
-           xmax = as.Date(c("2022-12-30","2023-04-30","2023-08-30","2023-12-30")), 
+           xmax = as.Date(c("2022-12-31","2023-04-30","2023-08-30","2023-12-30")), 
            ymin = 0, ymax = Inf, alpha = .2)+
-  xlim(as.Date("2022-11-24"),as.Date("2024-01-01"))+
   theme_classic()+
   scale_y_continuous(breaks = seq(0,3000,by = 1000),
-                     limit =c(0,3000))+
+                     limit =c(0-1,3000+1))+
+  scale_x_date(
+    breaks = as.Date(c("2022-12-15", "2023-04-15", "2023-08-15", "2023-12-15")),
+    labels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"),
+    limits = c(as.Date("2022-11-24"),as.Date("2024-01-01")))+
   theme(
     axis.text.x = element_text(size = 18),
     axis.text.y = element_text(size = 18),
@@ -824,6 +834,128 @@ fig2a/
 
 ggsave("./fig_manuscript/fig2.svg",
        width = 13,height = 8,dpi = 500)
+```
+
+## GLM with PAVA algorithm
+
+```{r}
+library(Iso)
+
+mod1 <- glm(pos ~ age * col_date +
+              I(age ^ 2) * col_date, binomial,
+            mutate(atdf, across(col_date, as.numeric)))
+age_val <- c(.1, seq(1,15,0.5))
+collection_date_val <- seq(min(atdf$col_date),
+                           max(atdf$col_date))
+
+new_data <- expand.grid(age = age_val, col_date = as.numeric(collection_date_val))
+
+prdcts <- cbind(new_data, fit = 100 * predict(mod1, new_data, "response")) |> 
+  as_tibble() |> 
+  arrange(col_date) |> 
+  mutate(across(col_date, as_date))
+
+out_pava <- prdcts %>% 
+  mutate(time_numeric = as.numeric(col_date)) %>% 
+  group_by(age) %>% 
+  arrange(time_numeric) %>%
+  mutate(
+    seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE)
+  )
+
+## boostrap 
+
+bootstrap <- function(data, new_data) {
+  # Step 1: resample
+  boot_data <- data %>% slice_sample(n = nrow(data), replace = TRUE)
+  
+  # Step 2: refit model
+  mod <- glm(pos ~ age * col_date + I(age^2) * col_date, 
+             family = binomial, 
+             data = mutate(boot_data, col_date = as.numeric(col_date)))
+  
+  # Step 3: predict
+  preds <- predict(mod, new_data, type = "response") * 100  # seroprev %
+  preds_df <- bind_cols(new_data, fit = preds) |> 
+    mutate(col_date = as_date(col_date))
+  
+  # Step 4: apply PAVA per age
+  preds_df %>%
+    mutate(time_numeric = as.numeric(col_date)) %>%
+    group_by(age) %>%
+    arrange(time_numeric) %>%
+    summarise(
+      col_date = col_date,
+      seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE),
+      .groups = "keep"
+    )
+}
+
+
+B <- 10000  # number of bootstrap iterations
+
+set.seed(42)  # for reproducibility
+boot_results <- map_dfr(1:B, ~bootstrap(atdf, new_data) %>% 
+                          mutate(bootstrap = .x))
+
+point_est <- out_pava %>% 
+  mutate(col_time = case_when(
+    month(col_date) == 12 & year(col_date) == 2022 ~ "Dec 2022",
+    month(col_date) == 04 & year(col_date) == 2023 ~ "Apr 2023",
+    month(col_date) == 08 & year(col_date) == 2023 ~ "Aug 2023",
+    month(col_date) == 12 & year(col_date) == 2023 ~ "Dec 2023"
+  )) %>% na.omit() %>% 
+  group_by(col_time,age) %>%
+  summarise(
+    sp = mean(seroprev_monotonic)
+  )
+
+sp_ci <- boot_results %>% 
+  mutate(col_time = case_when(
+    month(col_date) == 12 & year(col_date) == 2022 ~ "Dec 2022",
+    month(col_date) == 04 & year(col_date) == 2023 ~ "Apr 2023",
+    month(col_date) == 08 & year(col_date) == 2023 ~ "Aug 2023",
+    month(col_date) == 12 & year(col_date) == 2023 ~ "Dec 2023"
+  )) %>% na.omit() %>% 
+  group_by(col_time,age) %>%
+  summarise(
+    lower = quantile(seroprev_monotonic, 0.025),
+    upper = quantile(seroprev_monotonic, 0.975),
+    .groups = "drop"
+  )  
+
+# df.list <- list(t1222,t423,t823,t1223)
+
+sp_pava <- ggplot() +
+  geom_line(data = point_est,aes(x = age, y = sp), color = "blue") +
+  geom_ribbon(data = sp_ci, aes(x = age,ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) +
+  geom_point(aes(x = age, pos*100),
+             shape = "|",data = atdf)+
+  labs(y = "Seroprevalence (%)", x = "Age (years)") +
+  facet_wrap(~factor(col_time,levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             nrow = 1) +
+  scale_x_continuous(breaks = seq(0,15,by = 3), minor_breaks = NULL)+
+  scale_y_continuous(limits = c(0,100),breaks = seq(0,100,by = 25),
+                     labels = scales::label_percent(scale = 1), minor_breaks = NULL)+
+  theme_bw()+ 
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        strip.text.x = element_text(size = 18))
+```
+
+```{r}
+#| fig-width: 15
+#| fig-height: 7
+
+sp_pava/
+  ts2
+
+ggsave("./fig_manuscript/glm_pava.svg",
+       width = 15,height = 8,dpi = 500)
 ```
 
 

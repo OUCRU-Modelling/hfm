@@ -547,3 +547,138 @@ plot_ly(out_pava,x = ~sort(unique(as.Date(col_date))),
 matrix(out_pava$seroprev_monotonic, length(age_val)) %>% View()
 
 out_pava
+
+
+### compare 0-3 4 times point
+
+data_pt
+
+
+data_pt %>% filter(age_gr3 == "(0,3]") %>%
+  group_by(col_time,qhchuan) %>%
+  count() %>% as.data.frame() %>%
+  # dplyr::mutate(pre = n / sum(n)) %>%
+  left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>%
+  ggplot() +
+  geom_sf(aes(fill = n),show.legend = T)+
+  scale_fill_continuous(low="yellow", high="red",
+                        guide="colorbar",na.value="white"
+                        # name = "Percentage",
+                        # limits = c(0,0.12),
+                        # labels = scales::label_percent()
+                        )+
+  geom_sf_text(aes(label = nl_name_2),size=2)+
+  facet_wrap(~col_time)+
+  # geom_sf(data = tdnd1, shape = 17,
+  #         color = "blue", size = 2)+
+  theme_void()
+
+data_pt %>% filter(age_gr3 == "(0,3]") %>%
+  group_by(col_time,qhchuan) %>%
+  count() %>% as.data.frame() %>%
+  ggplot()+
+  geom_bar(aes(x = col_time))+
+  scale_x_discrete(limits = c("Dec 2022",
+                              "Apr 2023",
+                              "Aug 2023",
+                              "Dec 2023"))+
+  facet_wrap(~qhchuan,
+             ncol = 5)
+
+
+data_pt %>% filter(age_gr3 == "(0,3]") %>%
+  group_by(col_time,qhchuan) %>%
+  count() %>% as.data.frame()
+
+left_join(qhtp, ., by = join_by(varname_2 == qhchuan))
+
+
+# Split by col_time
+df_part <- data_pt %>% filter(age_gr3 == "(0,3]") %>%
+  group_by(col_time,qhchuan) %>%
+  count() %>% as.data.frame()
+
+df_plot2 <- data.frame()
+
+for (i in 1:4){
+  df_plot <- df_part %>% filter(col_time == unique(df_part$col_time)[i]) %>%
+    left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>%
+    mutate(col_time = unique(df_part$col_time)[i])
+
+  df_plot2 <- rbind(df_plot2,df_plot)
+}
+
+
+tot_samp <- df_plot2 %>%
+  ggplot() +
+  geom_sf(aes(fill = n),show.legend = T)+
+  scale_fill_continuous(low="yellow", high="red",
+                        guide="colorbar",na.value="white")+
+  geom_sf_text(aes(label = nl_name_2),size=2)+
+  facet_wrap(~factor(col_time,levels = c("Dec 2022",
+                                         "Apr 2023",
+                                         "Aug 2023",
+                                         "Dec 2023")),nrow = 1)+
+  labs(title = "Number of samples",fill = "Total number")+
+  theme_void()+
+  theme(legend.position = "bottom")
+
+
+df_part <- data_pt %>% filter(age_gr3 == "(0,3]" & pos == 1) %>%
+  group_by(col_time,qhchuan) %>%
+  count() %>% as.data.frame()
+
+df_plot2 <- data.frame()
+
+for (i in 1:4){
+  df_plot <- df_part %>% filter(col_time == unique(df_part$col_time)[i]) %>%
+    left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>%
+    mutate(col_time = unique(df_part$col_time)[i])
+
+  df_plot2 <- rbind(df_plot2,df_plot)
+}
+
+
+pos_samp <- df_plot2 %>%
+  ggplot() +
+  geom_sf(aes(fill = n),show.legend = T)+
+  scale_fill_continuous(low="yellow", high="red",
+                        guide="colorbar",na.value="white")+
+  geom_sf_text(aes(label = nl_name_2),size=2)+
+  facet_wrap(~factor(col_time,levels = c("Dec 2022",
+                                         "Apr 2023",
+                                         "Aug 2023",
+                                         "Dec 2023")),nrow = 1)+
+  labs(title = "Number of positive samples",fill = "Total number")+
+  theme_void()+
+  theme(legend.position = "bottom")
+
+tot_samp/
+  pos_samp
+
+ggplot()+
+  geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
+           alpha = 0.5) +
+  geom_point(aes(x = as.Date(col_date), y =  pos*3000),
+            shape = "|",data = atdf)+
+  labs(x = "Admission week",y = "Cases",tag = "B")+
+  annotate("rect", fill = "blue",
+           xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")),
+           xmax = as.Date(c("2022-12-31","2023-04-30","2023-08-30","2023-12-30")),
+           ymin = 0, ymax = Inf, alpha = .2)+
+  theme_classic()+
+  scale_y_continuous(breaks = seq(0,3000,by = 1000),
+                     limit =c(0-1,3000+1))+
+  scale_x_date(
+    breaks = as.Date(c("2022-12-15", "2023-04-15", "2023-08-15", "2023-12-15")),
+    labels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"),
+    limits = c(as.Date("2022-11-24"),as.Date("2024-01-01")))+
+  theme(
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18))
+
+

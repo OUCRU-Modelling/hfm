@@ -198,6 +198,7 @@ mean_col_dates <- hfmd |>
 ```
 
 ```{r}
+set.seed(123)
 simulations <- map(6:9, simulate_values)
 ```
 
@@ -227,14 +228,16 @@ mod <- sim_data |>
 
 df <- N - length(coef(mod))
 
-mod |> 
-  predict(list(coll_time = mean_col_dates), se.fit = TRUE) |> 
+link_inv <- family(mod)$linkinv
+
+mod |>
+  predict(list(coll_time = mean_col_dates), se.fit = TRUE) |>
   magrittr::extract(c("fit", "se.fit")) %>%
     c(coll_time = list(mean_col_dates), .) |>
-    as_tibble() |> 
+    as_tibble() |>
     mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
            upr = link_inv(fit + qt(1 - p, df) * se.fit),
-           fit = link_inv(fit)) |> 
+           fit = link_inv(fit)) |>
     select(- se.fit)
 ```
 
@@ -253,7 +256,9 @@ models <- sim_data |>
 ```{r}
 a <- map2(models,
           N - map_int(models, ~ length(coef(.x))),
-          ~ .x |> 
+          ~{
+            linkinv <- family(.x)$linkinv
+            .x |> 
             predict(list(coll_time = mean_col_dates), se.fit = TRUE) |> 
             magrittr::extract(c("fit", "se.fit")) %>%
             c(coll_time = list(mean_col_dates), .) |>
@@ -261,7 +266,8 @@ a <- map2(models,
             mutate(lwr = link_inv(fit + qt(    p, .y) * se.fit),
                    upr = link_inv(fit + qt(1 - p, .y) * se.fit),
                    fit = link_inv(fit)) |> 
-            select(- se.fit)) |> 
+            select(- se.fit)  
+          } ) |>
   setNames(unique(sim_data$age)) |> 
   bind_rows(.id = "age") |> 
   mutate(across(age, as.numeric))
@@ -269,14 +275,6 @@ a <- map2(models,
 
 ```{r}
 a |> arrange(coll_time, age)
-```
-
-```{r}
-a |> 
-  filter(coll_time < 19350) |> 
-  with({
-    plot(age, fit)
-  })
 ```
 
 ```{r}
@@ -295,8 +293,17 @@ a |>
   mutate(across(coll_time, round)) |> 
   filter(coll_time == 19349) %>%
   gam(fit ~ s(age), betar, .) |> 
-  predict(list(age = ages), "response") %>%
-  lines(ages, .)
+  predict(list(age = ages), "response")  %>% 
+  plot(ages, .,type = "l",ylim = 0:1)
+```
+
+```{r}
+a |> 
+  mutate(across(coll_time, round)) |> 
+  filter(coll_time == 19349) |> 
+  with({
+    plot(age, fit, ylim = 0:1)
+  })
 ```
 
 ```{r}
@@ -324,4 +331,51 @@ a |>
   with({
     plot(age, fit, ylim = 0:1)
   })
+```
+
+## Plot
+
+```{r}
+smothh <- function(timee){
+  dt_fit <- a |> 
+    mutate(across(coll_time, round)) |> 
+    filter(coll_time == timee)
+  
+  mod_fit <- gam(fit ~ s(age, k = 30), data = dt_fit)
+  mod_lwr <- gam(lwr ~ s(age, k = 30), data = dt_fit)
+  mod_upr <- gam(upr ~ s(age, k = 30), data = dt_fit)
+  
+  # Predict smooths
+  tibble(age = seq(min(dt_fit$age), max(dt_fit$age), length.out = 500)) %>%
+    mutate(
+      fit = predict(mod_fit, newdata = .),
+      lwr = predict(mod_lwr, newdata = .),
+      upr = predict(mod_upr, newdata = .)
+    )  
+}
+```
+
+```{r,message=FALSE}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+library(tidyverse)
+
+map(c(19349,19457,19580,19700),smothh) |>
+  bind_rows() %>% 
+  mutate(col_time = rep(c(19349,19457,19580,19700),each = 500),
+         col_time = factor(col_time,
+                           levels = c(19349,19457,19580,19700),
+                           labels = c("Dec 2022",
+                                      "Apr 2023",
+                                      "Aug 2023",
+                                      "Dec 2023"))) %>% 
+  ggplot(aes(x = age, y = fit)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
+  geom_line(color = "blue") +
+  facet_wrap(~col_time,nrow = 1)+
+  labs(y = "Smoothed fit", x = "Age") +
+  ylim(c(0,1))+
+  theme_minimal()
 ```
