@@ -12,6 +12,7 @@ library(janitor)
 library(predtools)
 library(magrittr)
 library(slider)
+library(scam)
 invisible(Sys.setlocale("LC_TIME", "English"))
 
 ## data import
@@ -836,107 +837,110 @@ ggsave("./fig_manuscript/fig2.svg",
        width = 13,height = 8,dpi = 500)
 ```
 
-## GLM with PAVA algorithm
+## Temporary linked age profile
 
 ```{r}
-library(Iso)
 
-mod1 <- glm(pos ~ age * col_date +
-              I(age ^ 2) * col_date, binomial,
-            mutate(atdf, across(col_date, as.numeric)))
-age_val <- c(.1, seq(1,15,0.5))
-collection_date_val <- seq(min(atdf$col_date),
-                           max(atdf$col_date))
-
-new_data <- expand.grid(age = age_val, col_date = as.numeric(collection_date_val))
-
-prdcts <- cbind(new_data, fit = 100 * predict(mod1, new_data, "response")) |> 
-  as_tibble() |> 
-  arrange(col_date) |> 
-  mutate(across(col_date, as_date))
-
-out_pava <- prdcts %>% 
-  mutate(time_numeric = as.numeric(col_date)) %>% 
-  group_by(age) %>% 
-  arrange(time_numeric) %>%
-  mutate(
-    seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE)
-  )
-
-## boostrap 
-
-bootstrap <- function(data, new_data) {
-  # Step 1: resample
-  boot_data <- data %>% slice_sample(n = nrow(data), replace = TRUE)
-  
-  # Step 2: refit model
-  mod <- glm(pos ~ age * col_date + I(age^2) * col_date, 
-             family = binomial, 
-             data = mutate(boot_data, col_date = as.numeric(col_date)))
-  
-  # Step 3: predict
-  preds <- predict(mod, new_data, type = "response") * 100  # seroprev %
-  preds_df <- bind_cols(new_data, fit = preds) |> 
-    mutate(col_date = as_date(col_date))
-  
-  # Step 4: apply PAVA per age
-  preds_df %>%
-    mutate(time_numeric = as.numeric(col_date)) %>%
-    group_by(age) %>%
-    arrange(time_numeric) %>%
-    summarise(
-      col_date = col_date,
-      seroprev_monotonic = pava(fit, time_numeric, decreasing = FALSE),
-      .groups = "keep"
-    )
+## function to calculate age profile
+age_profile <- function(data, age_values = seq(0, 15, le = 512), ci = .95) {
+  model <- gam(pos ~ s(age), binomial, data)
+  link_inv <- family(model)$linkinv
+  df <- nrow(data) - length(coef(model))
+  p <- (1 - ci) / 2
+  model |> 
+    predict(list(age = age_values), se.fit = TRUE) %>%
+    c(list(age = age_values), .) |> 
+    as_tibble() |> 
+    mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
+           upr = link_inv(fit + qt(1 - p, df) * se.fit),
+           fit = link_inv(fit)) |> 
+    select(- se.fit)
 }
 
+predict2 <- function(...) predict(..., type = "response") |> as.vector()
 
-B <- 10000  # number of bootstrap iterations
+atdf <- rbind(t1222,t423,t823,t1223) %>%
+  mutate(col_date = make_date(year = col_year,
+                              month = col_month,
+                              day = col_day))
 
-set.seed(42)  # for reproducibility
-boot_results <- map_dfr(1:B, ~bootstrap(atdf, new_data) %>% 
-                          mutate(bootstrap = .x))
+hfmd <- atdf %>% 
+as_tibble() |> 
+  mutate(collection = id |>
+           str_remove(".*-") |> 
+           as.numeric() |> 
+           divide_by(1e4) |> 
+           round(),
+         col_date2 = as.numeric(col_date),
+         across(pos, ~ .x > 0))
 
-point_est <- out_pava %>% 
-  mutate(col_time = case_when(
-    month(col_date) == 12 & year(col_date) == 2022 ~ "Dec 2022",
-    month(col_date) == 04 & year(col_date) == 2023 ~ "Apr 2023",
-    month(col_date) == 08 & year(col_date) == 2023 ~ "Aug 2023",
-    month(col_date) == 12 & year(col_date) == 2023 ~ "Dec 2023"
-  )) %>% na.omit() %>% 
-  group_by(col_time,age) %>%
-  summarise(
-    sp = mean(seroprev_monotonic)
-  )
+age_profile_constrained <- function(data = hfmd, age_values = seq(0, 15, le = 512), 
+                                    ci = .95,n = 100) {
+  mean_collection_times <- data |> 
+    group_by(collection) |> 
+    summarise(mean_col_date = mean(col_date2)) |> 
+    with(setNames(mean_col_date, collection))
+  
+  data |> 
+# Step 1:
+    group_by(collection) |> 
+    group_modify(~ .x |>
+                   age_profile(age_values, ci) |> 
+                   mutate(across(c(fit, lwr, upr), ~ map(.x, ~ rbinom(n, 1, .x))))) |> 
+    ungroup() |> 
+    mutate(collection_time = mean_collection_times[as.character(collection)]) |> 
+    unnest(c(fit, lwr, upr)) |>
+    pivot_longer(c(fit, lwr, upr), names_to = "line", values_to = "seropositvty") |> 
+# Step 2a:
+    group_by(age, line) |> 
+    group_modify(~ .x %>%
+                   scam(seropositvty ~ s(collection_time, bs = "mpi"), binomial, .) |> 
+                   predict2(list(collection_time = mean_collection_times)) %>%
+                   tibble(collection_time = mean_collection_times,
+                          seroprevalence  = .)) |> 
+    ungroup() |> 
+# Step 2b:
+    group_by(collection_time, line) |> 
+    group_modify(~ .x |>
+                   mutate(across(seroprevalence, ~ gam(.x ~ s(age), betar) |> 
+                                                   predict2()))) |> 
+    ungroup() |> 
+    pivot_wider(names_from = line, values_from = seroprevalence) |> 
+    group_by(collection_time) |> 
+    group_split()
+}
 
-sp_ci <- boot_results %>% 
-  mutate(col_time = case_when(
-    month(col_date) == 12 & year(col_date) == 2022 ~ "Dec 2022",
-    month(col_date) == 04 & year(col_date) == 2023 ~ "Apr 2023",
-    month(col_date) == 08 & year(col_date) == 2023 ~ "Aug 2023",
-    month(col_date) == 12 & year(col_date) == 2023 ~ "Dec 2023"
-  )) %>% na.omit() %>% 
-  group_by(col_time,age) %>%
-  summarise(
-    lower = quantile(seroprev_monotonic, 0.025),
-    upper = quantile(seroprev_monotonic, 0.975),
-    .groups = "drop"
-  )  
+constrained_age_profiles <- age_profile_constrained(hfmd)
+```
 
-# df.list <- list(t1222,t423,t823,t1223)
+```{r}
 
-sp_pava <- ggplot() +
-  geom_line(data = point_est,aes(x = age, y = sp), color = "blue") +
-  geom_ribbon(data = sp_ci, aes(x = age,ymin = lower, ymax = upper), fill = "blue", alpha = 0.3) +
-  geom_point(aes(x = age, pos*100),
-             shape = "|",data = atdf)+
-  labs(y = "Seroprevalence (%)", x = "Age (years)") +
-  facet_wrap(~factor(col_time,levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
-             nrow = 1) +
-  scale_x_continuous(breaks = seq(0,15,by = 3), minor_breaks = NULL)+
-  scale_y_continuous(limits = c(0,100),breaks = seq(0,100,by = 25),
-                     labels = scales::label_percent(scale = 1), minor_breaks = NULL)+
+mean_collection_times <- hfmd |> 
+  group_by(collection) |> 
+  summarise(mean_col_date = mean(col_date2)) |> 
+  with(setNames(mean_col_date, collection))
+
+atdf <- atdf %>% 
+  as_tibble() |> 
+  mutate(collection = id |>
+           str_remove(".*-") |> 
+           as.numeric() |> 
+           divide_by(1e4) |> 
+           round()) |> 
+  mutate(collection_time = mean_collection_times[as.character(collection)])
+
+constrained_gam <- constrained_age_profiles %>% 
+  bind_rows() %>%  
+  ggplot(aes(x = age, y = fit)) +
+  geom_line(aes(x = age, fit))+
+  geom_point(data = atdf,aes(x = age, y = pos),shape = "|")+
+  facet_wrap(~factor(collection_time,
+                     labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             ncol = 4)+
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
+  labs(y = "Seroprevalence (%)",x = "Age (years)")+
+  scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
+  # coord_cartesian(ylim = c(0, 1))+
   theme_bw()+ 
   theme(axis.title.x = element_text(size = 18),
         axis.text.x = element_text(size = 18),
@@ -945,13 +949,15 @@ sp_pava <- ggplot() +
         axis.title.y = element_text(size = 18),
         axis.text.y = element_text(size = 18),
         strip.text.x = element_text(size = 18))
+
 ```
+
 
 ```{r}
 #| fig-width: 15
 #| fig-height: 7
 
-sp_pava/
+constrained_gam/
   ts2
 
 ggsave("./fig_manuscript/glm_pava.svg",
