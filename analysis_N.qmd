@@ -1,8 +1,10 @@
 ---
 title: "2023 HCMC HMFD outbreak"
-format: html
+format:
+  html:
+    theme: cosmo
+    code-fold: false
 editor: visual
-
 ---
 
 ```{r}
@@ -17,22 +19,12 @@ library(tidyr)
 library(magrittr)
 library(mgcv)
 library(scam)
+library(ggplot2)
+library(lubridate)
 ```
 
 ```{r}
-gam2 <- function(..., data) {
-  out <- mgcv::gam(..., data = data, method = "REML")
-  out$data <- data
-  out
-}
-```
-
-```{r}
-scam2 <- function(..., data) {
-  out <- scam::scam(..., data = data)
-  out$data <- data
-  out
-}
+predict2 <- function(...) predict(..., type = "response") |> as.vector()
 ```
 
 ```{r}
@@ -46,337 +38,194 @@ hfmd <- data_file |>
            round(),
          col_date2 = as.numeric(col_date),
          across(pos, ~ .x > 0))
-```
 
-```{r}
-predict2 <- function(x, ci = .95, le = 512, m = 100) {
+age_profile <- function(data, age_values = seq(0, 15, le = 512), ci = .95) {
+  model <- gam(pos ~ s(age), binomial, data)
+  link_inv <- family(model)$linkinv
+  df <- nrow(data) - length(coef(model))
   p <- (1 - ci) / 2
-  
-  link_inv <- x$family$linkinv
-  dataset <- x$data
-  n <- nrow(dataset) - length(x$coefficients)
-  age_range <- range(dataset$age)
-  
-  ages <- seq(age_range[1], age_range[2], le = le)
-  
-  x |> 
-    predict(data.frame(age = ages), se.fit = TRUE) |> 
-    extract(c("fit", "se.fit")) %>%
-    c(age = list(ages), .) |>
-    as_tibble() |> 
-    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
-           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
-           fit = m * link_inv(fit)) |> 
-    select(- se.fit)
-}
-```
-
-```{r}
-plot_predictions <- function(x) {
-  with(x, {
-    plot(age, fit, ylim = c(0, 100), type = "n",
-         xlab = "age (years)", ylab = "seroprevalence")
-    polygon(c(age, rev(age)), c(lwr, rev(upr)), border = NA, col = adjustcolor(4, .2))
-    lines(age, fit, col = 4)
-  })
-}
-```
-
-```{r}
-hfmd |> 
-  filter(collection < 7) %>%
-  gam2(pos ~ s(age), binomial, data = .) |> 
-  predict2() |> 
-  plot_predictions()
-```
-
-```{r}
-hfmd |> 
-  filter(collection < 7) %>%
-  scam2(pos ~ s(age, bs = "mpi"), binomial, data = .) |> 
-  predict2() |> 
-  plot_predictions()
-```
-
-```{r}
-m <- scam2(pos ~ s(age) + s(col_date2, bs = "mpi"), binomial, data = hfmd)
-```
-
-```{r}
-mean_col_dates <- hfmd |> 
-  group_by(collection) |> 
-  summarise(mean_col_date = mean(col_date2)) |> 
-  pull(mean_col_date)
-```
-
-```{r}
-predict3 <- function(x, newdata, ci = .95, le = 512, m = 100) {
-  p <- (1 - ci) / 2
-  
-  link_inv <- x$family$linkinv
-  dataset <- x$data
-  n <- nrow(dataset) - length(x$coefficients)
-
-  x |> 
-    predict(newdata, se.fit = TRUE) |> 
-    extract(c("fit", "se.fit")) %>%
-    c(age = list(ages), .) |>
-    as_tibble() |> 
-    mutate(lwr = m * link_inv(fit + qt(    p, n) * se.fit),
-           upr = m * link_inv(fit + qt(1 - p, n) * se.fit),
-           fit = m * link_inv(fit)) |> 
-    select(- se.fit)
-}
-```
-
-```{r}
-ages <- seq(0, 15, le = 512)
-p <- map(mean_col_dates, ~ predict3(m, data.frame(age = ages, col_date2 = .x))) 
-```
-
-```{r}
-plot_predictions(p[[1]])
-```
-
-```{r}
-plot_predictions(p[[2]])
-```
-
-```{r}
-plot_predictions(p[[3]])
-```
-
-```{r}
-plot_predictions(p[[4]])
-```
-
-## New method
-
-```{r}
-beta_from_alpha <- function(alpha, mu) alpha * (1 - mu) / mu
-
-beta_parameters <- function(L, U, mu, ci = .95, interval = c(.01, 1e3), ...) {
-  p <- (1 - ci) / 2
-  objective <- function(alpha) {
-    beta <- beta_from_alpha(alpha, mu)
-    q025 <- qbeta(p, alpha, beta)
-    q975 <- qbeta(1 - p, alpha, beta)
-    (q025 - L)^2 + (q975 - U)^2
-  }
-  alpha_est <- optimize(objective, interval, ...)$minimum
-  c(alpha = alpha_est, beta = beta_from_alpha(alpha_est, mu))
-}
-```
-
-```{r}
-simulate_values <- function(col = 6, ages = seq(0, 15, le = 512),
-                            ci = .95, interval = c(.01, 1e3), n = 100, ...) {
-  p <- (1 - ci) / 2
-  dat <- filter(hfmd, collection == col)
-  mod <- gam(pos ~ s(age), binomial, dat)
-  df <- nrow(dat) - length(coef(mod))
-  link_inv <- family(mod)$linkinv
-  predict(mod, list(age = ages), se.fit = TRUE) |> 
-    magrittr::extract(c("fit", "se.fit")) %>%
-    c(age = list(ages), .) |>
+  model |> 
+    predict(list(age = age_values), se.fit = TRUE) %>%
+    c(list(age = age_values), .) |> 
     as_tibble() |> 
     mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
            upr = link_inv(fit + qt(1 - p, df) * se.fit),
            fit = link_inv(fit)) |> 
-    select(- se.fit) |> 
-    mutate(est = pmap(list(lwr, upr, fit), beta_parameters, ci, interval, ...)) |> 
-    unnest_wider(est) |> 
-    mutate(meancheck = map2_dbl(alpha, beta, ~ .x / (.x + .y)),
-           rndvalues = map2(alpha, beta, ~ rbeta(n, .x, .y)))
+    select(- se.fit)
+}
+
+
+age_profile_unconstrained <- function(data, age_values = seq(0, 15, le = 512),
+                                      ci = .95) {
+  data |> 
+    group_by(collection) |> 
+    group_map(~ age_profile(.x, age_values, ci))
+}
+
+shift_right <- function(n, x) {
+  if (n < 1) return(x)
+  c(rep(NA, n), head(x, -n))
+}
+
+age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 512),
+                                           ci = .95, n = 100) {
+  dpy <- 365 # number of days per year
+  
+  mean_collection_times <- data |> 
+    group_by(collection) |> 
+    summarise(mean_col_date = mean(col_date2)) |> 
+    with(setNames(mean_col_date, collection))
+  
+  cohorts <- cumsum(c(0, diff(mean_collection_times))) |>
+    divide_by(dpy * mean(diff(age_values))) |> 
+    round() |> 
+    map(shift_right, age_values)
+  
+  age_time <- map2(mean_collection_times, cohorts,
+                   ~ tibble(collection_time = .x, cohort = .y))
+  
+  age_time_inv <- age_time |> 
+    map(~ cbind(.x, age = age_values)) |> 
+    bind_rows() |> 
+    na.exclude()
+
+  data |> 
+# Step 1:
+    group_by(collection) |> 
+    group_modify(~ .x |>
+                   age_profile(age_values, ci) |> 
+                   mutate(across(c(fit, lwr, upr), ~ map(.x, ~ rbinom(n, 1, .x))))) |> 
+    group_split() |> 
+    map2(age_time, bind_cols) |> 
+    bind_rows() |> 
+    unnest(c(fit, lwr, upr)) |>
+    pivot_longer(c(fit, lwr, upr), names_to = "line", values_to = "seropositvty") |> 
+# Step 2a:
+    filter(cohort < max(age) - diff(range(mean_collection_times)) / dpy) |>
+    group_by(cohort, line) |> 
+    group_modify(~ .x %>%
+                   scam(seropositvty ~ s(collection_time, bs = "mpi"), binomial, .) |> 
+                   predict2(list(collection_time = mean_collection_times)) %>%
+                   tibble(collection_time = mean_collection_times,
+                          seroprevalence  = .)) |> 
+    ungroup() |> 
+# Step 2b:
+    left_join(age_time_inv, c("cohort", "collection_time")) |> 
+    group_by(collection_time, line) |> 
+    group_modify(~ .x |>
+                   right_join(tibble(age = age_values), "age") |>          ### added
+                   arrange(age) |>                                         ### added
+                   mutate(across(seroprevalence,
+                                 ~ gam(.x ~ s(age), betar) |>
+                                   predict2(list(age = age_values))))) |>  ### modified
+    ungroup() |> 
+    pivot_wider(names_from = line, values_from = seroprevalence) |> 
+    group_by(collection_time) |> 
+    group_split()
 }
 ```
 
 ```{r}
-mean_col_dates <- hfmd |> 
+constrained_age_profiles_cohort2 <- age_profile_constrained_cohort2(hfmd)
+```
+
+## Attack rate
+
+```{r}
+attack_rates <- map2(head(constrained_age_profiles_cohort2, -1),
+                     constrained_age_profiles_cohort2[-1],
+                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort") |> 
+                       mutate(attack = (fit.y - fit.x) / (1 - fit.x)))
+```
+
+```{r}
+census2019 <- readRDS("D:/OUCRU/hfmd/data/census2019.rds")
+
+age_structure <- census2019 |> 
+  filter(province == "Thành phố Hồ Chí Minh") |> 
+  group_by(age) |> 
+  summarise(n = sum(n)) |> 
+  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |> 
+  arrange(age) |> 
+  filter(age < 17)
+
+with(age_structure,
+     plot(age - 1, n, type = "s", ylim = c(0, 110000), col = 4, lwd = 3,
+          xlab = "age classes (years)", ylab = "number of children"))
+abline(v = 0:15, col = "grey")
+```
+
+## Expected incidence from seroprevalence
+
+```{r}
+mod <- lm(n ~ age, age_structure)
+
+incidences <- map(attack_rates,
+                  ~ mutate(.x, incidence = (1 - fit.x) * attack *
+                                             predict(mod, list(age = age.x))))
+
+incidences %>% 
+  bind_rows(.id = "id") %>% 
+  ggplot(aes(x = age.x, y = incidence,color = id))+
+  geom_line()+
+  coord_cartesian(ylim = c(0,20000))+
+  theme(legend.position = "hide")+
+  theme_minimal()+
+  theme(legend.position = "hide")
+
+```
+
+## Incidence of hospitalization
+
+```{r}
+hfmd_incidence <- readRDS("D:/OUCRU/hfmd/data/hfmd_incidence.rds")
+
+incidence1 <- hfmd_incidence %>% 
+  filter(year(adm_date) == 2023) %>% 
+  mutate(adm_date2 = as.numeric(adm_date),
+         cohort = interval(dob, "2023-01-01") / years(1)) 
+
+
+mean_collection_times <- hfmd |> 
   group_by(collection) |> 
   summarise(mean_col_date = mean(col_date2)) |> 
-  pull(mean_col_date)
-```
+  with(setNames(mean_col_date, collection))
 
-```{r}
-set.seed(123)
-simulations <- map(6:9, simulate_values)
-```
+ouut <- list()
 
-```{r}
-l <- length(simulations[[1]]$rndvalues[[1]])
-
-sim_data <- map2(simulations, mean_col_dates,
-                 ~ .x |>
-                   select(age, rndvalues) |> 
-                   mutate(coll_time = list(rep(.y, l)))) |> 
-  bind_rows()
-```
-
-```{r}
-N <- length(mean_col_dates) * l
-ci <- .95
-
-p <- (1 - ci) / 2
-
-mod <- sim_data |> 
-  filter(age == 0) |> 
-  select(-age) |> 
-  map(unlist) |> 
-  as_tibble() |> 
-  mutate(pos = rbinom(N, 1, rndvalues)) %>%
-  scam(pos ~ s(coll_time, bs = "mpi"), binomial, .)
-
-df <- N - length(coef(mod))
-
-link_inv <- family(mod)$linkinv
-
-mod |>
-  predict(list(coll_time = mean_col_dates), se.fit = TRUE) |>
-  magrittr::extract(c("fit", "se.fit")) %>%
-    c(coll_time = list(mean_col_dates), .) |>
-    as_tibble() |>
-    mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
-           upr = link_inv(fit + qt(1 - p, df) * se.fit),
-           fit = link_inv(fit)) |>
-    select(- se.fit)
-```
-
-28":
-
-```{r}
-models <- sim_data |> 
-  group_by(age) |> 
-  group_map(~ .x |>
-              map(unlist) |> 
-              as_tibble() |> 
-              mutate(pos = rbinom(N, 1, rndvalues)) %>%
-              scam(pos ~ s(coll_time, bs = "mpi"), binomial, .))
-```
-
-```{r}
-a <- map2(models,
-          N - map_int(models, ~ length(coef(.x))),
-          ~{
-            linkinv <- family(.x)$linkinv
-            .x |> 
-            predict(list(coll_time = mean_col_dates), se.fit = TRUE) |> 
-            magrittr::extract(c("fit", "se.fit")) %>%
-            c(coll_time = list(mean_col_dates), .) |>
-            as_tibble() |> 
-            mutate(lwr = link_inv(fit + qt(    p, .y) * se.fit),
-                   upr = link_inv(fit + qt(1 - p, .y) * se.fit),
-                   fit = link_inv(fit)) |> 
-            select(- se.fit)  
-          } ) |>
-  setNames(unique(sim_data$age)) |> 
-  bind_rows(.id = "age") |> 
-  mutate(across(age, as.numeric))
-```
-
-```{r}
-a |> arrange(coll_time, age)
-```
-
-```{r}
-a |> 
-  mutate(across(coll_time, round)) |> 
-  filter(coll_time == 19349) |> 
-  with({
-    plot(age, fit, ylim = 0:1)
-  })
-```
-
-```{r}
-ages <- seq(0, 15, le = 512)
-
-a |> 
-  mutate(across(coll_time, round)) |> 
-  filter(coll_time == 19349) %>%
-  gam(fit ~ s(age), betar, .) |> 
-  predict(list(age = ages), "response")  %>% 
-  plot(ages, .,type = "l",ylim = 0:1)
-```
-
-```{r}
-a |> 
-  mutate(across(coll_time, round)) |> 
-  filter(coll_time == 19349) |> 
-  with({
-    plot(age, fit, ylim = 0:1)
-  })
-```
-
-```{r}
-a |> 
-  mutate(across(coll_time, round)) |> 
-  filter(coll_time == 19457) |> 
-  with({
-    plot(age, fit, ylim = 0:1)
-  })
-```
-
-```{r}
-a |> 
-  mutate(across(coll_time, round)) |> 
-  filter(coll_time == 19580) |> 
-  with({
-    plot(age, fit, ylim = 0:1)
-  })
-```
-
-```{r}
-a |> 
-  mutate(across(coll_time, round)) |> 
-  filter(coll_time == 19700) |> 
-  with({
-    plot(age, fit, ylim = 0:1)
-  })
-```
-
-## Plot
-
-```{r}
-smothh <- function(timee){
-  dt_fit <- a |> 
-    mutate(across(coll_time, round)) |> 
-    filter(coll_time == timee)
-  
-  mod_fit <- gam(fit ~ s(age, k = 30), data = dt_fit)
-  mod_lwr <- gam(lwr ~ s(age, k = 30), data = dt_fit)
-  mod_upr <- gam(upr ~ s(age, k = 30), data = dt_fit)
-  
-  # Predict smooths
-  tibble(age = seq(min(dt_fit$age), max(dt_fit$age), length.out = 500)) %>%
-    mutate(
-      fit = predict(mod_fit, newdata = .),
-      lwr = predict(mod_lwr, newdata = .),
-      upr = predict(mod_upr, newdata = .)
-    )  
+for (i in 1:3){
+  ouut[[i]] <- incidence1 %>% 
+    filter(adm_date2 >= as.numeric(mean_collection_times[i]) & 
+             adm_date2 <= as.numeric(mean_collection_times[i+1])) %>% 
+    mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>% 
+    na.omit(age_gr) %>%
+    group_by(age_gr) %>% 
+    count() %>% 
+    mutate(age_gr2 = as.numeric(age_gr)) %>% 
+    gam(n ~ s(age_gr2),data = .) %>% 
+    predict(list(age_gr2 = incidences[[i]]$age.x))%>%
+    tibble(age = incidences[[i]]$age.x,
+           incidence  = .)
 }
+
+ouut %>% 
+  bind_rows(.id = "id") %>% 
+  ggplot(aes(x = age, y = incidence,color = id))+
+  geom_line()+
+  coord_cartesian(ylim = c(0,10000))+
+  theme_minimal()+
+  theme(legend.position = "hide")
 ```
 
-```{r,message=FALSE}
-#| fig-width: 15
-#| fig-height: 9
-#| out-width: "100%"
-#| fig-format: png
-library(tidyverse)
+## Probability of hospitalization
 
-map(c(19349,19457,19580,19700),smothh) |>
-  bind_rows() %>% 
-  mutate(col_time = rep(c(19349,19457,19580,19700),each = 500),
-         col_time = factor(col_time,
-                           levels = c(19349,19457,19580,19700),
-                           labels = c("Dec 2022",
-                                      "Apr 2023",
-                                      "Aug 2023",
-                                      "Dec 2023"))) %>% 
-  ggplot(aes(x = age, y = fit)) +
-  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
-  geom_line(color = "blue") +
-  facet_wrap(~col_time,nrow = 1)+
-  labs(y = "Smoothed fit", x = "Age") +
-  ylim(c(0,1))+
-  theme_minimal()
+```{r}
+map2(ouut, incidences, ~inner_join(.x, .y, by = join_by(age == age.x)) %>% 
+       mutate(prob = (incidence.x/incidence.y)*100)) %>% 
+  bind_rows(.id = "id") %>% 
+  ggplot(aes(x = age, y = prob,color = id))+
+  geom_line()+
+  theme_minimal()+
+  theme(legend.position = "hide")
 ```
+
