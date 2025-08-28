@@ -282,7 +282,6 @@ data %>%
   add_p()
 ```
 
-
 ## Figure 2: Compare attack rate and seroprevalence per age group over time
 
 ```{r}
@@ -477,68 +476,92 @@ ggsave("./fig_manuscript/fig3.svg",
 
 <!-- ::: panel-tabset -->
 
-
 <!-- ### 0-3 age group -->
 
 <!-- ```{r} -->
+
 <!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+
 <!--   filter(PANEL == 1) %>% select(x,y,ymin,ymax)  %>%  -->
+
 <!--   mutate(y = y*100 , -->
+
 <!--          ymin = ymin*100, -->
+
 <!--          ymax= ymax*100) -->
+
 <!-- ``` -->
 
-
 <!-- ### 3-6 age group -->
-
 
 <!-- ```{r} -->
 
 <!-- ## 3-6 age group -->
 
 <!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+
 <!--   filter(PANEL == 2) %>% select(x,y,ymin,ymax)  %>%  -->
+
 <!--   mutate(y = y*100 , -->
+
 <!--          ymin = ymin*100, -->
+
 <!--          ymax= ymax*100) -->
+
 <!-- ``` -->
 
 <!-- ### 6-9 age group -->
 
 <!-- ```{r} -->
+
 <!-- ## 6-9 age group -->
 
 <!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+
 <!--   filter(PANEL == 3) %>% select(x,y,ymin,ymax)  %>%  -->
+
 <!--   mutate(y = y*100 , -->
+
 <!--          ymin = ymin*100, -->
+
 <!--          ymax= ymax*100) -->
+
 <!-- ``` -->
 
 <!-- ### 9-12 age group -->
 
 <!-- ```{r} -->
+
 <!-- ## 9-12 age group -->
 
 <!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+
 <!--   filter(PANEL == 4) %>% select(x,y,ymin,ymax)  %>%  -->
+
 <!--   mutate(y = y*100 , -->
+
 <!--          ymin = ymin*100, -->
+
 <!--          ymax= ymax*100) -->
+
 <!-- ``` -->
-
-
 
 <!-- ### 12-15 age group -->
 
 <!-- ```{r} -->
+
 <!-- ## 12-15 age group -->
 
 <!-- ggplot_build(sp_agr)$data[[2]] %>% mutate(across(x, as.Date)) %>%  -->
+
 <!--   filter(PANEL == 5) %>% select(x,y,ymin,ymax)  %>%  -->
+
 <!--   mutate(y = y*100 , -->
+
 <!--          ymin = ymin*100, -->
+
 <!--          ymax= ymax*100) -->
+
 <!-- ``` -->
 
 <!-- ::: -->
@@ -569,7 +592,6 @@ predict2 <- function(x, ci = .95, le = 512, m = 100) {
     select(- se.fit)
 }
 ```
-
 
 ```{r}
 m <- 100
@@ -666,7 +688,6 @@ plot1223 <-  glm(pos ~ age + I(age^2) + I(age^3), binomial, data = t1223) |>
   annotate("text", x = 3, y = 90, label = c("Dec 2023"),size = 6)
 ```
 
-
 ```{r}
 df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
   filter(!is.na(adm_week) ) %>%
@@ -702,8 +723,6 @@ ts2 <- ggplot()+
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18))
 ```
-
-
 
 ```{r}
 #| fig-width: 15
@@ -952,7 +971,6 @@ constrained_gam <- constrained_age_profiles %>%
 
 ```
 
-
 ```{r}
 #| fig-width: 15
 #| fig-height: 7
@@ -963,7 +981,6 @@ constrained_gam/
 ggsave("./fig_manuscript/glm_pava.svg",
        width = 15,height = 8,dpi = 500)
 ```
-
 
 ## Supplementary plot
 
@@ -1107,7 +1124,6 @@ ggsave("./fig_manuscript/sup1.svg",
        width = 15,height = 8,dpi = 500)
 ```
 
-
 ## Figure 4: Calibration plot
 
 ```{r}
@@ -1158,4 +1174,3 @@ ggsave("./fig_manuscript/sup1.svg",
 # calibration_plot(data = data.frame(y = model_clb$y,pred = model_clb$pred),
 #                  obs = "y", pred = "pred")
 ```
-

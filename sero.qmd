@@ -974,8 +974,7 @@ sp1222 | sp0423 | sp0823 | sp1223
 # ggsave("D:/OUCRU/hfmd/figure/EV71 present/uncon.png",dpi = 500,width = 15,height = 8,bg = "white")
 ```
 
-
-# new method 
+# new method
 
 ```{r}
 ### data
@@ -1040,7 +1039,6 @@ age_label <- col_date_ex$age_gr %>%
 
 age_label
 ```
-
 
 ```{r}
 age_values = seq(0, 15, le = 512)
@@ -1123,7 +1121,6 @@ sp_time_agegr <- sim_constr %>%
 sp_time_agegr
 ```
 
-
 ```{r}
 sp_time_agegr %>% 
   ggplot(aes(x = as.Date(date) , y = fit))+
@@ -1132,5 +1129,3 @@ sp_time_agegr %>%
   facet_wrap(~age_gr,ncol = 5)+
   ylim(0,1)
 ```
-
-

@@ -317,10 +317,9 @@ ggplot(data_pt,
   theme(axis.text.x = element_text(vjust = 0.5,angle = 45))
 ```
 
-
 ## Investigate location of 0-3 year-old serosample
 
-### Total collected samples 
+### Total collected samples
 
 ```{r}
 #| fig-width: 13
@@ -359,8 +358,7 @@ df_plot2 %>%
 
 ```
 
-
-### Total collected positive samples 
+### Total collected positive samples
 
 ```{r}
 #| fig-width: 13
@@ -397,4 +395,3 @@ df_plot2 %>%
   theme(legend.position = "bottom")
 
 ```
-

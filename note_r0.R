@@ -339,25 +339,29 @@ data_result %>%
   theme_minimal()+
   theme(legend.position = "bottom")
 
-data_result %>%
+data_result %>% filter(district != "Thủ Đức") %>%
   ggplot(aes(x = time))+
   geom_line(aes(y = beta.beta))+
+  geom_ribbon(aes(ymin = beta.betalow,
+                  ymax = beta.betahigh),fill = "blue",alpha = 0.3)+
   facet_wrap(~district,ncol = 4)+
-  labs(x = "time", y ="contact rate")
+  labs(x = "time", y ="contact rate")+
+  scale_x_continuous(breaks = c(2022,2023,2024))+
+  theme_minimal()
 
 
-data_result %>%
-  group_by(district) %>%
-  group_modify(~.x %>% mutate(r0 = beta.beta*s)) %>%
-  bind_rows() %>% filter(time > 2023 & district != "Thủ Đức") %>%
-  ggplot(aes(x = as.factor(beta.time),
-              y = district,
-              fill = r0)) +
-  geom_tile()+
-  scale_fill_gradient(low="yellow", high="red",
-                      name = "Median of R(0)")+
-  theme_minimal()+
-  theme(legend.position = "bottom")
+# heatmap_r0 <- data_result %>%
+#   group_by(district) %>%
+#   group_modify(~.x %>% mutate(r0 = beta.beta*s)) %>%
+#   bind_rows() %>% filter(time > 2023 & district != "Thủ Đức") %>%
+#   ggplot(aes(x = as.factor(beta.time),
+#               y = district,
+#               fill = r0)) +
+#   geom_tile()+
+#   scale_fill_gradient(low="yellow", high="red",
+#                       name = "Median of R(0)")+
+#   theme_minimal()+
+#   theme(legend.position = "bottom")
 
 r0_hit <- data_result %>%
   group_by(district) %>%
@@ -369,10 +373,82 @@ r0_hit <- data_result %>%
             p75_r0 = quantile(r0,0.75),
             hit = (1 - (1/median_r0))*100)
 
-r0_hit %>% View()
+## HAC
+
+beta_2023_district <- data_result %>%
+  filter(time > 2023) %>%
+  select(district,beta.time,beta.beta) %>%
+  pivot_wider(names_from = beta.time,values_from = beta.beta)
+
+library(ggdendro)
+beta_2023_district <- column_to_rownames(beta_2023_district, var = "district")
+
+d <- stats::dist(beta_2023_district)
+
+treeC <- hclust(d, method="ward.D2")
+dg <- as.dendrogram(treeC)
+ddata_analytes <- dendro_data(dg, type = "rectangle")
+
+HAC_district <- ggplot() +
+  geom_segment(
+    data = segment(ddata_analytes),
+    aes(x = x, y = y, xend = xend, yend = yend),
+    position = position_nudge(x = -0.5)
+  ) +
+  coord_flip(clip = "off") +
+  scale_y_reverse() +
+  scale_x_continuous(limits = c(0, 22), expand = c(0, 0)) +
+  theme_dendro() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "mm"))
+  geom_text(
+    data = label(ddata_analytes),
+    aes(x = x, y = -1, label = label),
+    size = 3.5, color = "#444444", vjust = 2, angle = 0, hjust = 0
+  )
+
+disaaa <- label(ddata_analytes)[3] %>% as.data.frame() %>% pull(label) %>% as.character()
+
+heatmap_r0 <- data_result %>%
+  group_by(district) %>%
+  group_modify(~.x %>% mutate(r0 = beta.beta*s)) %>%
+  bind_rows() %>% filter(time > 2023 & district != "Thủ Đức") %>%
+  ggplot(aes(x = as.factor(beta.time),
+             y = factor(district,levels = disaaa),
+             fill = r0)) +
+  geom_tile()+
+  # scale_fill_paletteer_c("grDevices::Inferno")+
+  scale_fill_gradient(low="yellow", high="red",
+                      name = "Median of R(0)")+
+  scale_y_discrete(position = "right")+
+  scale_x_discrete(name = "Contact rate")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank())
+
+HAC_district + heatmap_r0 +
+  plot_layout(widths = c(1,2))
+
+library(paletteer)
+library(patchwork)
+
+
+cut <- cutree(treeC, k=5) %>% as.data.frame() %>%
+  rownames_to_column(var = "district")
+colnames(cut) <- c("district","cluster")
+
+cut %>% mutate(district2 = stri_trans_general(cut$district, "latin-ascii") %>%
+                    tolower() %>%
+                    str_remove("district") %>%
+                    trimws(which = "both")) %>%
+left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
+  ggplot() +
+  geom_sf(aes(fill = factor(cluster)),show.legend = T)+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
 
 # HCMC map
 library(sf)
+library(stringi)
 map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
 vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
 
@@ -390,7 +466,6 @@ qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
   st_union()
 
 qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
-library(stringi)
 qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
   tolower() %>%
   str_remove("district") %>%
@@ -416,3 +491,37 @@ left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
                           name = "Median of R0")+
     geom_sf_text(aes(label = nl_name_2),size=2.5)+
     theme_void()
+
+data_result %>%
+  group_by(district) %>%
+  group_modify(~.x %>% mutate(r0 = beta.beta*s,
+                              beta.time = beta.time*2)) %>%
+  bind_rows() %>% filter(time > 2023 & district != "Thủ Đức") %>%
+  ggplot(aes(x = as.factor(beta.time),
+             y = factor(district,levels = disaaa),
+             fill = r0)) +
+  geom_tile()+
+  # scale_fill_paletteer_c("grDevices::Inferno")+
+  scale_fill_gradient(low="yellow", high="red",
+                      name = "R0")+
+  scale_y_discrete(position = "right")+
+  scale_x_discrete(name = "Week")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank())
+
+ca <- dt_tsir_district_2223 %>%
+  group_by(district_reg) %>%
+  group_modify(~.x %>% mutate(time = seq(2022, 2024, length.out = 52))) %>%
+  ungroup() %>% select(district_reg,time,biweek_cases,predicted,population) %>%
+  group_by(time) %>%
+  summarise(cases = sum(biweek_cases)) %>%
+  filter(time > 2023) %>% mutate(biweek = (1:nrow(.))*2) %>%
+  ggplot(aes(x = biweek, y =cases)) +
+  geom_bar(stat = "identity")+
+  theme_minimal()+
+  scale_x_discrete(breaks = seq(2,52,by=2),expand = expansion(add = c(0, 0)))+
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank())
+
+
