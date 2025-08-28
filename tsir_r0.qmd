@@ -1,0 +1,533 @@
+---
+title: "Estimating the basic reproduction rate of HFMD using the time series SIR model in Ho Chi Minh City"
+author: 'Nguyen Pham Nguyen The'
+date: last-modified
+date-format: "MM-DD-YYYY"
+title-block-banner: "#002147"
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-title: Summary
+    code-fold: true
+    number-sections: true
+editor: visual
+message: false
+warning: false
+echo: true
+bibliography: references.bib
+---
+
+Based on Du Z's article [@du2017], which used the tSIR model to estimate the basic reproduction number ($R_0$) in Guangdong, China, I applied the tSIR model to calculate $R_0$ at the district level in Ho Chi Minh City during 2023 outbreak.
+
+## Data
+
+- I used HFMD surveillance data from 2022–2023. Although we have time-series incidence data from 2013–2023, my previous analysis showed that the performance of the tSIR model was affected by COVID-19 quarantine measures. See [here]( https://oucru-modelling.github.io/hfm/#tsir-model). The case data were aggregated biweekly.
+
+- We obtained birth data for each district in Ho Chi Minh City from 2017–2022. I aggregated the data biweekly and used a GAM model to fit the birth trends across biweeks of each year (1–26), from biweek 1 of 2017 to biweek 5 of 2022 (week 135). The model used was: 
+$$
+birth \sim biweek_{1-26} + biweek_{1-135}
+$$ 
+and predictions were extended to week 182 (week 16 of 2023).
+
+- For population data, I used the 2019 census and searched for the annual population growth rate from 2019–2024. Using this, I generated a biweekly population sequence for each district.
+
+```{r,message=FALSE,warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(mgcv)
+library(patchwork)
+library(odin)
+library(tsiR)
+library(janitor)
+invisible(Sys.setlocale("LC_TIME", "English"))
+```
+
+```{r}
+#### birth data
+hcm_birth_data <- readRDS("D:/OUCRU/hfmd/hcm_birth_data.rds")
+hcm_birth_data$district_reg <- hcm_birth_data$district_reg %>%
+  str_replace_all(c("Quận 2"  = "Thủ Đức",
+                    "Quận 9"  = "Thủ Đức"))
+
+hcm_birth_data$district_reg <- hcm_birth_data$district_reg %>% str_replace_all(
+  c( "Gò vấp"  = "Gò Vấp"))
+
+hcm_birth_data$district_reg <- hcm_birth_data$district_reg %>%
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both")
+
+birth_district <- hcm_birth_data %>%
+  group_by(district_reg) %>%
+  group_modify(~ .x |> filter(birth_year >= 2017)%>%
+                 group_by(birth_week,birth_year) %>%
+                 summarise(n = sum(n),.groups = "drop") %>%
+                 mutate(birth_week = replace(birth_week, birth_week == 53, 52),
+                        biweek = (birth_week + 1) %/% 2) %>%
+                 arrange(birth_year) %>%
+                 group_by(birth_year, biweek) %>%
+                 summarise(biweek_birth = sum(n), .groups = "drop") %>%
+                 mutate(biweek2 = 1:nrow(.))
+                 )
+
+cutpoint <- 135
+
+birth_district2 <- birth_district %>% filter(biweek2 <= cutpoint) %>%
+  group_split()
+
+modelaa <- birth_district %>% filter(biweek2 <= cutpoint) %>%
+  group_split() %>%
+  map(\(df)gam(biweek_birth ~ s(biweek) + s(biweek2),method = "REML",data = df))
+
+newdata <- data.frame(
+  biweek  = rep(1:26, 2024 - 2017),
+  biweek2 = 1:(26 * (2024 - 2017))
+)
+
+predicted_birth_district <- map2_dfr(modelaa, birth_district2, \(mod, df) {
+  newdata %>%
+    mutate(
+      predicted   = predict(mod, newdata = newdata, type = "response"),
+      district_reg = unique(df$district_reg),
+      birth_year = rep(2017:2023, each = 26)
+    )
+})
+```
+
+```{r}
+#| fig-width: 15
+#| fig-height: 12
+#| out-width: "100%"
+#| fig-cap: Results of the GAM model for birth data in each district of Ho Chi Minh City. 
+## plot
+predicted_birth_district %>%
+  ggplot(aes(x = biweek2,y = predicted)) +
+  geom_line()+
+  geom_point(data = birth_district2 %>% bind_rows(),aes(x = biweek2,y = biweek_birth))+
+  facet_wrap(~district_reg,ncol  = 4,scales = "free")+
+  theme_minimal()
+```
+
+```{r}
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx", 
+                  col_types = c("date", "numeric", "text", 
+                                "text", "text", "date", "date", "date", 
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
+
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>% 
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both") 
+
+case_district <- df1 %>%
+  group_by(district) %>%
+  group_modify(~ .x |> filter(year(adm_date) >= 2017 & year(adm_date) <= 2023) %>%
+                 group_by(adm_week) %>% count() %>%
+                 mutate(week = week(adm_week),
+                        year = year(adm_week),
+                        week = replace(week, week == 53, 52),
+                        biweek = (week + 1) %/% 2) %>%
+                 group_by(year, biweek) %>%
+                 summarise(biweek_cases = sum(n), .groups = "drop")
+               )
+
+case_birth_district_1723 <- full_join(predicted_birth_district,case_district,
+          by =c(
+            "district_reg" = "district",
+            "birth_year" = "year",
+            "biweek" = "biweek"
+          ))
+```
+
+```{r}
+## population
+census2019 <- readRDS("D:/OUCRU/hfmd/data/census2019.rds")
+census2019$district <- census2019$district %>%
+  str_replace_all(c("Quận 2"  = "Quận Thủ Đức",
+                    "Quận 9"  = "Quận Thủ Đức")) %>%
+  str_remove_all("Quận|Huyện") %>%
+  trimws(which = "both")
+
+
+popqh <- census2019 %>% filter(province == "Thành phố Hồ Chí Minh") %>%
+  group_by(district) %>% summarise(pop = sum(n))
+
+r1920 <- 9227.6/9038.6
+r2021 <- 9166.8/9227.6
+r2122 <- 9389.7/9166.8
+r2223 <- 9456.7/9389.7
+
+popqh$pop20 <- popqh$pop*r1920
+popqh$pop21 <- popqh$pop20*r2021
+popqh$pop22 <- popqh$pop21*r2122
+popqh$pop23 <- popqh$pop22*r2223
+popqh$pop24 <- popqh$pop23*r2223
+
+pop_district <- popqh %>%
+  pivot_longer(
+    cols = starts_with("pop"),
+    names_to = "year",
+    values_to = "population"
+  ) %>%
+  mutate(
+    year = case_when(
+      year == "pop" ~ 2019L,  # base year
+      TRUE ~ as.integer(sub("pop", "20", year))
+    )
+  ) %>%
+  arrange(district, year) %>%
+  group_by(district) %>%
+  arrange(year) %>%
+  mutate(next_pop = lead(population),
+         next_year = lead(year)) %>%
+  filter(!is.na(next_pop)) %>%
+  group_by(district, year) %>%
+  do({
+    tibble(
+      district = .$district,
+      year = .$year,
+      biweek = 1:26,
+      population = seq(.$population, .$next_pop, length.out = 27)[-27]  # exclude endpoint
+    )
+  })
+```
+
+## Method and results
+
+### tSIR model
+
+I aggregated the data into bi-weekly time steps, and there are twenty-six period $period_1,...,period_{26})$ per year. The $cases_t$ was adjusted to the infected part $I_{adj,t}$ for the TSIR model by multiplying by a derivative function:
+
+$$
+\begin{align}
+\rho = \frac{d\hat{Y}_{cumBirths}}{dX_{cumCases}} \\
+I_{adj,t} = cases_t \times \rho
+\end{align}
+$$
+
+The cumulate number of cases $(X_{cumCases})$ and births $(Y_{cumBiths})$ were calculated by  the numbers of HFMD cases $(cases_t)$ and the births. The $\hat{Y}_{cumBirths}$  was obtained by fitting the locally weighted scatterplot smoothing (LOWESS) non-parametric regression:
+
+$$
+\hat{Y}_{cumBirths} = Lowess(X_{cumCases},Y_{cumBirths},f = 2/3)
+$$
+
+```{r,warning=FALSE,message=FALSE,results='hide'}
+pop_district2223 <- pop_district %>%
+  filter(year >= 2022)
+
+case_birth_district_2223 <- case_birth_district_1723 %>%
+  mutate(biweek_cases = replace_na(biweek_cases, 1)) %>%
+  filter(birth_year >= 2022)
+
+
+dt_tsir_district_2223 <- full_join(case_birth_district_2223,pop_district2223,
+                                      by =c(
+                                        "district_reg" = "district",
+                                        "birth_year" = "year",
+                                        "biweek" = "biweek"
+                                      )) %>%
+  select(district_reg,birth_year,biweek_cases,predicted,population)
+
+outcome <- dt_tsir_district_2223 %>%
+  group_by(district_reg) %>%
+  group_modify(~.x %>% mutate(time = seq(2022, 2024, length.out = 52))) %>%
+  ungroup() %>% select(district_reg,time,biweek_cases,predicted,population) %>%
+  magrittr::set_colnames(c("district","time","cases","births","pop")) %>%
+  group_by(district) %>%
+  group_split() %>%
+  map(\(df)runtsir(data = df[,-1], IP = 2, xreg = "cumcases",
+                   regtype = "lowess",alpha = NULL, sbar = NULL,
+                   method = "deterministic", nsim = 1000,
+                   family = "gaussian", link = "identity"))
+
+bbbbb <- map(outcome, ~ data.frame(
+  time = .x$time,
+  fit = .x$res$mean,
+  s = .x$simS$mean,
+  beta = .x$contact
+))
+
+aaaaa <- dt_tsir_district_2223 %>%
+  group_by(district_reg) %>%
+  group_modify(~.x %>% mutate(time = seq(2022, 2024, length.out = 52))) %>%
+  ungroup() %>% select(-birth_year) %>%
+  magrittr::set_colnames(c("district","cases","births","pop","time")) %>%
+  group_by(district) %>%
+  group_split()
+
+data_result <- map2(aaaaa, bbbbb, ~ left_join(.x, .y, by = "time"))%>%
+  bind_rows()
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+#| out-width: "100%"
+#| fig-cap: Result of tSIR fitting
+## plot
+data_result %>%
+  ggplot(aes(x = time))+
+  geom_line(aes(group = 1,y = cases,linetype = "cases reported"))+
+  geom_line(aes(group = 1,y = fit,linetype = "model fitted"))+
+  facet_wrap(~district,scales = "free",ncol = 4)+
+  scale_linetype_manual(values = c("cases reported" = "dashed",
+                                   "model fitted" = "solid"),
+                        name="Analysis Type")+
+  scale_x_continuous(breaks = c(2022,2023,2024))+
+  theme_bw()+
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+#| out-width: "100%"
+#| fig-cap: Infectious contact rate of each district from 2022 to 2023
+
+data_result %>% filter(district != "Thủ Đức") %>%  
+  ggplot(aes(x = time))+
+  geom_line(aes(y = beta.beta))+
+  geom_ribbon(aes(ymin = beta.betalow,
+                  ymax = beta.betahigh),fill = "blue",alpha = 0.3)+
+  facet_wrap(~district,ncol = 4)+
+  labs(x = "time", y ="contact rate")+
+  scale_x_continuous(breaks = c(2022,2023,2024))+
+  theme_minimal()
+```
+
+::: {.callout-note title="Finding"}
+
+While the number of HFMD cases in District 1 is relatively low, the contact rate during outbreaks is notably the highest among all districts.
+
+:::
+
+### Basic reproduction rate and herd immunity threshold
+
+The $R_0$ was derived according to the concepts of the next generation matrix. While the next generation matrix was replaced by the seasonal transmission parameters $\beta_{1,...,26}$ in our study. The $\beta_{1,...,26}$ were the regression coefficients of the tSIR model, and could be estimated by using the algorithm of iteratively reweighted least squares (IRLS)
+
+$$
+R0_{1,...,26} = \beta_{1,...,26}\times \bar{S}
+$$
+
+Herd immunity threshold (HIT) is the proportion of a population that must be vaccinated to become immune so that an infectious disease can become stable in that community. When the proportion is
+reached by vaccination, each case leads to a single new case and the infection becomes stable.
+We calculated the HIT by:
+
+$$
+HIT = 1 - \frac{1}{R0}
+$$
+
+#### District-specific R0 and HIT of HFMD in HCMC.
+
+```{r}
+r0_hit <- data_result %>%
+  group_by(district) %>%
+  filter(time > 2023 & district != "Thủ Đức") %>%
+  group_modify(~.x %>%
+                 mutate(r0 = beta.beta*s)) %>%
+  summarise(p25_r0 = quantile(r0,0.25),
+            median_r0 = median(r0),
+            p75_r0 = quantile(r0,0.75),
+            hit = (1 - (1/median_r0))*100)
+
+r0_hit <- r0_hit %>% filter(hit > 0) %>% as.data.frame()
+library(knitr)
+kable(r0_hit)
+```
+
+#### Heatmap and dendrogram of R0
+
+```{r,message=FALSE,warning=FALSE,results='hide'}
+library(ggdendro)
+library(patchwork)
+
+beta_2023_district <- data_result %>% 
+  filter(time > 2023) %>% 
+  select(district,beta.time,beta.beta) %>% 
+  pivot_wider(names_from = beta.time,values_from = beta.beta)
+
+beta_2023_district <- column_to_rownames(beta_2023_district, var = "district")
+d <- stats::dist(beta_2023_district)
+
+treeC <- hclust(d, method="ward.D2")
+dg <- as.dendrogram(treeC)
+ddata_analytes <- dendro_data(dg, type = "rectangle")
+
+HAC_district <- ggplot() +
+  geom_segment(
+    data = segment(ddata_analytes),
+    aes(x = x, y = y, xend = xend, yend = yend),
+    position = position_nudge(x = -0.5)
+  ) +
+  coord_flip(clip = "off") +
+  scale_y_reverse() +
+  scale_x_continuous(limits = c(0, 22), expand = c(0, 0)) +
+  theme_dendro() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "mm"))
+  geom_text(
+    data = label(ddata_analytes),
+    aes(x = x, y = -1, label = label),
+    size = 3.5, color = "#444444", vjust = 2, angle = 0, hjust = 0
+  ) 
+
+disaaa <- label(ddata_analytes)[3] %>% as.data.frame() %>% pull(label) %>% as.character()
+
+heatmap_r0 <- data_result %>%
+  group_by(district) %>%
+  group_modify(~.x %>% mutate(r0 = beta.beta*s,
+                              beta.time = beta.time*2)) %>%
+  bind_rows() %>% filter(time > 2023 & district != "Thủ Đức") %>%
+  ggplot(aes(x = as.factor(beta.time),
+             y = factor(district,levels = disaaa),
+             fill = r0)) +
+  geom_tile()+
+  # scale_fill_paletteer_c("grDevices::Inferno")+
+  scale_fill_gradient(low="yellow", high="red",
+                      name = "R0")+
+  scale_y_discrete(position = "right")+
+  scale_x_discrete(name = "Week")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size  = 10),
+        axis.text.y = element_text(size  = 10))
+
+ca <- dt_tsir_district_2223 %>%
+  group_by(district_reg) %>%
+  group_modify(~.x %>% mutate(time = seq(2022, 2024, length.out = 52))) %>%
+  ungroup() %>% select(district_reg,time,biweek_cases,predicted,population) %>% 
+  group_by(time) %>% 
+  summarise(cases = sum(biweek_cases)) %>% 
+  filter(time > 2023) %>% mutate(biweek = (1:nrow(.))*2) %>% 
+  ggplot(aes(x = biweek, y =cases)) + 
+  geom_bar(stat = "identity")+
+  theme_minimal()+
+  scale_x_discrete(breaks = seq(2,52,by=2))+
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+```
+
+```{r}
+#| fig-width: 13
+#| fig-height: 8
+#| out-width: "100%"
+#| fig-cap: Heatmap of bi-weekly R0 by district. The dendrogram on the left side was the result of the clustering analysis
+
+up <- (plot_spacer()+ca)+
+  plot_layout(widths = c(1,2))
+
+down <- (HAC_district + heatmap_r0 )+
+  plot_layout(widths = c(1,2))
+
+up /
+  down +
+  plot_layout(heights = c(1,3))
+```
+
+### Cluster analysis
+
+Based on patterns of biweekly $R_0$, I applied hierarchical clustering. Then, based on the dendrogram and I cut the tree to 5 branches and plotted the results on a map to explore potential geographical relationships between clusters.
+
+
+```{r,message=FALSE,warning=FALSE,results='hide'}
+## setup hcm map
+
+library(sf)
+library(stringi)
+map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
+vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
+
+vn_qh1 <- vn_qh %>%
+  clean_names() %>%     ## cho thành chữ thường
+  filter(
+    str_detect(
+      name_1,
+      "Hồ Chí Minh"
+    )
+  )
+qhtp <- vn_qh1[-c(14,21),]
+
+qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
+  st_union()
+
+qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
+qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
+  tolower() %>%
+  str_remove("district") %>%
+  trimws(which = "both")
+
+qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
+                    "HM","NB","PN","1","10","11","12",
+                    "3","4","5","6","7","8","TB",
+                    "TP","TĐ")
+```
+
+```{r,warning=FALSE,message=FALSE}
+#| fig-width: 12
+#| fig-height: 9 
+#| out-width: "100%"
+
+cut <- cutree(treeC, k=5) %>% as.data.frame() %>% 
+  rownames_to_column(var = "district") 
+colnames(cut) <- c("district","cluster")
+
+cut %>% 
+  mutate(district2 = stri_trans_general(cut$district, "latin-ascii") %>%
+                    tolower() %>%
+                    str_remove("district") %>%
+                    trimws(which = "both")) %>% 
+  filter(district != "Thủ Đức") %>% 
+left_join(qhtp, ., by = join_by(varname_2 == district2)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = factor(cluster)),show.legend = T)+
+  scale_fill_discrete(name = "Cluster",na.translate = FALSE)+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
+```
+
+::: {.callout-note title="Finding"}
+There was a geographical relationship between districts within each cluster. 
+:::
+
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+#| fig-width: 10
+#| fig-height: 8 
+#| out-width: "100%"
+# r0_hit %>% mutate(district2 = stri_trans_general(r0_hit$district, "latin-ascii") %>%
+#                       tolower() %>%
+#                       str_remove("district") %>%
+#                       trimws(which = "both")) %>%
+# left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
+#   ggplot() +
+#     geom_sf(aes(fill = median_r0),show.legend = T)+
+#     scale_fill_continuous(low="yellow", high="red",
+#                           guide="colorbar",na.value="white",
+#                           name = "Median of R0")+
+#     geom_sf_text(aes(label = nl_name_2),size=2.5)+
+#     theme_void()
+```
+
+## Discussion
+
+- The patterns of $R_0$ for each district correspond well with the incidence data.
+
+- District 1 has the highest median $R_0$, despite having a relatively low number of reported cases. This can be explained by its high contact rate, due to its role as the central area of Ho Chi Minh City, with a large volume of travelers, numerous schools, hospitals, and public activities. Nearby districts, such as Districts 10 and 4, have the second-highest median $R_0$ values. This reflects a geographical relationship among districts in the central area.
+
+- This analysis provides a clearer picture of the HFMD burden in Ho Chi Minh City, highlighting how transmission intensity is concentrated in areas with high population mobility and dense infrastructure.
+
+- In this analysis, I estimated two key epidemiological parameters—$R_0$ and the herd immunity threshold ($HIT$)—for HFMD transmission in 2023. This information can support decision-making in controlling and preventing HFMD outbreaks. For example, if an HFMD vaccine is implemented in Ho Chi Minh City, we can prioritize District 1 and nearby districts that share similar patterns identified through clustering analysis. Our target would be to achieve the herd immunity threshold in each district.
+
+- For the clustering analysis, we grouped districts with similar infectious patterns and geographical relationships. This approach can help guide more effective prevention and control strategies by targeting groups of districts rather than treating them individually.
