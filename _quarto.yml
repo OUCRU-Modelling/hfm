@@ -21,6 +21,7 @@ book:
     - sero_description.qmd
     - fig_manu.qmd
     - analysis_N.qmd
+    - tsir_r0.qmd
 
 format:
   html:

@@ -22,15 +22,13 @@ Based on Du Z's article [@du2017], which used the tSIR model to estimate the bas
 
 ## Data
 
-- I used HFMD surveillance data from 2022–2023. Although we have time-series incidence data from 2013–2023, my previous analysis showed that the performance of the tSIR model was affected by COVID-19 quarantine measures. See [here]( https://oucru-modelling.github.io/hfm/#tsir-model). The case data were aggregated biweekly.
+-   I used HFMD surveillance data from 2022–2023. Although we have time-series incidence data from 2013–2023, my previous analysis showed that the performance of the tSIR model was affected by COVID-19 quarantine measures. See [here](https://oucru-modelling.github.io/hfm/#tsir-model). The case data were aggregated biweekly.
 
-- We obtained birth data for each district in Ho Chi Minh City from 2017–2022. I aggregated the data biweekly and used a GAM model to fit the birth trends across biweeks of each year (1–26), from biweek 1 of 2017 to biweek 5 of 2022 (week 135). The model used was: 
-$$
-birth \sim biweek_{1-26} + biweek_{1-135}
-$$ 
-and predictions were extended to week 182 (week 16 of 2023).
+-   We obtained birth data for each district in Ho Chi Minh City from 2017–2022. I aggregated the data biweekly and used a GAM model to fit the birth trends across biweeks of each year (1–26), from biweek 1 of 2017 to biweek 5 of 2022 (week 135). The model used was: $$
+    birth \sim biweek_{1-26} + biweek_{1-135}
+    $$ and predictions were extended to week 182 (week 16 of 2023).
 
-- For population data, I used the 2019 census and searched for the annual population growth rate from 2019–2024. Using this, I generated a biweekly population sequence for each district.
+-   For population data, I used the 2019 census and searched for the annual population growth rate from 2019–2024. Using this, I generated a biweekly population sequence for each district.
 
 ```{r,message=FALSE,warning=FALSE}
 library(tidyverse)
@@ -214,7 +212,7 @@ I_{adj,t} = cases_t \times \rho
 \end{align}
 $$
 
-The cumulate number of cases $(X_{cumCases})$ and births $(Y_{cumBiths})$ were calculated by  the numbers of HFMD cases $(cases_t)$ and the births. The $\hat{Y}_{cumBirths}$  was obtained by fitting the locally weighted scatterplot smoothing (LOWESS) non-parametric regression:
+The cumulate number of cases $(X_{cumCases})$ and births $(Y_{cumBiths})$ were calculated by the numbers of HFMD cases $(cases_t)$ and the births. The $\hat{Y}_{cumBirths}$ was obtained by fitting the locally weighted scatterplot smoothing (LOWESS) non-parametric regression:
 
 $$
 \hat{Y}_{cumBirths} = Lowess(X_{cumCases},Y_{cumBirths},f = 2/3)
@@ -305,9 +303,7 @@ data_result %>% filter(district != "Thủ Đức") %>%
 ```
 
 ::: {.callout-note title="Finding"}
-
 While the number of HFMD cases in District 1 is relatively low, the contact rate during outbreaks is notably the highest among all districts.
-
 :::
 
 ### Basic reproduction rate and herd immunity threshold
@@ -318,9 +314,7 @@ $$
 R0_{1,...,26} = \beta_{1,...,26}\times \bar{S}
 $$
 
-Herd immunity threshold (HIT) is the proportion of a population that must be vaccinated to become immune so that an infectious disease can become stable in that community. When the proportion is
-reached by vaccination, each case leads to a single new case and the infection becomes stable.
-We calculated the HIT by:
+Herd immunity threshold (HIT) is the proportion of a population that must be vaccinated to become immune so that an infectious disease can become stable in that community. When the proportion is reached by vaccination, each case leads to a single new case and the infection becomes stable. We calculated the HIT by:
 
 $$
 HIT = 1 - \frac{1}{R0}
@@ -440,7 +434,6 @@ up /
 
 Based on patterns of biweekly $R_0$, I applied hierarchical clustering. Then, based on the dendrogram and I cut the tree to 5 branches and plotted the results on a map to explore potential geographical relationships between clusters.
 
-
 ```{r,message=FALSE,warning=FALSE,results='hide'}
 ## setup hcm map
 
@@ -498,9 +491,8 @@ left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
 ```
 
 ::: {.callout-note title="Finding"}
-There was a geographical relationship between districts within each cluster. 
+There was a geographical relationship between districts within each cluster.
 :::
-
 
 ```{r,warning=FALSE,message=FALSE,echo=FALSE}
 #| fig-width: 10
@@ -522,12 +514,14 @@ There was a geographical relationship between districts within each cluster.
 
 ## Discussion
 
-- The patterns of $R_0$ for each district correspond well with the incidence data.
+-   The patterns of $R_0$ for each district correspond well with the incidence data.
 
-- District 1 has the highest median $R_0$, despite having a relatively low number of reported cases. This can be explained by its high contact rate, due to its role as the central area of Ho Chi Minh City, with a large volume of travelers, numerous schools, hospitals, and public activities. Nearby districts, such as Districts 10 and 4, have the second-highest median $R_0$ values. This reflects a geographical relationship among districts in the central area.
+-   District 1 has the highest median $R_0$, despite having a relatively low number of reported cases. This can be explained by its high contact rate, due to its role as the central area of Ho Chi Minh City, with a large volume of travelers, numerous schools, hospitals, and public activities. Nearby districts, such as Districts 10 and 4, have the second-highest median $R_0$ values. This reflects a geographical relationship among districts in the central area.
 
-- This analysis provides a clearer picture of the HFMD burden in Ho Chi Minh City, highlighting how transmission intensity is concentrated in areas with high population mobility and dense infrastructure.
+-   This analysis provides a clearer picture of the HFMD burden in Ho Chi Minh City, highlighting how transmission intensity is concentrated in areas with high population mobility and dense infrastructure.
 
-- In this analysis, I estimated two key epidemiological parameters—$R_0$ and the herd immunity threshold ($HIT$)—for HFMD transmission in 2023. This information can support decision-making in controlling and preventing HFMD outbreaks. For example, if an HFMD vaccine is implemented in Ho Chi Minh City, we can prioritize District 1 and nearby districts that share similar patterns identified through clustering analysis. Our target would be to achieve the herd immunity threshold in each district.
+-   In this analysis, I estimated two key epidemiological parameters—$R_0$ and the herd immunity threshold ($HIT$)—for HFMD transmission in 2023. This information can support decision-making in controlling and preventing HFMD outbreaks. For example, if an HFMD vaccine is implemented in Ho Chi Minh City, we can prioritize District 1 and nearby districts that share similar patterns identified through clustering analysis. Our target would be to achieve the herd immunity threshold in each district.
 
-- For the clustering analysis, we grouped districts with similar infectious patterns and geographical relationships. This approach can help guide more effective prevention and control strategies by targeting groups of districts rather than treating them individually.
+-   For the clustering analysis, we grouped districts with similar infectious patterns and geographical relationships. This approach can help guide more effective prevention and control strategies by targeting groups of districts rather than treating them individually.
+
+## Reference
