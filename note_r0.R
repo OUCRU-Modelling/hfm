@@ -524,4 +524,34 @@ ca <- dt_tsir_district_2223 %>%
   theme(axis.text.x = element_blank(),
         axis.title.x = element_blank())
 
+data_result %>%
+  ggplot(aes(x = time,y = cases))+
+  geom_bar(stat = "identity")+
+  facet_wrap(~district,ncol = 4)+
+  scale_x_continuous(breaks = c(2022,2023,2024))+
+  theme_bw()+
+  theme(legend.position = "bottom")
 
+dt_tsir_district_2223
+
+pop_district2223 %>% View()
+
+data_result %>%
+  filter(district == "Thủ Đức") %>% View()
+
+data_result %>%
+  group_by(district) %>%
+  filter(time > 2023 ) %>%
+  group_modify(~.x %>%
+                 mutate(r0 = beta.beta*s)) %>%
+  summarise(p25_r0 = quantile(r0,0.25),
+            median_r0 = median(r0),
+            p75_r0 = quantile(r0,0.75),
+            hit = (1 - (1/median_r0))*100) %>% View()
+
+
+data_result %>%
+  group_by(district) %>%
+  group_modify(~.x %>% mutate(r0 = beta.beta*s,
+                              beta.time = beta.time*2)) %>%
+  bind_rows() %>% filter(time > 2023 & district == "Thủ Đức") %>% View()

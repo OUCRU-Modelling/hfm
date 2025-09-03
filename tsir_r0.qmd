@@ -544,6 +544,6 @@ There was a geographical relationship between districts within each cluster.
 
 -   In this analysis, I estimated two key epidemiological parameters—$R_0$ and the herd immunity threshold ($HIT$)—for HFMD transmission in 2023. This information can support decision-making in controlling and preventing HFMD outbreaks. For example, if an HFMD vaccine is implemented in Ho Chi Minh City, we can prioritize District 1 and nearby districts that share similar patterns identified through clustering analysis. Our target would be to achieve the herd immunity threshold in each district.
 
--   For the clustering analysis, we grouped districts with similar infectious patterns and geographical relationships. This approach can help guide more effective prevention and control strategies by targeting groups of districts rather than treating them individually.
+-   For the clustering analysis, we grouped districts with similar infectious patterns, the results show the geographical relationships. This approach can help guide more effective prevention and control strategies by targeting groups of districts rather than treating them individually.
 
 ## Reference
