@@ -90,7 +90,7 @@ df_plot <- df1 %>% filter(year(adm_week) == "2023") %>%
 ts <- ggplot()+
   geom_bar(data = df_plot, aes(x = as.Date(adm_week), y = n),stat = "identity",
            alpha = 0.5) +
-  labs(x = "Admission week","Cases")+
+  labs(x = "Admission week",y = "Cases")+
   geom_vline(xintercept = as.Date("2022-12-01"),
              alpha = 0.4,col = "#0808cf")+
   geom_vline(xintercept = as.Date("2022-12-30"),
@@ -630,6 +630,7 @@ In my case, I fitted the glm to seropositive by age and time, then applied PAVA 
 <details>
   <summary> Model </summary>
 ```
+
 ```{r}
 #| code-fold: false
 mod1 <- glm(pos ~ age * col_date +

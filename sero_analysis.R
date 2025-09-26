@@ -302,3 +302,18 @@ data_pt %>%
   labs(x = "Age", y  = "Seroprevalence")+
   theme_bw()
 
+##
+
+constrained_age_profiles_cohort2 %>%
+  bind_rows(.id = "id") %>%
+  ggplot(aes(x = age, y = fit))+
+  geom_line(color = "blue")+
+  geom_ribbon(aes(ymax = upr,ymin = lwr),fill = "blue",alpha = 0.3)+
+  facet_wrap(~factor(id,
+                     labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             ncol = 4)+
+  scale_y_continuous(name = "Seroprevalence (%)",
+                     limits = c(0,1),
+                     labels = scales::label_percent())+
+  labs(x = "Age (years)")+
+  theme_bw()

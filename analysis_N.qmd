@@ -228,3 +228,10 @@ map2(ouut, incidences, ~inner_join(.x, .y, by = join_by(age == age.x)) %>%
   theme_minimal()+
   theme(legend.position = "hide")
 ```
+
+
+
+
+
+
+

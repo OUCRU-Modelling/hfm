@@ -19,7 +19,7 @@ book:
     - sero.qmd
     # - model.qmd
     - sero_description.qmd
-    - fig_manu.qmd
+    - fig_manu2.qmd
     - analysis_N.qmd
     - tsir_r0.qmd
 

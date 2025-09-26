@@ -1,0 +1,863 @@
+# Manuscript figure
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(gtsummary)
+library(patchwork)
+library(lubridate)
+library(stringr)
+library(mgcv)
+library(janitor)
+library(predtools)
+library(magrittr)
+library(slider)
+library(scam)
+library(epitools)
+library(sf)
+library(stringi)
+invisible(Sys.setlocale("LC_TIME", "English"))
+```
+
+```{r}
+## data import
+
+## case notification
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
+                  col_types = c("date", "numeric", "text",
+                                "text", "text", "date", "date", "date",
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
+
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>%
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both")
+
+## serological data
+
+apr_2023 <- read_excel("D:/OUCRU/hfmd/data/4_2023.xlsx")
+aug_2023 <- read_excel("D:/OUCRU/hfmd/data/08_2023.xlsx")
+dec_2022 <- read_excel("D:/OUCRU/hfmd/data/12_2022.xls")
+dec_2023 <- read_excel("D:/OUCRU/hfmd/data/12_2023.xlsx")
+
+t423 <- data.frame(apr_2023[-c(1,2),c(6,8,10:14)])
+t423$pos <- replace(t423$...14,is.na(t423$...14),0) %>%
+  str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t423) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
+t423$age <- as.numeric(t423$age)
+t423$col_time <- rep("Apr 2023",nrow(t423))
+
+
+t823 <- data.frame(aug_2023[-c(1,2),c(6,8,9,14:17)])
+t823$pos <- str_detect(t823$...17,regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t823) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
+t823$age <- as.numeric(t823$age)
+t823$col_time <- rep("Aug 2023",nrow(t823))
+
+t1222 <- data.frame(dec_2022[-c(1,2),c(6,8,10:14)])
+t1222$pos <- replace(t1222$...14,is.na(t1222$...14),0) %>%
+  str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t1222) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
+t1222$age <- as.numeric(t1222$age)
+t1222$col_time <- rep("Dec 2022",nrow(t1222))
+
+
+t1223 <- data.frame(dec_2023[-c(1,2),c(6,8,9,14:17)])
+t1223$pos <- replace(t1223$...17,is.na(t1223$...17),0) %>%
+  str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t1223) <- c("id","age_gr","age","col_day","col_month","col_year","neutralization","pos")
+t1223$age <- as.numeric(t1223$age)
+t1223$col_time <- rep("Dec 2023",nrow(t1223))
+
+## data sero with address
+
+cleaned <- read_csv("D:/OUCRU/HCDC/project phân tích sero quận huyện/cleaned.csv")
+
+sero <- rbind(t1222,t1223,t423,t823)
+
+sero_add <- full_join(cleaned,sero, by =  c("id" = "id"))
+
+data_pt <- sero_add %>% filter(!is.na(age)&!is.na(qhchuan)) %>%
+  select(-c(add_mod,pxchuan,neutralization)) %>%
+  as.data.frame() %>% 
+  mutate(col_date = make_date(col_year,col_month,col_day))
+
+## census data
+
+census2019 <- readRDS("D:/OUCRU/hfmd/data/census2019.rds")
+
+### HCMC map
+map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
+vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
+
+vn_qh1 <- vn_qh %>%
+  clean_names() %>%     ## cho thành chữ thường
+  filter(
+    str_detect(
+      name_1,
+      "Hồ Chí Minh"
+    )
+  )
+qhtp <- vn_qh1[-c(14,21),]
+
+qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
+  st_union()
+
+qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
+
+qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
+  tolower() %>%
+  str_remove("district") %>%
+  trimws(which = "both")
+
+qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
+                    "HM","NB","PN","1","10","11","12",
+                    "3","4","5","6","7","8","TB",
+                    "TP","TĐ")
+```
+
+```{r}
+# function
+
+slide_age <- function(time1,age1,w1,s1){
+  df1 <- data.frame(time1,age1) %>%                   ## line listing data frame
+    filter(!is.na(time1) & !is.na(age1)) %>%
+    arrange(time1)
+
+  a_df1 <- df1 %>% count(time1)                      ## aggregate data frame
+
+  total1 <- nrow(a_df1)
+  spots1 <- seq(from = 1, to = (total1 - w1 + 1), by = s1)
+
+  out_total <- data.frame()
+
+  for (i in 1:length(spots1)){
+    range1 <- data.frame(a_df1[spots1[i]:(spots1[i] + w1 - 1),1])
+    result1 <- df1$age1[df1$time1 >= range1[1,] & df1$time1 <= range1[w1,]]
+    out <- data.frame(date = rep(as.character(range1[ceiling(w1/2),]),length(result1)),
+                      age = result1)
+    out <- out[order(out$age),]
+    out_total <- rbind(out_total,out)
+  }
+  output <- list()
+  output$wdat <- out_total
+  output$adat <- out_total %>% count(date)
+  output$parms <- data.frame(w = w1,s =s1)
+  return(output)
+}
+
+
+# case_noti <- function(timee, agee,lab = FALSE){
+# 
+#   dat <- data.frame(timee,agee) %>%
+#     filter(!is.na(timee) & !is.na(agee)) %>%
+#     count(timee)
+# 
+#   ts <- ggplot(dat, aes(x =timee, y = n)) +
+#     geom_bar(stat = "identity") +
+#     labs(y = "Cases") +
+#     theme_minimal()
+# 
+#   if(lab == TRUE){
+#     ts
+#   } else {
+#     ts + theme(axis.title.x = element_blank(),
+#                axis.text.x = element_blank(),
+#                axis.ticks.x = element_blank())
+#   }
+# 
+# }
+```
+
+## Figure 1: heat map
+
+```{r}
+library(paletteer)
+df23 <- df1 %>% filter(year(adm_week) == 2023)
+
+co <- data.frame()
+
+for (i in 0:6){
+  gen <- seq(0,1,le=52) + i
+  co <- rbind(co,gen)
+}
+
+
+df23 <- df1 %>% filter(year(adm_date) == 2023)
+wwww <- slide_age(time1 = df23$adm_date,
+                  age1 =  df23$age1,
+                  w1 = 7, s1=7)
+
+ch <- data.frame(date = wwww$adat$date,
+                 c0 = as.numeric(co[1,]),
+                 c1 = as.numeric(co[2,]),
+                 c2 = as.numeric(co[3,]),
+                 c3 = as.numeric(co[4,]),
+                 c4 = as.numeric(co[5,]),
+                 c5 = as.numeric(co[6,]))
+
+leb_month <- c("Jan",rep("",3),"Feb",rep("",3),"Mar",rep("",4),"Apr",rep("",3),
+               "May",rep("",4),"Jun",rep("",3),"Jul",rep("",3),"Aug",rep("",4),
+               "Sep",rep("",3),"Oct",rep("",3),"Nov",rep("",4),"Dec",rep("",3))
+
+ts <- data.frame(wwww$wdat$date,wwww$wdat$age) %>%
+  filter(!is.na(wwww$wdat$date) & !is.na(wwww$wdat$age)) %>%
+  count(wwww$wdat$date) %>%
+  set_colnames(c("time","n")) %>% 
+  mutate(peak = c(rep("1st",36),rep("2nd",nrow(.)-36))) %>% 
+  ggplot(aes(x = time, y = n,fill = peak)) +
+  geom_col(alpha = 0.6,color="black") +
+  geom_vline(xintercept = 36.5) +
+  theme_minimal()+
+  scale_y_continuous(name = "Cases",
+                     breaks = seq(0,3000,by = 1000),
+                     limit =c(0,3000), 
+                     minor_breaks = NULL)+
+  scale_fill_manual(values = c("#582C83FF","#FFC72CFF"))+
+  labs(tag = "A")+ 
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18))
+
+hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
+      stat_density(
+        aes(fill = after_stat(density)),
+        geom = "raster",
+        position = "identity"
+      )+
+      scale_fill_paletteer_c("grDevices::Inferno")+
+      # scale_fill_gradient(low="#040404FF", high= "#FFFE9EFF")+
+      # scale_fill_distiller(palette = "Blues")+
+      theme_minimal()+
+      scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
+      scale_x_discrete(name = "Admission week",labels = leb_month)+
+      labs(tag = "B",fill = "Density")+
+      # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
+      geom_line(data = ch,aes(x = date,y = c0),col = "white",
+                group = 1,lwd = 0.25,alpha = 0.8)+
+      geom_line(data = ch,aes(x = date,y = c1),col = "white",
+                group = 1,lwd = 0.25,alpha = 0.8)+
+      geom_line(data = ch,aes(x = date,y = c2),col = "white",
+                group = 1,lwd = 0.25,alpha = 0.8)+
+      geom_line(data = ch,aes(x = date,y = c3),col = "white",
+                group = 1,lwd = 0.25,alpha = 0.8)+
+      geom_line(data = ch,aes(x = date,y = c4),col = "white",
+                group = 1,lwd = 0.25,alpha = 0.8)+
+      geom_line(data = ch,aes(x = date,y = c5),col = "white",
+                group = 1,lwd = 0.25,alpha = 0.8)+
+      theme(axis.title.y = element_text(size = 18),
+            axis.ticks.x = element_blank(),
+            legend.position = "bottom",
+            plot.tag = element_text(face = "bold", size = 18),
+            axis.title.x = element_text(size = 18),
+            axis.text.x = element_text(size = 18),
+            axis.text.y = element_text(size = 18),
+            legend.text = element_text(size = 15),
+            legend.title = element_text(size = 18))+ 
+  guides(fill=guide_colourbar(barwidth=20,label.position="bottom")) 
+
+fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
+  filter((adm_date <= as.Date("2023-09-03")&
+            !is.na(adm_date) & !is.na(age1)))
+
+se_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
+  filter((adm_date > as.Date("2023-09-03")) &
+           !is.na(adm_date) & !is.na(age1))
+
+data <- data.frame(
+  peak = c( rep("1st wave",nrow(data.frame(se_peak$age1))),
+            rep("2nd wave",nrow(data.frame(fi_peak$age1)))),
+  age = c( fi_peak$age1, se_peak$age1 )
+)
+
+## density plot
+
+ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
+      geom_density(alpha = 0.6) +
+      scale_fill_manual(values = c("#582C83FF","#FFC72CFF")) +
+      scale_x_reverse(limit = c(6,0),breaks = seq(0,6,by=1), 
+                      minor_breaks = NULL)+
+      scale_y_continuous(minor_breaks = NULL)+
+      coord_flip()+
+      theme_minimal()+
+      labs(x = "Age", y ="Density",tag = "C",fill = "Outbreak")+
+      theme(axis.title.y = element_blank(),
+            axis.ticks.x = element_blank(),
+            legend.position = "bottom",
+            plot.tag = element_text(face = "bold", size = 18),
+            axis.title.x = element_text(size = 18),
+            axis.text.x = element_text(size = 18),
+            axis.text.y = element_text(size = 18),
+            legend.text = element_text(size = 18),
+            legend.title = element_text(size = 18))
+```
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+
+((ts/hm)|(plot_spacer()/ad))+
+  plot_layout(widths = c(2.5,1))
+
+ggsave("./fig_manuscript/fig1.svg",
+       width = 15,height = 8,dpi = 500)
+```
+
+## Figure 2: Catchment area of CH1
+
+OUCRU serum bank from Children hospital 1, so we calculate the catchment area of CH1 by cases ratio method
+
+```{r}
+## cases district per age
+table1 <- read_csv("D:/OUCRU/hfmd/data/table1.csv")
+## total cases cases district
+table2 <- read_csv("D:/OUCRU/hfmd/data/table2.csv")
+## pop district
+table3 <- read_csv("D:/OUCRU/hfmd/data/table3.csv")
+
+pop_dis_hcm <- table3 %>%
+  mutate(age2 = word(age,1),
+         age2 = as.numeric(age2)) %>%
+  filter(age <= 16) %>%
+  mutate(district1 = district1 %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  group_by(district1) %>%
+  summarise(pop = sum(pop))
+
+CH1_obs <- table1$CH1 %>% sum(na.rm = TRUE)
+
+ch1_cum_case_rate <- CH1_obs/sum(pop_dis_hcm$pop)
+
+tdnd1 <- data.frame(long = 106.6708,
+                    lat  = 10.7692) %>%
+  st_as_sf(coords = c("long", "lat"), crs = 4326)
+
+
+cm_ch1_cases_ratio <- table1 %>% select(district1,CH1) %>%
+  mutate(district1 = district1 %>%
+           str_replace_all(
+             c("Thanh pho Thu Duc" = "Thu Đuc")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  group_by(district1) %>%
+  summarise(cases = sum(CH1,na.rm = TRUE)) %>%
+  left_join(.,pop_dis_hcm, by = join_by(district1)) %>%
+  replace(is.na(.), 0) %>%
+  mutate(expected_cases = pop*ch1_cum_case_rate,
+         cum_case_ratio = cases/expected_cases,
+         lwr = pois.exact(cases)$lower/expected_cases,
+         upr = pois.exact(cases)$upper/expected_cases,
+         cut = cut(upr,
+                   breaks = c(0,1,2,3,10),
+                   labels = c("< 1",">= 1",">= 2",">= 3"),
+                   right = F)
+  )
+
+cm_ch1_cases_ratio %>%
+  left_join(qhtp, ., by = join_by(varname_2 == district1)) %>%
+  ggplot() +
+  geom_sf(aes(fill = cut,geometry = geom),show.legend = T)+
+  scale_fill_manual(
+    values = c(
+      "< 1" = "#FFFFFFFF",
+      ">= 1" = "#6BAED6FF",
+      ">= 2" = "#2171B5FF",
+      ">= 3" = "#08306BFF"
+    ),
+    name = "95% CI Upper bound of \n cumulative case ratio of each districts"
+  )+
+  geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
+  geom_sf(data = tdnd1, shape = 17,
+          color = "yellow", size = 1)+
+  theme_void()
+```
+
+## Figure 3: Estimated cummulative incidence from serological data and cases data
+
+The correlation plots show that there was a correlation between the number of cases and the number of serum samples in the catchment area. So we used the sero data to estimate the age profile of cumulative incidence in the CH1 catchment area.
+
+```{r}
+#| fig-width: 13
+#| fig-height: 7
+
+district_consider <- cm_ch1_cases_ratio %>%
+  filter(cut != "< 1") %>%
+  pull(district1) %>%
+  as.character()
+
+## function to calculate age profile
+hfmd <- data_pt %>%
+  as_tibble() |>
+  mutate(collection = id |>
+           str_remove(".*-") |>
+           as.numeric() |>
+           divide_by(1e4) |>
+           round(),
+         col_date2 = as.numeric(col_date),
+         across(pos, ~ .x > 0))
+
+predict2 <- function(...) predict(..., type = "response") |> as.vector()
+
+age_profile <- function(data, age_values = seq(0, 15, le = 512), ci = .95) {
+  model <- gam(pos ~ s(age), binomial, data)
+  link_inv <- family(model)$linkinv
+  df <- nrow(data) - length(coef(model))
+  p <- (1 - ci) / 2
+  model |>
+    predict(list(age = age_values), se.fit = TRUE) %>%
+    c(list(age = age_values), .) |>
+    as_tibble() |>
+    mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
+           upr = link_inv(fit + qt(1 - p, df) * se.fit),
+           fit = link_inv(fit)) |>
+    select(- se.fit)
+}
+
+
+age_profile_unconstrained <- function(data, age_values = seq(0, 15, le = 512),
+                                      ci = .95) {
+  data |>
+    group_by(collection) |>
+    group_map(~ age_profile(.x, age_values, ci))
+}
+
+shift_right <- function(n, x) {
+  if (n < 1) return(x)
+  c(rep(NA, n), head(x, -n))
+}
+
+age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 512),
+                                            ci = .95, n = 100) {
+  dpy <- 365 # number of days per year
+
+  mean_collection_times <- data |>
+    group_by(collection) |>
+    summarise(mean_col_date = mean(col_date2)) |>
+    with(setNames(mean_col_date, collection))
+
+  cohorts <- cumsum(c(0, diff(mean_collection_times))) |>
+    divide_by(dpy * mean(diff(age_values))) |>
+    round() |>
+    map(shift_right, age_values)
+
+  age_time <- map2(mean_collection_times, cohorts,
+                   ~ tibble(collection_time = .x, cohort = .y))
+
+  age_time_inv <- age_time |>
+    map(~ cbind(.x, age = age_values)) |>
+    bind_rows() |>
+    na.exclude()
+
+  data |>
+    # Step 1:
+    group_by(collection) |>
+    group_modify(~ .x |>
+                   age_profile(age_values, ci) |>
+                   mutate(across(c(fit, lwr, upr), ~ map(.x, ~ rbinom(n, 1, .x))))) |>
+    group_split() |>
+    map2(age_time, bind_cols) |>
+    bind_rows() |>
+    unnest(c(fit, lwr, upr)) |>
+    pivot_longer(c(fit, lwr, upr), names_to = "line", values_to = "seropositvty") |>
+    # Step 2a:
+    filter(cohort < max(age) - diff(range(mean_collection_times)) / dpy) |>
+    group_by(cohort, line) |>
+    group_modify(~ .x %>%
+                   scam(seropositvty ~ s(collection_time, bs = "mpi"), binomial, .) |>
+                   predict2(list(collection_time = mean_collection_times)) %>%
+                   tibble(collection_time = mean_collection_times,
+                          seroprevalence  = .)) |>
+    ungroup() |>
+    # Step 2b:
+    left_join(age_time_inv, c("cohort", "collection_time")) |>
+    group_by(collection_time, line) |>
+    group_modify(~ .x |>
+                   right_join(tibble(age = age_values), "age") |>          ### added
+                   arrange(age) |>                                         ### added
+                   mutate(across(seroprevalence,
+                                 ~ gam(.x ~ s(age), betar) |>
+                                   predict2(list(age = age_values))))) |>  ### modified
+    ungroup() |>
+    pivot_wider(names_from = line, values_from = seroprevalence) |>
+    group_by(collection_time) |>
+    group_split()
+}
+
+hfmd_cm <- hfmd %>% filter(qhchuan %in% district_consider)
+constrained_age_profiles_cohort2_cm <- age_profile_constrained_cohort2(hfmd_cm)
+
+attack_rates <- map2(head(constrained_age_profiles_cohort2_cm, -1),
+                     constrained_age_profiles_cohort2_cm[-1],
+                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort") |>
+                       mutate(attack = (fit.y - fit.x) / (1 - fit.x)))
+
+## population
+
+age_structure <- census2019 |>
+  filter(province == "Thành phố Hồ Chí Minh") |>
+  mutate(district = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  filter(district %in% district_consider) %>%
+  group_by(age) |>
+  summarise(n = sum(n)) |>
+  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
+  arrange(age) |>
+  filter(age < 17)
+
+mod <- lm(n ~ age, age_structure)
+
+incidences <- map(attack_rates,
+                  ~ mutate(.x, incidence = (1 - fit.x) * attack *
+                             predict(mod, list(age = cohort))))
+
+incidence1 <- df1 %>%
+  filter(year(adm_date) == 2023 &
+           medi_cen %in% c("Bệnh viện Nhi đồng 1",
+                           "Bênh viện Nhi Đồng 1",
+                           "Bệnh viện Nhi Đồng 1")) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  filter(district2 %in% district_consider) %>%
+  mutate(adm_date2 = as.numeric(adm_date),
+         cohort = interval(dob, "2023-01-01") / years(1)) %>%
+  select(adm_date2,cohort,adm_week)
+
+mean_collection_times <- hfmd |>
+  group_by(collection) |>
+  summarise(mean_col_date = mean(col_date2)) |>
+  with(setNames(mean_col_date, collection))
+
+ouut <- list()
+
+for (i in 1:3){
+  ouut[[i]] <- incidence1 %>%
+    filter(adm_date2 >= as.numeric(mean_collection_times[i]) &
+             adm_date2 <= as.numeric(mean_collection_times[i+1])) %>%
+    mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
+    na.omit(age_gr) %>%
+    group_by(age_gr) %>%
+    count() %>%
+    mutate(age_gr2 = as.numeric(age_gr)) %>%
+    gam(n ~ s(age_gr2),method = "REML",data = .) %>%
+    predict(list(age_gr2 = incidences[[i]]$age.x))%>%
+    tibble(age = incidences[[i]]$age.x,
+           incidence  = .)
+}
+
+ex_incid_cm <- map2(ouut,
+     incidences, ~ inner_join(.x, .y, by = join_by(age == age.x)) %>%
+       mutate(prob = (incidence.x/incidence.y)*100)) %>%
+  bind_rows(.id = "id") %>%
+  pivot_longer(cols = c(incidence.x, incidence.y),
+               names_to = "series", values_to = "y") %>%
+  ggplot(aes(x = cohort, y = y, color = factor(series,labels = c("Cases","Sero"))))+
+  geom_line()+
+  theme_bw()+
+  labs(tag = "A",color = "Data",
+       y = "Cummulative incidence",
+       x = "Age (years)")+
+  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
+                                   "Apr 2023 - Aug 2023",
+                                   "Aug 2023 - Dec 2023")))+
+  coord_cartesian(ylim=c(0,15000))+
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18))
+
+ts_cm <- incidence1 %>% group_by(adm_week) %>% count() %>% 
+ggplot()+
+  geom_bar(aes(x = as.Date(adm_week), y = n),stat = "identity",
+           alpha = 0.5) +
+  geom_point(aes(x = as.Date(col_date), y =  pos*1000),
+            shape = "|",data = data_pt)+
+  labs(x = "Admission week",y = "Cases",tag = "B")+
+  annotate("rect", fill = "blue",
+           xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
+           xmax = as.Date(c("2023-01-04","2023-04-30","2023-08-30","2023-12-30")), 
+           ymin = 0, ymax = Inf, alpha = .2)+
+  theme_classic()+
+  scale_y_continuous(breaks = seq(0,1000,by = 500),
+                     limit =c(0-1,1000+1))+
+  scale_x_date(
+    breaks = as.Date(c("2022-12-15", "2023-04-15", "2023-08-15", "2023-12-15")),
+    labels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"),
+    limits = c(as.Date("2022-11-24"),as.Date("2024-01-01")))+
+  theme(
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18))
+
+ex_incid_cm/
+  ts_cm
+```
+
+### Supplementation plot
+
+#### December 2022 - Apr 2023 {.unnumbered}
+
+```{r}
+library(ggstatsplot)
+district_consider <- cm_ch1_cases_ratio %>% 
+  filter(cut != "< 1") %>% 
+  pull(district1) %>% 
+  as.character()
+
+corr_sero_numcases <- function(timepoint){
+  
+  date_range <- data_pt %>%
+    filter(col_time %in% timepoint & 
+             qhchuan %in% district_consider) %>%
+    pull(col_date) %>%
+    range()
+
+  num_sero <- data_pt %>%
+    filter(col_time %in% timepoint & 
+             qhchuan %in% district_consider) %>%
+    group_by(qhchuan) %>%
+    count()
+  
+  df1 %>% 
+    filter(year(adm_week) == "2023" & 
+             !is.na(adm_week) &
+             adm_week >= date_range[1] &
+             adm_week <= date_range[2]) %>%
+    mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  group_by(district2) %>%
+  count() %>%
+  left_join(.,num_sero, by = join_by(district2 == qhchuan))
+}
+```
+
+```{r}
+
+corr_sero_numcases(timepoint = c("Apr 2023","Dec 2022")) %>%
+  ggscatterstats(
+    x = n.x,
+    y = n.y,
+    bf.message = FALSE,
+    marginal = FALSE,
+    label.var = district2,
+    xlab = "Number of HFMD cases in Dec 2022 - Apr 2023",
+    ylab = "Number of serum samples in Dec 2022 - Apr 2023"
+  )
+```
+
+#### Apr 2023 - Aug 2023 {.unnumbered}
+
+```{r}
+corr_sero_numcases(timepoint = c("Apr 2023","Aug 2023")) %>%
+  ggscatterstats(
+    x = n.x,
+    y = n.y,
+    bf.message = FALSE,
+    marginal = FALSE,
+    label.var = district2,
+    xlab = "Number of HFMD cases in Apr 2023 - Aug 2023",
+    ylab = "Number of serum samples in Apr 2023 - Aug 2023"
+  )
+```
+
+#### Aug 2023 - Dec 2023 {.unnumbered}
+
+```{r}
+corr_sero_numcases(timepoint = c("Dec 2023","Aug 2023")) %>%
+  ggscatterstats(
+    x = n.x,
+    y = n.y,
+    bf.message = FALSE,
+    marginal = FALSE,
+    label.var = district2,
+    xlab = "Number of HFMD cases in Aug 2023 - Dec 2023",
+    ylab = "Number of serum samples in Aug 2023 - Dec 2023"
+  )
+```
+
+### Attack rate
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+
+pop <- readRDS("D:/OUCRU/hfmd/data/count_dangky.rds")
+pop_a <- pop %>% group_by(birth_month, birth_year) %>%
+  summarise(n=sum(n)) %>% arrange(birth_year)
+
+colnames(pop_a) <- c("m","y","n")
+
+pop_a$dob <- str_c(pop_a$y,pop_a$m,sep = "-") %>% ym()
+
+time1 = df1$adm_date
+age1 =  df1$age1
+dob = pop_a$dob
+n = pop_a$n
+
+dft <- data.frame(time1,age1) %>%
+  filter(!is.na(time1) & !is.na(age1)) %>%
+  arrange(time1)
+
+
+dft$agr=as.factor(cut(dft$age1, c(0,0.5,
+                                  1,1.5,
+                                  2,2.5,
+                                  3,3.5,
+                                  4,4.5,5,5.5,6,100), right=TRUE ))
+levels (dft$agr) = c("0-0.5", "0.5-1", "1.0-1.5",
+                     "1.5-2","2-2.5","2.5-3",
+                     "3-3.5","3.5-4","4-4.5",
+                     "4.5-5","5-5.5","5.5-6","6+")
+
+sus_pop <- data.frame(dob = dob, n = n)
+
+out_total <- data.frame()
+
+hfmd23 <- df1 %>% filter(year(adm_week) == "2023") %>%
+  filter(!is.na(adm_week) ) %>%
+  count(adm_week)
+
+hfmd23$week <- 1:length(hfmd23$adm_week)
+hfmd23$week <- ifelse(hfmd23$week == 53,52,hfmd23$week)
+
+hfmd23$n2 <- ifelse(hfmd23$week == 52, sum(hfmd23$n[hfmd23$week==52]), hfmd23$n)
+
+hfmd23 <- hfmd23[-53,]
+
+dateaa <- hfmd23$adm_week+3
+
+sus_pop <- data.frame(dob = dob, n = n)
+
+for (i in 1:52){
+  sus_pop$age <- interval(sus_pop$dob, dateaa[i]) / years(1)
+  
+  sus_pop$agr=as.factor(cut(sus_pop$age, c(0,0.5,
+                                           1,1.5,
+                                           2,2.5,
+                                           3,3.5,
+                                           4,4.5,5,5.5,6,100), right=TRUE ))
+  levels (sus_pop$agr) = c("0-0.5", "0.5-1", "1.0-1.5",
+                           "1.5-2","2-2.5","2.5-3",
+                           "3-3.5","3.5-4","4-4.5",
+                           "4.5-5","5-5.5","5.5-6","6+")
+  outcum <- sus_pop %>% group_by(agr) %>%
+    summarise(n = sum(n)) %>%
+    as.data.frame()
+  outcum$date <- rep(dateaa[i],nrow(outcum))
+  out_total <- rbind(out_total,outcum)
+}
+
+deno <- out_total %>%
+  pivot_wider(names_from = agr, values_from = n) %>% as.data.frame()
+
+casss <- wwww$wdat
+
+casss$agr=as.factor(cut(casss$age, c(0,0.5,1,1.5,2,2.5,
+                                     3,3.5,4,4.5,5,5.5,6,100), right=TRUE ))
+levels (casss$agr) = c("0-0.5", "0.5-1", "1.0-1.5",
+                       "1.5-2","2-2.5","2.5-3",
+                       "3-3.5","3.5-4","4-4.5",
+                       "4.5-5","5-5.5","5.5-6","6+")
+
+casss <- casss %>% group_by(date,agr) %>%
+  count() %>% pivot_wider(names_from = agr, values_from = n) %>% as.data.frame()
+
+
+casss <- casss[,-ncol(casss)]
+casss <- replace(casss,is.na(casss), 0)
+casss <- casss[,c(1:10,13,11,14,12)]
+
+atkr <- data.frame()
+atkr <- rbind(atkr,as.numeric(casss[1,-1])/as.numeric(deno[1,-1]))
+for (i in 1:51){
+  new <- as.numeric(casss[i+1,-1])/(as.numeric(deno[i+1,-1]) - as.numeric(casss[i,-1]))
+  atkr <- rbind(atkr,new)
+}
+atkr <- cbind(deno$date,atkr)
+
+colnames(atkr) <- colnames(deno)
+atkr <- replace(atkr,is.na(atkr), 0)
+
+
+
+atk_plot <- atkr %>% pivot_longer(cols=colnames(atkr)[-1],
+                                  names_to= 'agr',
+                                  values_to='atk') %>% as.data.frame()
+
+atk <- ggplot(atk_plot, aes(x=as.character(date), y=agr, fill = atk)) +
+  geom_raster()+
+  scale_fill_paletteer_c("grDevices::Inferno",
+                         breaks = c(0.01, 0.02, 0.03, 0.04, 0.05))+
+  scale_y_discrete(limits=rev)+
+  scale_x_discrete(name = "Admission week",labels = leb_month)+
+  theme_minimal()+
+  labs(tag = "B",fill = "Attack rate",y = "Age group (years)")+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+ 
+  guides(fill=guide_colourbar(barwidth=20,label.position="bottom")) 
+
+ts/
+  atk
+
+```

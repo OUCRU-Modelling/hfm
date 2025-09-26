@@ -555,3 +555,24 @@ data_result %>%
   group_modify(~.x %>% mutate(r0 = beta.beta*s,
                               beta.time = beta.time*2)) %>%
   bind_rows() %>% filter(time > 2023 & district == "Thủ Đức") %>% View()
+
+
+### rmse, mape
+
+outcome[[1]]
+
+
+rmse <- function(predicted, observed) {
+  sqrt(mean((predicted - observed)^2))
+}
+
+mape_tsir <- data_result %>%
+  group_by(district) %>%
+  group_modify(~.x %>%
+                 mutate(ape = abs((cases - fit) / cases) * 100,
+                        sq_er = (fit - cases)^2)
+  ) %>%
+  summarise(mape = mean(ape),
+            rmse = sqrt(mean(sq_er)))
+
+mean(mape_tsir$mape)

@@ -706,7 +706,7 @@ ts2 <- ggplot()+
   labs(x = "Admission week",y = "Cases",tag = "B")+
   annotate("rect", fill = "blue",
            xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
-           xmax = as.Date(c("2022-12-31","2023-04-30","2023-08-30","2023-12-30")), 
+           xmax = as.Date(c("2023-01-04","2023-04-30","2023-08-30","2023-12-30")), 
            ymin = 0, ymax = Inf, alpha = .2)+
   theme_classic()+
   scale_y_continuous(breaks = seq(0,3000,by = 1000),
@@ -893,25 +893,54 @@ as_tibble() |>
          col_date2 = as.numeric(col_date),
          across(pos, ~ .x > 0))
 
-age_profile_constrained <- function(data = hfmd, age_values = seq(0, 15, le = 512), 
-                                    ci = .95,n = 100) {
+age_profile_unconstrained <- function(data, age_values = seq(0, 15, le = 512),
+                                      ci = .95) {
+  data |> 
+    group_by(collection) |> 
+    group_map(~ age_profile(.x, age_values, ci))
+}
+
+shift_right <- function(n, x) {
+  if (n < 1) return(x)
+  c(rep(NA, n), head(x, -n))
+}
+
+age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 512),
+                                           ci = .95, n = 100) {
+  dpy <- 365 # number of days per year
+  
   mean_collection_times <- data |> 
     group_by(collection) |> 
     summarise(mean_col_date = mean(col_date2)) |> 
     with(setNames(mean_col_date, collection))
   
+  cohorts <- cumsum(c(0, diff(mean_collection_times))) |>
+    divide_by(dpy * mean(diff(age_values))) |> 
+    round() |> 
+    map(shift_right, age_values)
+  
+  age_time <- map2(mean_collection_times, cohorts,
+                   ~ tibble(collection_time = .x, cohort = .y))
+  
+  age_time_inv <- age_time |> 
+    map(~ cbind(.x, age = age_values)) |> 
+    bind_rows() |> 
+    na.exclude()
+
   data |> 
 # Step 1:
     group_by(collection) |> 
     group_modify(~ .x |>
                    age_profile(age_values, ci) |> 
                    mutate(across(c(fit, lwr, upr), ~ map(.x, ~ rbinom(n, 1, .x))))) |> 
-    ungroup() |> 
-    mutate(collection_time = mean_collection_times[as.character(collection)]) |> 
+    group_split() |> 
+    map2(age_time, bind_cols) |> 
+    bind_rows() |> 
     unnest(c(fit, lwr, upr)) |>
     pivot_longer(c(fit, lwr, upr), names_to = "line", values_to = "seropositvty") |> 
 # Step 2a:
-    group_by(age, line) |> 
+    filter(cohort < max(age) - diff(range(mean_collection_times)) / dpy) |>
+    group_by(cohort, line) |> 
     group_modify(~ .x %>%
                    scam(seropositvty ~ s(collection_time, bs = "mpi"), binomial, .) |> 
                    predict2(list(collection_time = mean_collection_times)) %>%
@@ -919,17 +948,21 @@ age_profile_constrained <- function(data = hfmd, age_values = seq(0, 15, le = 51
                           seroprevalence  = .)) |> 
     ungroup() |> 
 # Step 2b:
+    left_join(age_time_inv, c("cohort", "collection_time")) |> 
     group_by(collection_time, line) |> 
     group_modify(~ .x |>
-                   mutate(across(seroprevalence, ~ gam(.x ~ s(age), betar) |> 
-                                                   predict2()))) |> 
+                   right_join(tibble(age = age_values), "age") |>          ### added
+                   arrange(age) |>                                         ### added
+                   mutate(across(seroprevalence,
+                                 ~ gam(.x ~ s(age), betar) |>
+                                   predict2(list(age = age_values))))) |>  ### modified
     ungroup() |> 
     pivot_wider(names_from = line, values_from = seroprevalence) |> 
     group_by(collection_time) |> 
     group_split()
 }
 
-constrained_age_profiles <- age_profile_constrained(hfmd)
+constrained_age_profiles_cohort2 <- age_profile_constrained_cohort2(hfmd)
 ```
 
 ```{r}
@@ -948,7 +981,7 @@ atdf <- atdf %>%
            round()) |> 
   mutate(collection_time = mean_collection_times[as.character(collection)])
 
-constrained_gam <- constrained_age_profiles %>% 
+constrained_gam <- constrained_age_profiles_cohort2 %>% 
   bind_rows() %>%  
   ggplot(aes(x = age, y = fit)) +
   geom_line(aes(x = age, fit))+
@@ -957,7 +990,7 @@ constrained_gam <- constrained_age_profiles %>%
                      labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
              ncol = 4)+
   geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
-  labs(y = "Seroprevalence (%)",x = "Age (years)")+
+  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="A")+
   scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
   # coord_cartesian(ylim = c(0, 1))+
   theme_bw()+ 
@@ -980,6 +1013,109 @@ constrained_gam/
 
 ggsave("./fig_manuscript/glm_pava.svg",
        width = 15,height = 8,dpi = 500)
+```
+
+## Expected incidence
+
+```{r}
+attack_rates <- map2(head(constrained_age_profiles_cohort2, -1),
+                     constrained_age_profiles_cohort2[-1],
+                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort") |> 
+                       mutate(attack = (fit.y - fit.x) / (1 - fit.x)))
+
+
+census2019 <- readRDS("D:/OUCRU/hfmd/data/census2019.rds")
+
+age_structure <- census2019 |> 
+  filter(province == "Thành phố Hồ Chí Minh") |> 
+  group_by(age) |> 
+  summarise(n = sum(n)) |> 
+  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |> 
+  arrange(age) |> 
+  filter(age < 17)
+
+with(age_structure,
+     plot(age - 1, n, type = "s", ylim = c(0, 110000), col = 4, lwd = 3,
+          xlab = "age classes (years)", ylab = "number of children"))
+abline(v = 0:15, col = "grey")
+
+## expected incidence from sero
+
+mod <- lm(n ~ age, age_structure)
+
+incidences <- map(attack_rates,
+                  ~ mutate(.x, incidence = (1 - fit.x) * attack *
+                                             predict(mod, list(age = age.x))))
+
+## incidences from cases data
+
+hfmd_incidence <- readRDS("D:/OUCRU/hfmd/data/hfmd_incidence.rds")
+
+incidence1 <- hfmd_incidence %>% 
+  filter(year(adm_date) == 2023) %>% 
+  mutate(adm_date2 = as.numeric(adm_date),
+         cohort = interval(dob, "2023-01-01") / years(1)) 
+
+
+mean_collection_times <- hfmd |> 
+  group_by(collection) |> 
+  summarise(mean_col_date = mean(col_date2)) |> 
+  with(setNames(mean_col_date, collection))
+
+ouut <- list()
+
+for (i in 1:3){
+  ouut[[i]] <- incidence1 %>% 
+    filter(adm_date2 >= as.numeric(mean_collection_times[i]) & 
+             adm_date2 <= as.numeric(mean_collection_times[i+1])) %>% 
+    mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>% 
+    na.omit(age_gr) %>%
+    group_by(age_gr) %>% 
+    count() %>% 
+    mutate(age_gr2 = as.numeric(age_gr)) %>% 
+    gam(n ~ s(age_gr2),data = .) %>% 
+    predict(list(age_gr2 = incidences[[i]]$age.x))%>%
+    tibble(age = incidences[[i]]$age.x,
+           incidence  = .)
+}
+```
+
+```{r}
+#| fig-width: 13
+#| fig-height: 7
+
+incid_sero_cases <- map2(ouut,
+                         incidences, ~ inner_join(.x, .y, by = join_by(age == age.x)) %>% 
+          mutate(prob = (incidence.x/incidence.y)*100)) %>%
+  bind_rows(.id = "id") %>% 
+    pivot_longer(cols = c(incidence.x, incidence.y), 
+                 names_to = "series", values_to = "y") %>% 
+    ggplot(aes(x = age, y = y, color = factor(series,labels = c("Cases","Sero"))))+
+    geom_line()+
+    theme_bw()+
+    labs(tag = "A",color = "Data",
+         y = "Cummulative incidence",
+         x = "Age (years)")+
+    facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
+                                     "Apr 2023 - Aug 2023",
+                                     "Aug 2023 - Dec 2023")))+
+    coord_cartesian(ylim=c(0,20000))+
+    theme(
+    legend.position = "top",
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18))
+
+incid_sero_cases/
+  ts2
+
+ggsave("./fig_manuscript/incid_sero_cases.svg",
+       width = 13,height = 8,dpi = 500)
 ```
 
 ## Supplementary plot
