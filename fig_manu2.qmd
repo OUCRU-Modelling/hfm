@@ -602,6 +602,28 @@ for (i in 1:3){
            incidence  = .)
 }
 
+age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>% 
+  bind_rows() %>%  
+  ggplot(aes(x = age, y = fit)) +
+  geom_line(aes(x = age, fit))+
+  geom_point(data = data_pt %>% mutate(collection_time = col_time),
+             aes(x = age, y = pos),shape = "|")+
+  facet_wrap(~factor(collection_time,
+                     labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             ncol = 4)+
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
+  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="A")+
+  scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
+  # coord_cartesian(ylim = c(0, 1))+
+  theme_bw()+ 
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        strip.text.x = element_text(size = 18))
+
 ex_incid_cm <- map2(ouut,
        incidences, ~ inner_join(.x, .y, by = join_by(age == age.x)) %>%
          mutate(prob = (incidence.x/incidence.y)*100)) %>%
@@ -659,8 +681,13 @@ ggplot()+
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18))
 
+
+age_profile_sp_cm/
+  ts_cm
+
 ex_incid_cm/
   ts_cm
+
 ```
 
 ### Supplementation plot
