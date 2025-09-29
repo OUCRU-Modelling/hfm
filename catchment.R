@@ -417,14 +417,13 @@ constrained_age_profiles_cm %>%
 attack_rates <- map2(head(constrained_age_profiles_cohort2_cm, -1),
                      constrained_age_profiles_cohort2_cm[-1],
                      ~ left_join(na.exclude(.x), na.exclude(.y), "cohort") |>
-                       mutate(attack = (fit.y - fit.x) / (1 - fit.x),
-                              upr_atk = (upr.y - upr.x) / (1 - upr.x),
-                              lwr_atk = (lwr.y - lwr.x) / (1 - lwr.x)))
+                       mutate(attack = (fit.y - fit.x) / (1 - fit.x)))
+
 attack_rates %>%
   bind_rows(.id = "id") %>%
   ggplot(aes(x = cohort, y = attack))+
   geom_line()+
-  geom_ribbon(aes(ymin = lwr_atk, ymax = upr_atk),fill = "blue", alpha = 0.4)+
+  # geom_ribbon(aes(ymin = lwr_atk, ymax = upr_atk),fill = "blue", alpha = 0.4)+
   # coord_cartesian(ylim = c(0,15000))+
   facet_wrap(~id)+
   theme_minimal()+
@@ -453,15 +452,32 @@ mod <- lm(n ~ age, age_structure)
 
 incidences <- map(attack_rates,
                   ~ mutate(.x,
-                           incidence = (1 - fit.x) * attack * predict(mod, list(age = cohort)),
-                           upr_incidence = (1 - upr.x) * upr_atk * predict(mod, list(age = cohort)),
-                           lwr_incidence = (1 - lwr.x) * lwr_atk * predict(mod, list(age = cohort))))
+                           incidence = (1 - fit.x) * attack *
+                             predict(mod, list(age = cohort))))
+
+incidences %>%
+  bind_rows(.id = "id") %>%
+  group_by(id) %>%
+  group_modify(~.x %>%
+                 scam(incidence ~ s(cohort,bs = "po"),data = .) %>%
+                 predict(se.fit = TRUE) %>%
+                 c(list(age_gr2 = incidences[[1]]$cohort), .) |>
+                 as_tibble() |>
+                 mutate(lwr = link_inv(fit - 1.96 * se.fit),
+                        upr = link_inv(fit + 1.96 * se.fit),
+                        fit = link_inv(fit)) |>
+                 select(- se.fit)) %>%
+  ggplot(aes(x = age_gr2, y = fit))+
+  geom_line()+
+  geom_ribbon(aes(ymin = lwr,ymax = upr),fill = "blue")+
+  facet_wrap(~id,scale = "free")
+
 
 incidences %>%
   bind_rows(.id = "id") %>%
   ggplot(aes(x = cohort, y = incidence))+
   geom_line()+
-  geom_ribbon(aes(ymin = lwr_incidence, ymax = upr_incidence),fill = "blue", alpha = 0.4)+
+  # geom_ribbon(aes(ymin = lwr_incid, ymax = upr_incid),fill = "blue", alpha = 0.4)+
   coord_cartesian(ylim = c(0,15000))+
   facet_wrap(~id)+
   theme_minimal()+
@@ -491,6 +507,7 @@ mean_collection_times <- hfmd |>
   summarise(mean_col_date = mean(col_date2)) |>
   with(setNames(mean_col_date, collection))
 
+
 ouut <- list()
 
 for (i in 1:3){
@@ -501,8 +518,8 @@ for (i in 1:3){
     na.omit(age_gr) %>%
     group_by(age_gr) %>%
     count() %>%
-    mutate(age_gr2 = as.numeric(age_gr)) %>%
-    gam(n ~ s(age_gr2),method = "REML",data = .) %>%
+    mutate(age_gr2 = as.numeric(age_gr)-0.5) %>%
+    scam(n ~ s(age_gr2,bs = "po"),data = .) %>%
     predict(list(age_gr2 = incidences[[i]]$cohort))%>%
     tibble(age = incidences[[i]]$cohort,
            incidence  = .)
@@ -510,10 +527,14 @@ for (i in 1:3){
 
 ouut %>%
   bind_rows(.id = "id") %>%
-  ggplot(aes(x = age, y = incidence,color = id))+
+  filter(fit >0) %>%
+  ggplot(aes(x = age_gr2, y = fit))+
   geom_line()+
-  coord_cartesian(ylim = c(0,10000))+
+  geom_ribbon(aes(ymin = lwr,ymax = upr),fill = "blue",alpha = 0.5)+
+  facet_wrap(~id)+
   theme_minimal()+
+  coord_cartesian(ylim = c(0,2000))+
+  scale_x_continuous(breaks = seq(0,15))+
   theme(legend.position = "hide")
 
 
@@ -533,6 +554,7 @@ map2(ouut,
                                    "Apr 2023 - Aug 2023",
                                    "Aug 2023 - Dec 2023")))+
   coord_cartesian(ylim=c(0,15000))+
+  scale_x_continuous(breaks = seq(0,15))+
   theme(
     legend.position = "top",
     axis.text.x = element_text(size = 18),
@@ -542,34 +564,11 @@ map2(ouut,
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18),
     legend.title = element_text(size = 18),
-    strip.text = element_text(size = 18))
+    strip.text = element_text(size = 18),
+    panel.grid.minor.x = element_blank())
 
-map2(ouut,
-     incidences, ~ inner_join(.x, .y, by = join_by(age == age.x)) %>%
-       mutate(prob = (incidence.x/incidence.y)*100)) %>%
-  bind_rows(.id = "id") %>%
-  pivot_longer(cols = c(incidence.x, incidence.y),
-               names_to = "series", values_to = "y") %>%
-  ggplot(aes(x = cohort, y = y, color = factor(series,labels = c("Cases","Sero"))))+
-  geom_line()+
-  theme_bw()+
-  labs(tag = "A",color = "Data",
-       y = "Cummulative incidence",
-       x = "Age (years)")+
-  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
-                                   "Apr 2023 - Aug 2023",
-                                   "Aug 2023 - Dec 2023")))+
-  coord_cartesian(ylim=c(0,15000))+
-  theme(
-    legend.position = "top",
-    axis.text.x = element_text(size = 18),
-    axis.text.y = element_text(size = 18),
-    legend.text = element_text(size = 18),
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.title.x = element_text(size = 18),
-    axis.title.y = element_text(size = 18),
-    legend.title = element_text(size = 18),
-    strip.text = element_text(size = 18))
+
+
 
 
 
