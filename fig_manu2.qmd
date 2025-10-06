@@ -420,7 +420,6 @@ cm_ch1_cases_ratio %>%
 
 ## Figure 3: Estimated cummulative incidence from serological data and cases data
 
-The correlation plots show that there was a correlation between the number of cases and the number of serum samples in the catchment area. So we used the sero data to estimate the age profile of cumulative incidence in the CH1 catchment area.
 
 ```{r}
 #| fig-width: 13
@@ -586,17 +585,22 @@ mean_collection_times <- hfmd |>
   with(setNames(mean_col_date, collection))
 
 ouut <- list()
+dat <- list()
 
 for (i in 1:3){
-  ouut[[i]] <- incidence1 %>%
+  
+   dat[[i]] <- incidence1 %>%
     filter(adm_date2 >= as.numeric(mean_collection_times[i]) &
              adm_date2 <= as.numeric(mean_collection_times[i+1])) %>%
-    mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
+     mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
     na.omit(age_gr) %>%
     group_by(age_gr) %>%
     count() %>%
-    mutate(age_gr2 = as.numeric(age_gr)) %>%
-    scam(n ~ s(age_gr2,bs = "po"),data = .) %>%
+    mutate(age_gr2 = as.numeric(age_gr)) %>% 
+    ungroup() %>% 
+    select(-age_gr)
+  
+   ouut[[i]] <- scam(n ~ s(age_gr2,bs = "po"),data = dat[[i]]) %>%
     predict(list(age_gr2 = incidences[[i]]$cohort))%>%
     tibble(age = incidences[[i]]$cohort,
            incidence  = .)
@@ -624,17 +628,44 @@ age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>%
         axis.text.y = element_text(size = 18),
         strip.text.x = element_text(size = 18))
 
-ex_incid_cm <- map2(ouut,
-       incidences, ~ inner_join(.x, .y, by = join_by(age == age.x)) %>%
-         mutate(prob = (incidence.x/incidence.y)*100)) %>%
+cases_incid <- ggplot()+
+  geom_col(data = dat %>%
+             bind_rows(.id = "id"),
+           aes(x = age_gr2, y = n))+
+  geom_line(data = ouut %>%
+              bind_rows(.id = "id"),
+            aes(x = age,y = incidence)) +
+  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
+                                   "Apr 2023 - Aug 2023",
+                                   "Aug 2023 - Dec 2023")))+
+  coord_cartesian(ylim=c(0,2000))+
+  scale_x_continuous(breaks = seq(0,14,by = 2),
+                     limits = c(0,14))+
+  scale_y_continuous(breaks = seq(0,2000,by = 400))+
+  labs(tag = "A",
+       y = "Total cases count",
+       x = "Age (years)")+
+  theme_bw()+
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18),
+    panel.grid.minor.x = element_blank())
+
+
+ex_incid_cm <- incidences %>%
   bind_rows(.id = "id") %>%
-  pivot_longer(cols = c(incidence.x, incidence.y),
-               names_to = "series", values_to = "y") %>%
-  ggplot(aes(x = cohort, y = y, color = factor(series,labels = c("Cases","Sero"))))+
+  ggplot(aes(x = cohort, y = incidence))+
   geom_line()+
   theme_bw()+
-  labs(tag = "A",color = "Data",
-       y = "Cummulative incidence",
+  labs(tag = "B",
+       y = "Total cases count",
        x = "Age (years)")+
   facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
                                    "Apr 2023 - Aug 2023",
@@ -661,7 +692,7 @@ ggplot()+
            alpha = 0.5) +
   geom_point(aes(x = as.Date(col_date), y =  pos*1000),
             shape = "|",data = data_pt)+
-  labs(x = "Admission week",y = "Cases",tag = "B")+
+  labs(x = "Admission week",y = "Cases",tag = "C")+
   annotate("rect", fill = "blue",
            xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
            xmax = as.Date(c("2023-01-04","2023-04-30","2023-08-30","2023-12-30")), 
@@ -685,98 +716,22 @@ ggplot()+
 age_profile_sp_cm/
   ts_cm
 
-ex_incid_cm/
-  ts_cm
 
 ```
+
+
+```{r}
+#| fig-width: 13
+#| fig-height: 10
+#| fig-cap: Figure A shows the histogram representing the age profile of the raw data, with the smoothed curve fitted using the GAM model. Figure B shows the age profile of total case counts estimated from the serological data. Figure C shows the incidence reported in the CH1 catchment area.
+
+cases_incid/
+  ex_incid_cm/
+  ts_cm
+```
+
 
 ### Supplementation plot
-
-#### December 2022 - Apr 2023 {.unnumbered}
-
-```{r}
-library(ggstatsplot)
-district_consider <- cm_ch1_cases_ratio %>% 
-  filter(cut != "< 1") %>% 
-  pull(district1) %>% 
-  as.character()
-
-corr_sero_numcases <- function(timepoint){
-  
-  date_range <- data_pt %>%
-    filter(col_time %in% timepoint & 
-             qhchuan %in% district_consider) %>%
-    pull(col_date) %>%
-    range()
-
-  num_sero <- data_pt %>%
-    filter(col_time %in% timepoint & 
-             qhchuan %in% district_consider) %>%
-    group_by(qhchuan) %>%
-    count()
-  
-  df1 %>% 
-    filter(year(adm_week) == "2023" & 
-             !is.na(adm_week) &
-             adm_week >= date_range[1] &
-             adm_week <= date_range[2]) %>%
-    mutate(district2 = district %>%
-           str_replace_all(
-             c("Quận 2" = "Thủ Đức",
-               "Quận 9" = "Thủ Đức")) %>%
-           str_remove("Quận|Huyện") %>%
-           trimws(which = "both") %>%
-           stri_trans_general("latin-ascii") %>%
-           tolower()) %>%
-  group_by(district2) %>%
-  count() %>%
-  left_join(.,num_sero, by = join_by(district2 == qhchuan))
-}
-```
-
-```{r}
-
-corr_sero_numcases(timepoint = c("Apr 2023","Dec 2022")) %>%
-  ggscatterstats(
-    x = n.x,
-    y = n.y,
-    bf.message = FALSE,
-    marginal = FALSE,
-    label.var = district2,
-    xlab = "Number of HFMD cases in Dec 2022 - Apr 2023",
-    ylab = "Number of serum samples in Dec 2022 - Apr 2023"
-  )
-```
-
-#### Apr 2023 - Aug 2023 {.unnumbered}
-
-```{r}
-corr_sero_numcases(timepoint = c("Apr 2023","Aug 2023")) %>%
-  ggscatterstats(
-    x = n.x,
-    y = n.y,
-    bf.message = FALSE,
-    marginal = FALSE,
-    label.var = district2,
-    xlab = "Number of HFMD cases in Apr 2023 - Aug 2023",
-    ylab = "Number of serum samples in Apr 2023 - Aug 2023"
-  )
-```
-
-#### Aug 2023 - Dec 2023 {.unnumbered}
-
-```{r}
-corr_sero_numcases(timepoint = c("Dec 2023","Aug 2023")) %>%
-  ggscatterstats(
-    x = n.x,
-    y = n.y,
-    bf.message = FALSE,
-    marginal = FALSE,
-    label.var = district2,
-    xlab = "Number of HFMD cases in Aug 2023 - Dec 2023",
-    ylab = "Number of serum samples in Aug 2023 - Dec 2023"
-  )
-```
 
 ### Attack rate
 

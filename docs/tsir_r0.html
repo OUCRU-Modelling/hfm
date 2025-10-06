@@ -202,7 +202,7 @@ window.Quarto = {
       <div>
       <div class="quarto-title-meta-heading">Published</div>
       <div class="quarto-title-meta-contents">
-        <p class="date">09-12-2025</p>
+        <p class="date">10-06-2025</p>
       </div>
     </div>
     
@@ -530,23 +530,26 @@ I_{adj,t} = cases_t \times \rho
 <span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>                   <span class="at">method =</span> <span class="st">"deterministic"</span>, <span class="at">nsim =</span> <span class="dv">1000</span>,</span>
 <span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>                   <span class="at">family =</span> <span class="st">"gaussian"</span>, <span class="at">link =</span> <span class="st">"identity"</span>))</span>
 <span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>bbbbb <span class="ot">&lt;-</span> <span class="fu">map</span>(outcome, <span class="sc">~</span> <span class="fu">data.frame</span>(</span>
-<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">time =</span> .x<span class="sc">$</span>time,</span>
-<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">fit =</span> .x<span class="sc">$</span>res<span class="sc">$</span>mean,</span>
-<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">s =</span> .x<span class="sc">$</span>simS<span class="sc">$</span>mean,</span>
-<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">beta =</span> .x<span class="sc">$</span>contact</span>
-<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>))</span>
-<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>aaaaa <span class="ot">&lt;-</span> dt_tsir_district_2223 <span class="sc">%&gt;%</span></span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(district_reg) <span class="sc">%&gt;%</span></span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_modify</span>(<span class="sc">~</span>.x <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">time =</span> <span class="fu">seq</span>(<span class="dv">2022</span>, <span class="dv">2024</span>, <span class="at">length.out =</span> <span class="dv">52</span>))) <span class="sc">%&gt;%</span></span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>birth_year) <span class="sc">%&gt;%</span></span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>  magrittr<span class="sc">::</span><span class="fu">set_colnames</span>(<span class="fu">c</span>(<span class="st">"district"</span>,<span class="st">"cases"</span>,<span class="st">"births"</span>,<span class="st">"pop"</span>,<span class="st">"time"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(district) <span class="sc">%&gt;%</span></span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_split</span>()</span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>data_result <span class="ot">&lt;-</span> <span class="fu">map2</span>(aaaaa, bbbbb, <span class="sc">~</span> <span class="fu">left_join</span>(.x, .y, <span class="at">by =</span> <span class="st">"time"</span>))<span class="sc">%&gt;%</span></span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_rows</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>bbbbb <span class="ot">&lt;-</span> <span class="fu">map</span>(outcome, <span class="sc">~</span> <span class="fu">data.frame</span>(</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">time =</span> .x<span class="sc">$</span>time,</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">fit =</span> .x<span class="sc">$</span>res<span class="sc">$</span>mean,</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">s =</span> .x<span class="sc">$</span>simS<span class="sc">$</span>mean,</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  <span class="at">beta =</span> .x<span class="sc">$</span>contact</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>)) </span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>aaaaa <span class="ot">&lt;-</span> dt_tsir_district_2223 <span class="sc">%&gt;%</span></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(district_reg) <span class="sc">%&gt;%</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_modify</span>(<span class="sc">~</span>.x <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="at">time =</span> <span class="fu">seq</span>(<span class="dv">2022</span>, <span class="dv">2024</span>, <span class="at">length.out =</span> <span class="dv">52</span>))) <span class="sc">%&gt;%</span></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span>birth_year) <span class="sc">%&gt;%</span></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>  magrittr<span class="sc">::</span><span class="fu">set_colnames</span>(<span class="fu">c</span>(<span class="st">"district"</span>,<span class="st">"cases"</span>,<span class="st">"births"</span>,<span class="st">"pop"</span>,<span class="st">"time"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(district) <span class="sc">%&gt;%</span></span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>  <span class="co"># filter(time &gt;= 2023) %&gt;% </span></span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_split</span>() </span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>data_result <span class="ot">&lt;-</span> <span class="fu">map2</span>(aaaaa, bbbbb, <span class="sc">~</span> <span class="fu">left_join</span>(.x, .y, <span class="at">by =</span> <span class="st">"time"</span>))<span class="sc">%&gt;%</span></span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_rows</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <p>Data</p>
@@ -601,14 +604,14 @@ I_{adj,t} = cases_t \times \rho
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>data_result <span class="sc">%&gt;%</span> </span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># filter(district != "Thủ Đức") %&gt;%  </span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(time <span class="sc">&gt;=</span> <span class="dv">2023</span>) <span class="sc">%&gt;%</span> </span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> time))<span class="sc">+</span></span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">y =</span> beta.beta))<span class="sc">+</span></span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> beta.betalow,</span>
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>                  <span class="at">ymax =</span> beta.betahigh),<span class="at">fill =</span> <span class="st">"blue"</span>,<span class="at">alpha =</span> <span class="fl">0.3</span>)<span class="sc">+</span></span>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>district,<span class="at">ncol =</span> <span class="dv">4</span>)<span class="sc">+</span></span>
 <span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"time"</span>, <span class="at">y =</span><span class="st">"contact rate"</span>)<span class="sc">+</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">2022</span>,<span class="dv">2023</span>,<span class="dv">2024</span>))<span class="sc">+</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">2023</span>,<span class="dv">2024</span>))<span class="sc">+</span></span>
 <span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -636,13 +639,13 @@ Finding
 </section>
 <section id="basic-reproduction-rate-and-herd-immunity-threshold" class="level3" data-number="6.2.2">
 <h3 data-number="6.2.2" class="anchored" data-anchor-id="basic-reproduction-rate-and-herd-immunity-threshold"><span class="header-section-number">6.2.2</span> Basic reproduction rate and herd immunity threshold</h3>
-<p>The <span class="math inline">\(R_0\)</span> was derived according to the concepts of the next generation matrix. While the next generation matrix was replaced by the seasonal transmission parameters <span class="math inline">\(\beta_{1,...,26}\)</span> in our study. The <span class="math inline">\(\beta_{1,...,26}\)</span> were the regression coefficients of the tSIR model, and could be estimated by using the algorithm of iteratively reweighted least squares (IRLS)</p>
+<p>The <span class="math inline">\(R_t\)</span> was derived according to the concepts of the next generation matrix. While the next generation matrix was replaced by the seasonal transmission parameters <span class="math inline">\(\beta_{1,...,26}\)</span> in our study. The <span class="math inline">\(\beta_{1,...,26}\)</span> were the regression coefficients of the tSIR model, and could be estimated by using the algorithm of iteratively reweighted least squares (IRLS)</p>
 <p><span class="math display">\[
-R0_{1,...,26} = \beta_{1,...,26}\times \bar{S}
+Rt_{1,...,26} = \beta_{1,...,26}\times \bar{S}
 \]</span></p>
 <p>Herd immunity threshold (HIT) is the proportion of a population that must be vaccinated to become immune so that an infectious disease can become stable in that community. When the proportion is reached by vaccination, each case leads to a single new case and the infection becomes stable. We calculated the HIT by:</p>
 <p><span class="math display">\[
-HIT = 1 - \frac{1}{R0}
+HIT = 1 - \frac{1}{Rt}
 \]</span></p>
 <section id="district-specific-r0-and-hit-of-hfmd-in-hcmc." class="level4" data-number="6.2.2.1">
 <h4 data-number="6.2.2.1" class="anchored" data-anchor-id="district-specific-r0-and-hit-of-hfmd-in-hcmc."><span class="header-section-number">6.2.2.1</span> District-specific R0 and HIT of HFMD in HCMC.</h4>
@@ -884,7 +887,7 @@ HIT = 1 - \frac{1}{R0}
 <span id="cb11-43"><a href="#cb11-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>()<span class="sc">+</span></span>
 <span id="cb11-44"><a href="#cb11-44" aria-hidden="true" tabindex="-1"></a>  <span class="co"># scale_fill_paletteer_c("grDevices::Inferno")+</span></span>
 <span id="cb11-45"><a href="#cb11-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient</span>(<span class="at">low=</span><span class="st">"yellow"</span>, <span class="at">high=</span><span class="st">"red"</span>,</span>
-<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>                      <span class="at">name =</span> <span class="st">"R0"</span>)<span class="sc">+</span></span>
+<span id="cb11-46"><a href="#cb11-46" aria-hidden="true" tabindex="-1"></a>                      <span class="at">name =</span> <span class="st">"Rt"</span>)<span class="sc">+</span></span>
 <span id="cb11-47"><a href="#cb11-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_discrete</span>(<span class="at">position =</span> <span class="st">"right"</span>)<span class="sc">+</span></span>
 <span id="cb11-48"><a href="#cb11-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_discrete</span>(<span class="at">name =</span> <span class="st">"Week"</span>)<span class="sc">+</span></span>
 <span id="cb11-49"><a href="#cb11-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>

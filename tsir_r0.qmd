@@ -247,12 +247,14 @@ outcome <- dt_tsir_district_2223 %>%
                    method = "deterministic", nsim = 1000,
                    family = "gaussian", link = "identity"))
 
+
 bbbbb <- map(outcome, ~ data.frame(
   time = .x$time,
   fit = .x$res$mean,
   s = .x$simS$mean,
   beta = .x$contact
-))
+)) 
+
 
 aaaaa <- dt_tsir_district_2223 %>%
   group_by(district_reg) %>%
@@ -260,10 +262,12 @@ aaaaa <- dt_tsir_district_2223 %>%
   ungroup() %>% select(-birth_year) %>%
   magrittr::set_colnames(c("district","cases","births","pop","time")) %>%
   group_by(district) %>%
-  group_split()
+  # filter(time >= 2023) %>% 
+  group_split() 
 
 data_result <- map2(aaaaa, bbbbb, ~ left_join(.x, .y, by = "time"))%>%
   bind_rows()
+
 ```
 
 Data
@@ -313,14 +317,14 @@ Contact rate
 #| fig-cap: Infectious contact rate of each district from 2022 to 2023
 
 data_result %>% 
-  # filter(district != "Thủ Đức") %>%  
+  filter(time >= 2023) %>% 
   ggplot(aes(x = time))+
   geom_line(aes(y = beta.beta))+
   geom_ribbon(aes(ymin = beta.betalow,
                   ymax = beta.betahigh),fill = "blue",alpha = 0.3)+
   facet_wrap(~district,ncol = 4)+
   labs(x = "time", y ="contact rate")+
-  scale_x_continuous(breaks = c(2022,2023,2024))+
+  scale_x_continuous(breaks = c(2023,2024))+
   theme_minimal()
 ```
 
@@ -330,16 +334,16 @@ While the number of HFMD cases in District 1 is relatively low, the contact rate
 
 ### Basic reproduction rate and herd immunity threshold
 
-The $R_0$ was derived according to the concepts of the next generation matrix. While the next generation matrix was replaced by the seasonal transmission parameters $\beta_{1,...,26}$ in our study. The $\beta_{1,...,26}$ were the regression coefficients of the tSIR model, and could be estimated by using the algorithm of iteratively reweighted least squares (IRLS)
+The $R_t$ was derived according to the concepts of the next generation matrix. While the next generation matrix was replaced by the seasonal transmission parameters $\beta_{1,...,26}$ in our study. The $\beta_{1,...,26}$ were the regression coefficients of the tSIR model, and could be estimated by using the algorithm of iteratively reweighted least squares (IRLS)
 
 $$
-R0_{1,...,26} = \beta_{1,...,26}\times \bar{S}
+Rt_{1,...,26} = \beta_{1,...,26}\times \bar{S}
 $$
 
 Herd immunity threshold (HIT) is the proportion of a population that must be vaccinated to become immune so that an infectious disease can become stable in that community. When the proportion is reached by vaccination, each case leads to a single new case and the infection becomes stable. We calculated the HIT by:
 
 $$
-HIT = 1 - \frac{1}{R0}
+HIT = 1 - \frac{1}{Rt}
 $$
 
 #### District-specific R0 and HIT of HFMD in HCMC.
@@ -408,7 +412,7 @@ heatmap_r0 <- data_result %>%
   geom_tile()+
   # scale_fill_paletteer_c("grDevices::Inferno")+
   scale_fill_gradient(low="yellow", high="red",
-                      name = "R0")+
+                      name = "Rt")+
   scale_y_discrete(position = "right")+
   scale_x_discrete(name = "Week")+
   theme_minimal()+

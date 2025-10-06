@@ -568,9 +568,96 @@ map2(ouut,
     panel.grid.minor.x = element_blank())
 
 
+ouut <- list()
+dat <- list()
+
+for (i in 1:3){
+
+   dat[[i]] <- incidence1 %>%
+    filter(adm_date2 >= as.numeric(mean_collection_times[i]) &
+             adm_date2 <= as.numeric(mean_collection_times[i+1])) %>%
+     mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
+    na.omit(age_gr) %>%
+    group_by(age_gr) %>%
+    count() %>%
+    mutate(age_gr2 = as.numeric(age_gr)) %>%
+    ungroup() %>%
+    select(-age_gr)
+
+   ouut[[i]] <- scam(n ~ s(age_gr2,bs = "po"),data = dat[[i]]) %>%
+    predict(list(age_gr2 = incidences[[i]]$cohort))%>%
+    tibble(age = incidences[[i]]$cohort,
+           incidence  = .)
+}
+
+
+cbind(bind_rows(dat,.id = "id"),
+          bind_rows(ouut,.id = "id"))
 
 
 
+cases_incid <- ggplot()+
+  geom_col(data = dat %>%
+             bind_rows(.id = "id"),
+           aes(x = age_gr2, y = n))+
+  geom_line(data = ouut %>%
+              bind_rows(.id = "id"),
+            aes(x = age,y = incidence)) +
+  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
+                                   "Apr 2023 - Aug 2023",
+                                   "Aug 2023 - Dec 2023")))+
+  coord_cartesian(ylim=c(0,2000))+
+  scale_x_continuous(breaks = seq(0,14,by = 2),
+                     limits = c(0,14))+
+  scale_y_continuous(breaks = seq(0,2000,by = 200))+
+  labs(tag = "A",
+       y = "Total cases count",
+       x = "Age (years)")+
+  theme_bw()+
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18),
+    panel.grid.minor.x = element_blank())
+
+
+ex_incid_cm <- incidences %>%
+  bind_rows(.id = "id") %>%
+  ggplot(aes(x = cohort, y = incidence))+
+  geom_line()+
+  theme_bw()+
+  labs(tag = "B",
+       y = "Total cases count",
+       x = "Age (years)")+
+  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
+                                   "Apr 2023 - Aug 2023",
+                                   "Aug 2023 - Dec 2023")))+
+  coord_cartesian(ylim=c(0,12000))+
+  scale_x_continuous(breaks = seq(0,14,by = 2),
+                     limits = c(0,14))+
+  scale_y_continuous(breaks = seq(0,12000,by = 2000))+
+  theme(
+    legend.position = "top",
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18),
+    panel.grid.minor.x = element_blank())
+
+
+cases_incid/
+  ex_incid_cm/
+  ts_cm
 
 # map2(ouut,
 #      incidences, ~ inner_join(.x, .y, by = join_by(age == age.x)) %>%
