@@ -412,7 +412,7 @@ cm_ch1_cases_ratio %>%
     ),
     name = "95% CI Upper bound of \ncumulative case ratio of each districts"
   )+
-  geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
+  # geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
   geom_sf(data = tdnd1, shape = 17,
           color = "yellow", size = 1)+
   theme_void()
@@ -713,8 +713,10 @@ ggplot()+
     axis.title.y = element_text(size = 18))
 
 
+
+
 age_profile_sp_cm/
-  ts_cm
+  ts_cm + labs(x = "Admission week",y = "Cases",tag = "B")
 
 
 ```

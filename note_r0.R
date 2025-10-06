@@ -557,6 +557,37 @@ data_result %>%
   bind_rows() %>% filter(time > 2023 & district == "Thủ Đức") %>% View()
 
 
+bbbbb <- map(outcome, ~ data.frame(
+  time = .x$time[27:52],
+  fit = .x$res$mean[27:52],
+  s = .x$simS$mean[27:52],
+  beta = .x$contact
+))
+
+
+aaaaa <- dt_tsir_district_2223 %>%
+  group_by(district_reg) %>%
+  group_modify(~.x %>% mutate(time = seq(2022, 2024, length.out = 52))) %>%
+  ungroup() %>% select(-birth_year) %>%
+  magrittr::set_colnames(c("district","cases","births","pop","time")) %>%
+  group_by(district) %>%
+  filter(time >= 2023) %>%
+  group_split()
+
+data_result <- map2(aaaaa, bbbbb, ~ left_join(.x, .y, by = "time"))%>%
+  bind_rows()
+
+data_result %>%
+  ggplot(aes(x = time))+
+  geom_line(aes(y = beta.beta))+
+  geom_ribbon(aes(ymin = beta.betalow,
+                  ymax = beta.betahigh),fill = "blue",alpha = 0.3)+
+  facet_wrap(~district,ncol = 4)+
+  labs(x = "time", y ="contact rate")+
+  scale_x_continuous(breaks = c(2023,2024))+
+  theme_minimal()
+
+
 ### rmse, mape
 
 outcome[[1]]

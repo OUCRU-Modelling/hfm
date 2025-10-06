@@ -699,7 +699,7 @@ Note
 <span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a>    ),</span>
 <span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">"95% CI Upper bound of </span><span class="sc">\n</span><span class="st">cumulative case ratio of each districts"</span></span>
 <span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a>  )<span class="sc">+</span></span>
-<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> nl_name_2,<span class="at">geometry =</span> geom),<span class="at">size=</span><span class="dv">2</span>,<span class="at">color =</span> <span class="st">"black"</span>)<span class="sc">+</span></span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a>  <span class="co"># geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+</span></span>
 <span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">data =</span> tdnd1, <span class="at">shape =</span> <span class="dv">17</span>,</span>
 <span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a>          <span class="at">color =</span> <span class="st">"yellow"</span>, <span class="at">size =</span> <span class="dv">1</span>)<span class="sc">+</span></span>
 <span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_void</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -1006,8 +1006,10 @@ Note
 <span id="cb8-286"><a href="#cb8-286" aria-hidden="true" tabindex="-1"></a>    <span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">18</span>))</span>
 <span id="cb8-287"><a href="#cb8-287" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-288"><a href="#cb8-288" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-289"><a href="#cb8-289" aria-hidden="true" tabindex="-1"></a>age_profile_sp_cm<span class="sc">/</span></span>
-<span id="cb8-290"><a href="#cb8-290" aria-hidden="true" tabindex="-1"></a>  ts_cm</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-289"><a href="#cb8-289" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-290"><a href="#cb8-290" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-291"><a href="#cb8-291" aria-hidden="true" tabindex="-1"></a>age_profile_sp_cm<span class="sc">/</span></span>
+<span id="cb8-292"><a href="#cb8-292" aria-hidden="true" tabindex="-1"></a>  ts_cm <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Admission week"</span>,<span class="at">y =</span> <span class="st">"Cases"</span>,<span class="at">tag =</span> <span class="st">"B"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div>
