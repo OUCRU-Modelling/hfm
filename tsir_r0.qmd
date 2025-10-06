@@ -332,6 +332,31 @@ data_result %>%
 While the number of HFMD cases in District 1 is relatively low, the contact rate during outbreaks is notably the highest among all districts.
 :::
 
+### Relationship between beta(t) and population density
+
+```{r}
+#| fig-width: 10
+#| fig-height: 8
+#| out-width: "100%"
+
+library(ggstatsplot)
+data_result %>% 
+  group_by(district) %>% 
+  summarise(mean_beta = median(beta.beta),
+            mean_pop = median(pop)) %>% 
+  ggscatterstats(
+    x = mean_pop,
+    y = mean_beta,
+    bf.message = FALSE,
+    marginal = FALSE, 
+    label.var = district,
+    xlab = "Median of human density",
+    ylab = "Median of births"
+  )
+```
+
+
+
 ### Basic reproduction rate and herd immunity threshold
 
 The $R_t$ was derived according to the concepts of the next generation matrix. While the next generation matrix was replaced by the seasonal transmission parameters $\beta_{1,...,26}$ in our study. The $\beta_{1,...,26}$ were the regression coefficients of the tSIR model, and could be estimated by using the algorithm of iteratively reweighted least squares (IRLS)
