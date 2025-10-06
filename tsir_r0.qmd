@@ -340,18 +340,33 @@ While the number of HFMD cases in District 1 is relatively low, the contact rate
 #| out-width: "100%"
 
 library(ggstatsplot)
+
+hcmc_districts <- data.frame(
+  district = c("1", "10", "11", "12", "3", "4", "5", "6", "7", "8",
+               "Bình Chánh", "Bình Thạnh", "Bình Tân", "Cần Giờ", "Củ Chi",
+               "Gò Vấp", "Hóc Môn", "Nhà Bè", "Phú Nhuận", "Thủ Đức",
+               "Tân Bình", "Tân Phú"),
+  area_sq_km = c(7.73, 5.72, 5.14, 52.78, 4.92, 4.18, 4.27, 7.19, 35.69, 19.18,
+                 253.00, 20.76, 51.89, 704.00, 435.00,
+                 19.74, 109.00, 100.00, 4.88, 48.00+49.74+114,
+                 22.38, 16.06)
+)
+
+
 data_result %>% 
   group_by(district) %>% 
   summarise(mean_beta = median(beta.beta),
             mean_pop = median(pop)) %>% 
+  left_join(.,hcmc_districts,by = join_by(district)) %>% 
+  mutate(human_dens = mean_pop/area_sq_km) %>% 
   ggscatterstats(
-    x = mean_pop,
+    x = human_dens,
     y = mean_beta,
     bf.message = FALSE,
     marginal = FALSE, 
     label.var = district,
     xlab = "Median of human density",
-    ylab = "Median of births"
+    ylab = "Median of beta"
   )
 ```
 

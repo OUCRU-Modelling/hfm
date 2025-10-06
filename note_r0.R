@@ -561,9 +561,11 @@ bbbbb <- map(outcome, ~ data.frame(
   time = .x$time[27:52],
   fit = .x$res$mean[27:52],
   s = .x$simS$mean[27:52],
-  beta = .x$contact
+  beta = .x$contact,
+  rho = .x$rho
 ))
 
+outcome[[1]]
 
 aaaaa <- dt_tsir_district_2223 %>%
   group_by(district_reg) %>%
@@ -587,6 +589,67 @@ data_result %>%
   scale_x_continuous(breaks = c(2023,2024))+
   theme_minimal()
 
+library(ggstatsplot)
+
+data_result %>%
+  group_by(district) %>%
+  summarise(mean_beta = median(rho),
+            mean_pop = median(pop)) %>%
+  ggscatterstats(
+    x = mean_pop,
+    y = mean_beta,
+    bf.message = FALSE,
+    marginal = FALSE,
+    label.var = district,
+    xlab = "Median of human density",
+    ylab = "Median of estimated beta"
+  )
+
+
+
+hcmc_districts <- data.frame(
+  district = c("1", "10", "11", "12", "3", "4", "5", "6", "7", "8",
+               "Bình Chánh", "Bình Thạnh", "Bình Tân", "Cần Giờ", "Củ Chi",
+               "Gò Vấp", "Hóc Môn", "Nhà Bè", "Phú Nhuận", "Thủ Đức",
+               "Tân Bình", "Tân Phú"),
+  area_sq_km = c(7.73, 5.72, 5.14, 52.78, 4.92, 4.18, 4.27, 7.19, 35.69, 19.18,
+                 253.00, 20.76, 51.89, 704.00, 435.00,
+                 19.74, 109.00, 100.00, 4.88, 48.00+49.74+114,
+                 22.38, 16.06)
+)
+
+
+data_result %>%
+  group_by(district) %>%
+  summarise(mean_beta = median(beta.beta),
+            mean_pop = median(pop)) %>%
+  left_join(.,hcmc_districts,by = join_by(district)) %>%
+  mutate(human_dens = mean_pop/area_sq_km) %>%
+  ggscatterstats(
+    x = human_dens,
+    y = mean_beta,
+    bf.message = FALSE,
+    marginal = FALSE,
+    label.var = district,
+    xlab = "Median of human density",
+    ylab = "Median of beta"
+  )
+
+data_result %>%
+  group_by(district) %>%
+  summarise(mean_i = median(births),
+            mean_pop = median(pop)) %>%
+  left_join(.,hcmc_districts,by = join_by(district)) %>%
+  mutate(human_dens = mean_pop/area_sq_km) %>%
+  ggscatterstats(
+    x = human_dens,
+    y = mean_i,
+    bf.message = FALSE,
+    marginal = FALSE,
+    label.var = district,
+    xlab = "Median of human density",
+    ylab = "Median of births"
+  )
 
 ### rmse, mape
 
