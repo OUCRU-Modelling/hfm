@@ -39,6 +39,7 @@ library(patchwork)
 library(odin)
 library(tsiR)
 library(janitor)
+library(ggstatsplot)
 invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
@@ -92,6 +93,40 @@ predicted_birth_district <- map2_dfr(modelaa, birth_district2, \(mod, df) {
     )
 })
 ```
+
+```{r,message=FALSE,warning=FALSE,results='hide'}
+## setup hcm map
+
+library(sf)
+library(stringi)
+map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
+vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
+
+vn_qh1 <- vn_qh %>%
+  clean_names() %>%     ## cho thành chữ thường
+  filter(
+    str_detect(
+      name_1,
+      "Hồ Chí Minh"
+    )
+  )
+qhtp <- vn_qh1[-c(14,21),]
+
+qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
+  st_union()
+
+qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
+qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
+  tolower() %>%
+  str_remove("district") %>%
+  trimws(which = "both")
+
+qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
+                    "HM","NB","PN","1","10","11","12",
+                    "3","4","5","6","7","8","TB",
+                    "TP","TĐ")
+```
+
 
 ```{r}
 #| fig-width: 15
@@ -334,41 +369,61 @@ While the number of HFMD cases in District 1 is relatively low, the contact rate
 
 ### Relationship between beta(t) and population density
 
+
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
 #| out-width: "100%"
+df <- read_csv("D:/OUCRU/hfmd/data/landuse/vnm_pd_2020_1km_ASCII_XYZ.csv")
 
-library(ggstatsplot)
+df_sf <- st_as_sf(df, coords = c("X", "Y"), crs = 4326)
 
-hcmc_districts <- data.frame(
-  district = c("1", "10", "11", "12", "3", "4", "5", "6", "7", "8",
-               "Bình Chánh", "Bình Thạnh", "Bình Tân", "Cần Giờ", "Củ Chi",
-               "Gò Vấp", "Hóc Môn", "Nhà Bè", "Phú Nhuận", "Thủ Đức",
-               "Tân Bình", "Tân Phú"),
-  area_sq_km = c(7.73, 5.72, 5.14, 52.78, 4.92, 4.18, 4.27, 7.19, 35.69, 19.18,
-                 253.00, 20.76, 51.89, 67.7293, 435.00,
-                 19.74, 109.00, 100.00, 4.88, 48.00+49.74+114,
-                 22.38, 16.06)
-)
+df_hcmc <- st_intersection(df_sf, qhtp)
 
+ggplot() +
+  geom_tile(data = as.data.frame(st_coordinates(df_hcmc)) %>%
+              bind_cols(df_hcmc |> st_drop_geometry()),
+            aes(x = X, y = Y, fill = Z)) +
+  scale_fill_viridis_c(option = "viridis", name = "Population density\n(people per km²)") +
+  geom_sf(data = qhtp, fill = NA, color = "black", size = 0.4) +
+  coord_sf(expand = FALSE) +
+  labs(
+    title = "Population Density Inside Ho Chi Minh City (2020, 1km Resolution)",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal(base_size = 12)
 
-data_result %>% 
-  group_by(district) %>% 
-  summarise(mean_beta = median(beta.beta),
-            mean_pop = median(pop)) %>% 
-  left_join(.,hcmc_districts,by = join_by(district)) %>% 
-  mutate(human_dens = mean_pop/area_sq_km) %>% 
+hcmc_density <- df_hcmc %>%
+  st_drop_geometry() %>%
+  group_by(name_2) %>%
+  summarise(
+    mean_density = mean(Z, na.rm = TRUE),
+    median_density = median(Z, na.rm = TRUE),
+    max_density = max(Z, na.rm = TRUE),
+    n_points = n()
+  ) %>%
+  arrange(desc(mean_density)) %>%
+  mutate(district = name_2 %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both"))
+
+data_result %>%
+  group_by(district) %>%
+  summarise(mean_beta = mean(beta.beta)) %>%
+  left_join(.,hcmc_density,by = join_by(district)) %>%
+  mutate(log_den = log(mean_density)) %>%
   ggscatterstats(
-    x = human_dens,
+    x = log_den,
     y = mean_beta,
     bf.message = FALSE,
-    marginal = FALSE, 
-    label.var = district,
-    xlab = "Median of human density",
-    ylab = "Median of beta"
+    marginal = FALSE,
+    label.var = name_2,
+    xlab = "Log of mean human density",
+    ylab = "Mean of beta"
   )
 ```
+
 
 ### HCMC map with dynamic world data
 
@@ -511,38 +566,7 @@ up /
 
 Based on patterns of biweekly $R_0$, I applied hierarchical clustering. Then, based on the dendrogram and I cut the tree to 5 branches and plotted the results on a map to explore potential geographical relationships between clusters.
 
-```{r,message=FALSE,warning=FALSE,results='hide'}
-## setup hcm map
 
-library(sf)
-library(stringi)
-map_path <- "D:/OUCRU/HCDC/project phân tích sero quận huyện/"
-vn_qh <- st_read(dsn = file.path(map_path, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
-
-vn_qh1 <- vn_qh %>%
-  clean_names() %>%     ## cho thành chữ thường
-  filter(
-    str_detect(
-      name_1,
-      "Hồ Chí Minh"
-    )
-  )
-qhtp <- vn_qh1[-c(14,21),]
-
-qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
-  st_union()
-
-qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
-qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
-  tolower() %>%
-  str_remove("district") %>%
-  trimws(which = "both")
-
-qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
-                    "HM","NB","PN","1","10","11","12",
-                    "3","4","5","6","7","8","TB",
-                    "TP","TĐ")
-```
 
 ```{r,warning=FALSE,message=FALSE}
 #| fig-width: 12
