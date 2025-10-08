@@ -369,11 +369,11 @@ While the number of HFMD cases in District 1 is relatively low, the contact rate
 
 ### Relationship between beta(t) and population density
 
-
 ```{r}
 #| fig-width: 10
 #| fig-height: 8
 #| out-width: "100%"
+
 df <- read_csv("D:/OUCRU/hfmd/data/landuse/vnm_pd_2020_1km_ASCII_XYZ.csv")
 
 df_sf <- st_as_sf(df, coords = c("X", "Y"), crs = 4326)
@@ -405,7 +405,7 @@ ggplot() +
 
 ggplot() +
   geom_tile(data = as.data.frame(st_coordinates(df_hcmc)) %>%
-              bind_cols(df_hcmc |> st_drop_geometry()) %>% 
+              bind_cols(df_hcmc |> st_drop_geometry()) %>%
               filter(Z > 1000),
             aes(x = X, y = Y, fill = Z)) +
   scale_fill_viridis_c(option = "viridis", name = "Population density\n(people per km²)") +
@@ -478,25 +478,25 @@ $$
 HIT = 1 - \frac{1}{Rt}
 $$
 
-#### District-specific R0 and HIT of HFMD in HCMC.
+#### District-specific Rt and HIT of HFMD in HCMC.
 
 ```{r}
-r0_hit <- data_result %>%
+rt_hit <- data_result %>%
   group_by(district) %>%
   filter(time > 2023) %>%
   group_modify(~.x %>%
-                 mutate(r0 = beta.beta*s)) %>%
-  summarise(p25_r0 = quantile(r0,0.25),
-            median_r0 = median(r0),
-            p75_r0 = quantile(r0,0.75),
-            hit = (1 - (1/median_r0))*100)
+                 mutate(rt = beta.beta*s)) %>%
+  summarise(p25_rt = quantile(rt,0.25),
+            median_rt = median(rt),
+            p75_rt = quantile(rt,0.75),
+            hit = (1 - (1/median_rt))*100)
 
-r0_hit <- r0_hit %>% filter(hit > 0) %>% as.data.frame()
+rt_hit <- rt_hit %>% filter(hit > 0) %>% as.data.frame()
 library(knitr)
-kable(r0_hit)
+kable(rt_hit)
 ```
 
-#### Heatmap and dendrogram of R0
+#### Heatmap and dendrogram of beta
 
 ```{r,message=FALSE,warning=FALSE,results='hide'}
 library(ggdendro)
@@ -540,11 +540,104 @@ heatmap_r0 <- data_result %>%
   bind_rows() %>% filter(time > 2023) %>%
   ggplot(aes(x = as.factor(beta.time),
              y = factor(district,levels = disaaa),
-             fill = r0)) +
+             fill = beta.beta)) +
   geom_tile()+
   # scale_fill_paletteer_c("grDevices::Inferno")+
   scale_fill_gradient(low="yellow", high="red",
-                      name = "Rt")+
+                      name = "beta(t)")+
+  scale_y_discrete(position = "right")+
+  scale_x_discrete(name = "Week")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size  = 10),
+        axis.text.y = element_text(size  = 10),
+        legend.key.width =  unit(2, "cm"))
+
+ca <- dt_tsir_district_2223 %>%
+  group_by(district_reg) %>%
+  group_modify(~.x %>% mutate(time = seq(2022, 2024, length.out = 52))) %>%
+  ungroup() %>% select(district_reg,time,biweek_cases,predicted,population) %>% 
+  group_by(time) %>% 
+  summarise(cases = sum(biweek_cases)) %>% 
+  filter(time > 2023) %>% mutate(biweek = (1:nrow(.))*2) %>% 
+  ggplot(aes(x = biweek, y =cases)) + 
+  geom_bar(stat = "identity")+
+  theme_minimal()+
+  scale_x_discrete(breaks = seq(2,52,by=2),expand = expansion(add = c(0, 0)))+
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+```
+
+```{r}
+#| fig-width: 13
+#| fig-height: 8
+#| out-width: "100%"
+#| fig-cap: Heatmap of bi-weekly beta by district. The dendrogram on the left side was the result of the clustering analysis
+
+up <- (plot_spacer()+ca)+
+  plot_layout(widths = c(1,2))
+
+down <- (HAC_district + heatmap_r0 )+
+  plot_layout(widths = c(1,2))
+
+up /
+  down +
+  plot_layout(heights = c(1,3))
+```
+
+#### Heatmap and dendrogram of R(t)
+
+```{r,message=FALSE,warning=FALSE,results='hide'}
+
+rt_2023_district <- data_result %>% 
+  filter(time > 2023) %>% 
+  select(district,beta.time,beta.beta,s) %>%
+  mutate(r_t = beta.beta*s) %>% 
+  select(district,r_t,beta.time) %>% 
+  pivot_wider(names_from = beta.time,values_from = r_t)
+
+rt_2023_district <- column_to_rownames(rt_2023_district, var = "district")
+
+d2 <- stats::dist(rt_2023_district)
+treeC2 <- hclust(d2, method="ward.D2")
+dg2 <- as.dendrogram(treeC2)
+ddata_analytes2 <- dendro_data(dg2, type = "rectangle")
+
+HAC_district_rt <- ggplot() +
+  geom_segment(
+    data = segment(ddata_analytes2),
+    aes(x = x, y = y, xend = xend, yend = yend),
+    position = position_nudge(x = -0.5)
+  ) +
+  coord_flip(clip = "off") +
+  scale_y_reverse() +
+  scale_x_continuous(limits = c(0, 22), expand = c(0, 0)) +
+  theme_dendro() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "mm"))
+  geom_text(
+    data = label(ddata_analytes2),
+    aes(x = x, y = -1, label = label),
+    size = 3.5, color = "#444444", vjust = 2, angle = 0, hjust = 0
+  ) 
+
+disaaa2 <- label(ddata_analytes2)[3] %>% as.data.frame() %>% pull(label) %>% as.character()
+
+heatmap_rt <- data_result %>%
+  group_by(district) %>%
+  group_modify(~.x %>% mutate(rt = beta.beta*s,
+                              beta.time = beta.time*2)) %>%
+  bind_rows() %>% filter(time > 2023) %>%
+  ggplot(aes(x = as.factor(beta.time),
+             y = factor(district,levels = disaaa),
+             fill = rt)) +
+  geom_tile()+
+  # scale_fill_paletteer_c("grDevices::Inferno")+
+  scale_fill_gradient(low="yellow", high="red",
+                      name = "R(t)")+
   scale_y_discrete(position = "right")+
   scale_x_discrete(name = "Week")+
   theme_minimal()+
@@ -571,16 +664,17 @@ ca <- dt_tsir_district_2223 %>%
 
 ```
 
+
 ```{r}
 #| fig-width: 13
 #| fig-height: 8
 #| out-width: "100%"
-#| fig-cap: Heatmap of bi-weekly R0 by district. The dendrogram on the left side was the result of the clustering analysis
+#| fig-cap: Heatmap of bi-weekly rt by district. The dendrogram on the left side was the result of the clustering analysis
 
 up <- (plot_spacer()+ca)+
   plot_layout(widths = c(1,2))
 
-down <- (HAC_district + heatmap_r0 )+
+down <- (HAC_district_rt + heatmap_rt )+
   plot_layout(widths = c(1,2))
 
 up /
@@ -590,9 +684,7 @@ up /
 
 ### Cluster analysis
 
-Based on patterns of biweekly $R_0$, I applied hierarchical clustering. Then, based on the dendrogram and I cut the tree to 5 branches and plotted the results on a map to explore potential geographical relationships between clusters.
-
-
+#### Clustering beta(t)
 
 ```{r,warning=FALSE,message=FALSE}
 #| fig-width: 12
@@ -620,6 +712,33 @@ left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
 ::: {.callout-note title="Finding"}
 There was a geographical relationship between districts within each cluster.
 :::
+
+#### Clustering R(t)
+
+Based on patterns of biweekly $R_t$, I applied hierarchical clustering. Then, based on the dendrogram and I cut the tree to 5 branches and plotted the results on a map to explore potential geographical relationships between clusters.
+
+```{r}
+#| fig-width: 12
+#| fig-height: 9 
+#| out-width: "100%"
+
+cut2 <- cutree(treeC2, k=7) %>% as.data.frame() %>% 
+  rownames_to_column(var = "district") 
+colnames(cut2) <- c("district","cluster")
+
+cut2 %>% 
+  mutate(district2 = stri_trans_general(cut2$district, "latin-ascii") %>%
+                    tolower() %>%
+                    str_remove("district") %>%
+                    trimws(which = "both")) %>% 
+  # filter(district != "Thủ Đức") %>% 
+left_join(qhtp, ., by = join_by(varname_2 == district2)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = factor(cluster)),show.legend = T)+
+  scale_fill_discrete(name = "Cluster",na.translate = FALSE)+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
+```
 
 ```{r,warning=FALSE,message=FALSE,echo=FALSE}
 #| fig-width: 10

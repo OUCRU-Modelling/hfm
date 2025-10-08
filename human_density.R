@@ -63,7 +63,8 @@ df_hcmc <- st_intersection(df_sf, qhtp)
 # --- Plot HCMC population density heatmap ---
 ggplot() +
   geom_tile(data = as.data.frame(st_coordinates(df_hcmc)) %>%
-              bind_cols(df_hcmc |> st_drop_geometry()),
+              bind_cols(df_hcmc |> st_drop_geometry()) %>%
+              filter(Z > 1000),
             aes(x = X, y = Y, fill = Z)) +
   scale_fill_viridis_c(option = "viridis", name = "Population density\n(people per km²)") +
   geom_sf(data = qhtp, fill = NA, color = "black", size = 0.4) +
@@ -76,8 +77,10 @@ ggplot() +
   theme_minimal(base_size = 12)
 
 
+
 hcmc_density <- df_hcmc %>%
   st_drop_geometry() %>%
+  filter(Z > 1000) %>%
   group_by(name_2) %>%
   summarise(
     mean_density = mean(Z, na.rm = TRUE),
@@ -93,17 +96,17 @@ hcmc_density <- df_hcmc %>%
 hcmc_density$district %>% unique()
 data_result$district %>% unique()
 data_result %>%
-  group_by(district) %>%
-  summarise(mean_beta = mean(beta.beta)) %>%
+  # group_by(district) %>%
+  # summarise(mean_beta = mean(beta.beta)) %>%
   left_join(.,hcmc_density,by = join_by(district)) %>%
-  mutate(log_den = log(mean_density)) %>%
-  ggplot(aes(x = log_den,y=mean_beta))+
+  mutate(log_den = log(median_density)) %>%
+  ggplot(aes(x = log_den,y=beta.beta))+
   geom_point()+
   theme_minimal()+
   labs(x = "Log of mean human density",
-       y = "Mean of beta(t)")
+       y = "beta(t)")
 
-
+data_result
 
 library(terra)
 my_raster <- rast("D:/OUCRU/hfmd/data/landuse/dynamic world/2023-01-01_2024-01-01_DYN_WORLD_V1.tif")
