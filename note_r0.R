@@ -670,3 +670,275 @@ mape_tsir <- data_result %>%
             rmse = sqrt(mean(sq_er)))
 
 mean(mape_tsir$mape)
+
+## under report assumption
+## check the relationship between S estimated from tsir and serological data
+
+
+s_23 <- data_result %>%
+  filter(district != "Thủ Đức") %>%
+  ggplot(aes(x = time,y=s))+
+  geom_line()+
+  facet_wrap(~district,
+             # scale ="free",
+             ncol = 4)
+
+df1 %>%
+  filter(year(adm_date) > 2023) %>%
+  group_by(adm_week) %>%
+  count() %>%
+  ggplot(aes(x = adm_week,y = n))+
+  geom_col()
+
+
+df1 %>%
+  filter(year(adm_week) > 2023) %>%
+  group_by(district,adm_week) %>%
+  count() %>%
+  mutate(week = isoweek(adm_week)) %>%
+  group_by(district, week) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  complete(district, week = 1:52, fill = list(n = 0)) %>%
+  filter(week < 27) %>%
+  ggplot(aes(x = week,y = n))+
+  geom_col()+
+  facet_wrap(~district)
+
+ca_24 <- df1 %>%
+  filter(year(adm_week) > 2023) %>%
+  group_by(district,adm_week) %>%
+  count() %>%
+  mutate(week = isoweek(adm_week)) %>%
+  group_by(district, week) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  complete(district, week = 1:52, fill = list(n = 0)) %>%
+  filter(week < 27) %>%
+  pivot_wider(names_from = week, values_from = n, values_fill = 0)
+
+ca_24 <- column_to_rownames(ca_24, var = "district")
+
+library(ggdendro)
+library(patchwork)
+
+d2 <- stats::dist(ca_24)
+treeC2 <- hclust(d2, method="ward.D2")
+dg2 <- as.dendrogram(treeC2)
+ddata_analytes2 <- dendro_data(dg2, type = "rectangle")
+
+
+HAC_district_rt <- ggplot() +
+  geom_segment(
+    data = segment(ddata_analytes2),
+    aes(x = x, y = y, xend = xend, yend = yend),
+    position = position_nudge(x = -0.5)
+  ) +
+  coord_flip(clip = "off") +
+  scale_y_reverse() +
+  scale_x_continuous(limits = c(0, 22), expand = c(0, 0)) +
+  theme_dendro() +
+  theme(plot.margin = unit(c(0, 0, 0, 0), "mm"))
+geom_text(
+  data = label(ddata_analytes2),
+  aes(x = x, y = -1, label = label),
+  size = 3.5, color = "#444444", vjust = 2, angle = 0, hjust = 0
+)
+
+disaaa2 <- label(ddata_analytes2)[3] %>% as.data.frame() %>% pull(label) %>% as.character()
+
+df1 %>%
+  filter(year(adm_week) > 2023) %>%
+  group_by(district,adm_week) %>%
+  count() %>%
+  mutate(week = isoweek(adm_week)) %>%
+  group_by(district, week) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  complete(district, week = 1:52, fill = list(n = 0)) %>%
+  filter(week < 27) %>%
+  ggplot(aes(x = as.factor(week),
+             y = factor(district,levels = disaaa2),
+             fill = n)) +
+  geom_tile()+
+  # scale_fill_paletteer_c("grDevices::Inferno")+
+  scale_fill_gradient(low="yellow", high="red",
+                      name = "R(t)")+
+  scale_y_discrete(position = "right")+
+  scale_x_discrete(name = "Week")+
+  theme_minimal()+
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank(),
+        axis.text.x = element_text(size  = 10),
+        axis.text.y = element_text(size  = 10))
+
+
+cut2 <- cutree(treeC2, k=7) %>% as.data.frame() %>%
+  rownames_to_column(var = "district")
+colnames(cut2) <- c("district","cluster")
+
+cut2 %>%
+  mutate(district2 = stri_trans_general(cut2$district, "latin-ascii") %>%
+           tolower() %>%
+           str_remove("district") %>%
+           trimws(which = "both")) %>%
+  # filter(district != "Thủ Đức") %>%
+  left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
+  ggplot() +
+  geom_sf(aes(fill = factor(cluster)),show.legend = T)+
+  scale_fill_discrete(name = "Cluster",na.translate = FALSE)+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
+
+library(paletteer)
+rt_23 <- rt_hit %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
+  ggplot() +
+  geom_sf(aes(fill = median_rt),show.legend = T)+
+  paletteer::scale_fill_paletteer_c("ggthemes::Classic Red",
+                                    na.value="white")+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
+
+ca24 <- df1 %>%
+  filter(year(adm_week) > 2023) %>%
+  group_by(district,adm_week) %>%
+  count() %>%
+  mutate(week = isoweek(adm_week)) %>%
+  group_by(district, week) %>%
+  complete(district, week = 1:52, fill = list(n = 0)) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  filter(week < 27) %>%
+  ggplot(aes(x = week,y = n))+
+  geom_col()+
+  facet_wrap(~district,ncol = 4)
+
+birth23 <- predicted_birth_district %>%
+  ggplot(aes(x = biweek2,y = predicted)) +
+  geom_line()+
+  geom_point(data = birth_district2 %>% bind_rows(),aes(x = biweek2,y = biweek_birth))+
+  facet_wrap(~district_reg,ncol  = 4)+
+  theme_minimal()
+
+
+
+df1 %>%
+  filter(year(adm_week) > 2023) %>%
+  group_by(district,adm_week) %>%
+  count() %>%
+  mutate(week = isoweek(adm_week)) %>%
+  group_by(district, week) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
+  complete(district, week = 1:52, fill = list(n = 0)) %>%
+  filter(week < 27) %>%
+  group_by(district) %>%
+  summarise(mean_I = mean(n)) %>%
+  left_join(.,rt_hit,
+            by = join_by(district)) %>%
+  filter(district != "1") %>%
+  ggplot(aes(x = median_rt,y = mean_I))+
+  geom_point()+
+  geom_text(aes(label = district), nudge_y = 0.2)
+
+rt23 <- data_result %>%
+  group_by(district) %>%
+  filter(time > 2023) %>%
+  group_modify(~.x %>%
+                 mutate(rt = beta.beta*s)) %>%
+  select(district,rt,time) %>%
+  ggplot(aes(x = time, y = rt))+
+  geom_col()+
+  facet_wrap(~district,ncol=4)
+
+data_result %>%
+  group_by(district) %>%
+  summarise(mean_s = mean(s))
+
+rt_jan24 <- data_result %>%
+  group_by(district) %>%
+  filter(time > 2023) %>%
+  group_modify(~.x %>%
+                 mutate(rt = beta.beta*s)) %>%
+  filter(time == 2024) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
+  ggplot() +
+  geom_sf(aes(fill = rt),show.legend = T)+
+  paletteer::scale_fill_paletteer_c("ggthemes::Classic Red",
+                                    na.value="white")+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
+
+
+(birth23 | s_23)/
+  (rt23|ca24)
+
+rt_jan24| ca24
+
+rt_23
+
+s_23|ca24
+
+
+###
+library(purrr)
+library(magrittr)
+data_file <- "D:/OUCRU/hfmd/data/hfmd_sero.rds"
+
+hfmd <- data_file |>
+  readRDS() |>
+  as_tibble() |>
+  mutate(collection = id |>
+           str_remove(".*-") |>
+           as.numeric() |>
+           divide_by(1e4) |>
+           round(),
+         col_date2 = as.numeric(col_date))
+
+hfmd %>%
+  ggplot(aes(y = pos,x = col_date))+
+  geom_smooth(fill = "blue",alpha = 1/10,
+              method = mgcv::gam,formula = y ~ s(x, bs = "bs"),
+              method.args = list(method = "REML",link = "logit",
+                                 family = "binomial"))+
+  ylim(0,1)
+
+cleaned <- read_csv("D:/OUCRU/HCDC/project phân tích sero quận huyện/cleaned.csv")
+
+sero_add <- full_join(cleaned,hfmd, by =  c("id" = "id"))
+
+data_pt <- sero_add %>% filter(!is.na(age)&!is.na(qhchuan)) %>%
+  select(-c(add_mod,pxchuan,neutralization,id)) %>%
+  as.data.frame()
+
+# data_pt$age_gr2 <- cut(data_pt$age+0.00000001, breaks = seq(0, 15, by = 3),
+#                        labels = c("<0 & ≤3 yo",
+#                                   "<3 & ≤6 yo",
+#                                   "<6 & ≤9 yo",
+#                                   "<9 & ≤12 yo",
+#                                   "<12 & ≤15 yo"))
+#
+# data_pt$age_gr3 <- cut(data_pt$age+0.00000001, breaks = seq(0, 15, by = 3))
+
+
+sero_add %>%
+  group_by(qhchuan) %>%
+  count(pos) %>%
+  pivot_wider(names_from = pos,
+              values_from = n,
+              names_prefix = "pos_") %>%
+  replace(is.na(.), 0) %>%
+  mutate(total = pos_0+pos_1,
+         sp = pos_1/total)

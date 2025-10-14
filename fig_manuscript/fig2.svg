@@ -931,24 +931,24 @@
 <rect x='829.19' y='322.89' width='54.34' height='191.92' style='stroke-width: 1.07; stroke: none; stroke-linecap: butt; stroke-linejoin: miter; fill: #0000FF; fill-opacity: 0.20;' />
 </g>
 <g clip-path='url(#cpMC4wMHw5MzYuMDB8MC4wMHw1NzYuMDA=)'>
-<polyline points='94.36,524.01 94.36,322.89 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
-<text x='89.43' y='521.25' text-anchor='end' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='10.02px' lengthAdjust='spacingAndGlyphs'>0</text>
-<text x='89.43' y='460.34' text-anchor='end' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='40.06px' lengthAdjust='spacingAndGlyphs'>1000</text>
-<text x='89.43' y='399.44' text-anchor='end' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='40.06px' lengthAdjust='spacingAndGlyphs'>2000</text>
-<text x='89.43' y='338.53' text-anchor='end' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='40.06px' lengthAdjust='spacingAndGlyphs'>3000</text>
-<polyline points='91.62,514.80 94.36,514.80 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='91.62,453.90 94.36,453.90 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='91.62,392.99 94.36,392.99 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='91.62,332.09 94.36,332.09 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='94.36,524.01 925.04,524.01 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
-<polyline points='171.47,526.74 171.47,524.01 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='398.21,526.74 398.21,524.01 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='626.82,526.74 626.82,524.01 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<polyline points='855.43,526.74 855.43,524.01 ' style='stroke-width: 1.07; stroke: #333333; stroke-linecap: butt;' />
-<text x='171.47' y='541.82' text-anchor='middle' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='77.08px' lengthAdjust='spacingAndGlyphs'>Dec 2022</text>
-<text x='398.21' y='541.82' text-anchor='middle' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='73.08px' lengthAdjust='spacingAndGlyphs'>Apr 2023</text>
-<text x='626.82' y='541.82' text-anchor='middle' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='77.09px' lengthAdjust='spacingAndGlyphs'>Aug 2023</text>
-<text x='855.43' y='541.82' text-anchor='middle' style='font-size: 18.00px;fill: #4D4D4D; font-family: "Arial";' textLength='77.08px' lengthAdjust='spacingAndGlyphs'>Dec 2023</text>
+<polyline points='94.36,524.01 94.36,322.89 ' style='stroke-width: 1.07; stroke-linecap: square;' />
+<text x='89.43' y='521.25' text-anchor='end' style='font-size: 18.00px; font-family: "Arial";' textLength='10.02px' lengthAdjust='spacingAndGlyphs'>0</text>
+<text x='89.43' y='460.34' text-anchor='end' style='font-size: 18.00px; font-family: "Arial";' textLength='40.06px' lengthAdjust='spacingAndGlyphs'>1000</text>
+<text x='89.43' y='399.44' text-anchor='end' style='font-size: 18.00px; font-family: "Arial";' textLength='40.06px' lengthAdjust='spacingAndGlyphs'>2000</text>
+<text x='89.43' y='338.53' text-anchor='end' style='font-size: 18.00px; font-family: "Arial";' textLength='40.06px' lengthAdjust='spacingAndGlyphs'>3000</text>
+<polyline points='91.62,514.80 94.36,514.80 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='91.62,453.90 94.36,453.90 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='91.62,392.99 94.36,392.99 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='91.62,332.09 94.36,332.09 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='94.36,524.01 925.04,524.01 ' style='stroke-width: 1.07; stroke-linecap: square;' />
+<polyline points='171.47,526.74 171.47,524.01 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='398.21,526.74 398.21,524.01 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='626.82,526.74 626.82,524.01 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<polyline points='855.43,526.74 855.43,524.01 ' style='stroke-width: 1.07; stroke-linecap: butt;' />
+<text x='171.47' y='541.82' text-anchor='middle' style='font-size: 18.00px; font-family: "Arial";' textLength='77.08px' lengthAdjust='spacingAndGlyphs'>Dec 2022</text>
+<text x='398.21' y='541.82' text-anchor='middle' style='font-size: 18.00px; font-family: "Arial";' textLength='73.08px' lengthAdjust='spacingAndGlyphs'>Apr 2023</text>
+<text x='626.82' y='541.82' text-anchor='middle' style='font-size: 18.00px; font-family: "Arial";' textLength='77.09px' lengthAdjust='spacingAndGlyphs'>Aug 2023</text>
+<text x='855.43' y='541.82' text-anchor='middle' style='font-size: 18.00px; font-family: "Arial";' textLength='77.08px' lengthAdjust='spacingAndGlyphs'>Dec 2023</text>
 <text x='509.70' y='561.25' text-anchor='middle' style='font-size: 18.00px; font-family: "Arial";' textLength='130.08px' lengthAdjust='spacingAndGlyphs'>Admission week</text>
 <text transform='translate(36.85,423.45) rotate(-90)' text-anchor='middle' style='font-size: 18.00px; font-family: "Arial";' textLength='51.03px' lengthAdjust='spacingAndGlyphs'>Cases</text>
 <text x='17.46' y='320.99' text-anchor='middle' style='font-size: 18.00px; font-weight: bold; font-family: "Arial";' textLength='13.00px' lengthAdjust='spacingAndGlyphs'>B</text>

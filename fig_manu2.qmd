@@ -325,6 +325,20 @@ ggsave("./fig_manuscript/fig1.svg",
        width = 15,height = 8,dpi = 500)
 ```
 
+### Age distribution of raw data
+
+```{r}
+data %>% 
+  ggplot(aes(age))+
+  geom_histogram(binwidth = 0.5,
+                 color = "white",      
+                 fill = "black")+
+  facet_wrap(~peak)+
+  scale_x_continuous(breaks = seq(0,7,by=.5),limits = c(0,7))+
+  theme_minimal()
+```
+
+
 ## Figure 2: Catchment area of CH1
 
 OUCRU serum bank from Children hospital 1, so we calculate the catchment area of CH1 by cases ratio method. [@zinszer2014]
@@ -412,14 +426,38 @@ cm_ch1_cases_ratio %>%
     ),
     name = "95% CI Upper bound of \ncumulative case ratio of each districts"
   )+
-  # geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
+  geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
   geom_sf(data = tdnd1, shape = 17,
           color = "yellow", size = 1)+
   theme_void()
 ```
 
-## Figure 3: Estimated cummulative incidence from serological data and cases data
+```{r}
+tdnd1 <- data.frame(long = 106.6702,
+                    lat  = 10.7686) %>%
+  st_as_sf(coords = c("long", "lat"), crs = 4326)
 
+data_pt %>% group_by(qhchuan) %>% 
+  count() %>% as.data.frame() %>%
+    # dplyr::mutate(pre = n / sum(n)) %>% 
+  left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
+  ggplot() +
+    geom_sf(aes(fill = n),show.legend = T)+
+    paletteer::scale_fill_paletteer_c("ggthemes::Classic Red",
+                                    na.value="white",
+                                    name = "Number of \nserum samples")+
+    # geom_sf_text(aes(label = nl_name_2),size=2)+
+    geom_sf(data = tdnd1, shape = 17,
+           color = "blue", size = 2)+
+    theme_void()
+
+ggsave("./fig_manuscript/sero-distribution.svg",
+       width = 15,height = 8,dpi = 500)
+
+```
+
+
+## Figure 3: Estimated cummulative incidence from serological data and cases data
 
 ```{r}
 #| fig-width: 13
@@ -589,21 +627,22 @@ dat <- list()
 
 for (i in 1:3){
   
-   dat[[i]] <- incidence1 %>%
+  dat[[i]] <- incidence1 %>%
     filter(adm_date2 >= as.numeric(mean_collection_times[i]) &
              adm_date2 <= as.numeric(mean_collection_times[i+1])) %>%
-     mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
-    na.omit(age_gr) %>%
-    group_by(age_gr) %>%
-    count() %>%
-    mutate(age_gr2 = as.numeric(age_gr)) %>% 
-    ungroup() %>% 
-    select(-age_gr)
+    # mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
+    # na.omit(age_gr) %>%
+    # group_by(age_gr) %>%
+    # count() %>%
+    # mutate(age_gr2 = as.numeric(age_gr)) %>% 
+    # ungroup() %>% 
+    # select(-age_gr)
+    {}
   
-   ouut[[i]] <- scam(n ~ s(age_gr2,bs = "po"),data = dat[[i]]) %>%
-    predict(list(age_gr2 = incidences[[i]]$cohort))%>%
-    tibble(age = incidences[[i]]$cohort,
-           incidence  = .)
+  # ouut[[i]] <- scam(n ~ s(age_gr2,bs = "po"),data = dat[[i]]) %>%
+  #   predict(list(age_gr2 = incidences[[i]]$cohort))%>%
+  #   tibble(age = incidences[[i]]$cohort,
+  #          incidence  = .)
 }
 
 age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>% 
@@ -629,19 +668,18 @@ age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>%
         strip.text.x = element_text(size = 18))
 
 cases_incid <- ggplot()+
-  geom_col(data = dat %>%
-             bind_rows(.id = "id"),
-           aes(x = age_gr2, y = n))+
-  geom_line(data = ouut %>%
-              bind_rows(.id = "id"),
-            aes(x = age,y = incidence)) +
+  geom_histogram(data = dat %>% bind_rows(.id = "id"),
+                 aes(cohort),
+                 binwidth = 0.5,
+                 color = "white",      
+                 fill = "black")+
+  scale_x_continuous(breaks = seq(0,14,by = 2),
+                     limits = c(0,14))+
   facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
                                    "Apr 2023 - Aug 2023",
                                    "Aug 2023 - Dec 2023")))+
-  coord_cartesian(ylim=c(0,2000))+
-  scale_x_continuous(breaks = seq(0,14,by = 2),
-                     limits = c(0,14))+
-  scale_y_continuous(breaks = seq(0,2000,by = 400))+
+  coord_cartesian(ylim=c(0,1000))+
+  scale_y_continuous(breaks = seq(0,1000,by = 200))+
   labs(tag = "A",
        y = "Total cases count",
        x = "Age (years)")+
@@ -721,7 +759,6 @@ age_profile_sp_cm/
 
 ```
 
-
 ```{r}
 #| fig-width: 13
 #| fig-height: 10
@@ -731,7 +768,6 @@ cases_incid/
   ex_incid_cm/
   ts_cm
 ```
-
 
 ### Supplementation plot
 
@@ -869,3 +905,5 @@ ts/
   atk
 
 ```
+
+

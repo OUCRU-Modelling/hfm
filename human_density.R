@@ -151,3 +151,69 @@ ggplot() +
   ) +
   coord_sf() +
   theme_minimal(base_size = 12)
+
+
+
+cut %>%
+  mutate(cluster2 = case_when(
+    district == "1" ~ "1",
+    district %in% c("Tân Bình","Phú Nhuận","3")~"2",
+    district %in% c("11","6","5")~"3",
+    district %in% c("7")~"4",
+    district %in% c("4")~"5",
+    district %in% c("10")~"6",
+    district %in% c("Cần Giờ")~"7"),
+    district2 =  stri_trans_general(cut$district, "latin-ascii") %>%
+      tolower() %>%
+      str_remove("district") %>%
+      trimws(which = "both")
+  ) %>% replace(is.na(.),"8") %>%
+  left_join(qhtp, ., by = join_by(varname_2 == district2)) %>%
+  ggplot() +
+  geom_sf(aes(fill = factor(cluster2)),show.legend = T)+
+  scale_fill_discrete(name = "Cluster",na.translate = FALSE)+
+  geom_sf_text(aes(label = nl_name_2),size=2.5)+
+  theme_void()
+
+
+cut %>%
+  mutate(cluster2 = case_when(
+    district == "1" ~ "1",
+    district %in% c("Tân Bình","Phú Nhuận","3")~"2",
+    district %in% c("11","6","5")~"3",
+    district %in% c("7")~"4",
+    district %in% c("4")~"5",
+    district %in% c("10")~"6",
+    district %in% c("Cần Giờ")~"7"),
+    district2 =  stri_trans_general(cut$district, "latin-ascii") %>%
+      tolower() %>%
+      str_remove("district") %>%
+      trimws(which = "both")
+  ) %>% replace(is.na(.),"8") %>%
+  left_join(data_result,.,by = join_by(district == district2)) %>%
+  left_join(.,hcmc_density,by = join_by(district)) %>%
+  group_by(cluster2) %>%
+  mutate(mean_dens_cluster = mean(mean_density)) %>%
+  ungroup() %>%
+  ggplot(aes(x = log(mean_dens_cluster),y=beta.beta))+
+  geom_point()+
+  theme_minimal()+
+  labs(x = "Log of mean human density",
+       y = "beta(t)")
+
+data_result %>%
+  # group_by(district) %>%
+  # summarise(mean_beta = mean(beta.beta)) %>%
+  left_join(.,hcmc_density,by = join_by(district)) %>%
+  left_join(.,cut,by = join_by(district)) %>%
+  group_by(cluster) %>%
+  mutate(mean_dens_cluster = mean(mean_density)) %>%
+  ungroup() %>%
+  ggplot(aes(x = log(mean_dens_cluster),y=beta.beta))+
+  geom_point()+
+  theme_minimal()+
+  labs(x = "Log of mean human density",
+       y = "beta(t)")
+
+
+
