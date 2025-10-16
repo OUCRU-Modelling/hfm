@@ -204,6 +204,7 @@ wwww <- slide_age(time1 = df23$adm_date,
                   age1 =  df23$age1,
                   w1 = 7, s1=7)
 
+library(zoo)
 ch <- data.frame(date = wwww$adat$date,
                  c0 = as.numeric(co[1,]),
                  c1 = as.numeric(co[2,]),
@@ -211,6 +212,19 @@ ch <- data.frame(date = wwww$adat$date,
                  c3 = as.numeric(co[4,]),
                  c4 = as.numeric(co[5,]),
                  c5 = as.numeric(co[6,]))
+
+ch <- ch %>% mutate(
+  trend = c(rep("#80FFFFFF",26-3),
+            rep("#FFFFFFFF",26+3))
+)
+
+ch$group <- consecutive_id(ch$trend)
+ch <- head(do.call(rbind, by(ch, ch$group, rbind, NA)), -1)
+ch[, c("trend", "group")] <- lapply(ch[, c("trend", "group")], na.locf)
+ch[] <- lapply(ch, na.locf, fromLast = T)
+
+ch$trend <- factor(ch$trend,
+                   levels = c("#80FFFFFF","#FFFFFFFF"))
 
 leb_month <- c("Jan",rep("",3),"Feb",rep("",3),"Mar",rep("",4),"Apr",rep("",3),
                "May",rep("",4),"Jun",rep("",3),"Jul",rep("",3),"Aug",rep("",4),
@@ -230,7 +244,11 @@ ts <- data.frame(wwww$wdat$date,wwww$wdat$age) %>%
                      limit =c(0,3000), 
                      minor_breaks = NULL)+
   scale_fill_manual(values = c("#582C83FF","#FFC72CFF"))+
-  labs(tag = "A")+ 
+  labs(tag = "B")+ 
+  annotate("rect", fill = "grey",
+           xmin = c("2023-01-04","2023-04-05","2023-08-02","2023-12-06"), 
+           xmax = c("2023-01-11","2023-04-26","2023-08-30","2023-12-27"), 
+           ymin = 0, ymax = Inf, alpha = .5)+
   theme(axis.title.x = element_blank(),
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
@@ -240,41 +258,43 @@ ts <- data.frame(wwww$wdat$date,wwww$wdat$age) %>%
         axis.text.y = element_text(size = 18))
 
 hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
-      stat_density(
-        aes(fill = after_stat(density)),
-        geom = "raster",
-        position = "identity"
-      )+
-      scale_fill_paletteer_c("grDevices::Inferno")+
-      # scale_fill_gradient(low="#040404FF", high= "#FFFE9EFF")+
-      # scale_fill_distiller(palette = "Blues")+
-      theme_minimal()+
-      scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
-      scale_x_discrete(name = "Admission week",labels = leb_month)+
-      labs(tag = "B",fill = "Density")+
-      # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
-      geom_line(data = ch,aes(x = date,y = c0),col = "white",
-                group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c1),col = "white",
-                group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c2),col = "white",
-                group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c3),col = "white",
-                group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c4),col = "white",
-                group = 1,lwd = 0.25,alpha = 0.8)+
-      geom_line(data = ch,aes(x = date,y = c5),col = "white",
-                group = 1,lwd = 0.25,alpha = 0.8)+
-      theme(axis.title.y = element_text(size = 18),
-            axis.ticks.x = element_blank(),
-            legend.position = "bottom",
-            plot.tag = element_text(face = "bold", size = 18),
-            axis.title.x = element_text(size = 18),
-            axis.text.x = element_text(size = 18),
-            axis.text.y = element_text(size = 18),
-            legend.text = element_text(size = 15),
-            legend.title = element_text(size = 18))+ 
-  guides(fill=guide_colourbar(barwidth=20,label.position="bottom")) 
+  stat_density(
+    aes(fill = after_stat(density)),
+    geom = "raster",
+    position = "identity",
+    interpolate = TRUE
+  )+
+  scale_fill_paletteer_c("grDevices::Inferno")+
+  # scale_fill_gradient(low="#040404FF", high= "#FFFE9EFF")+
+  # scale_fill_distiller(palette = "Blues")+
+  theme_minimal()+
+  scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
+  scale_x_discrete(name = "Admission week",labels = leb_month)+
+  labs(tag = "C",fill = "Density")+
+  # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
+  geom_line(data = ch,aes(x = date,y = c0,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c1,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c2,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c3,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c4,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c5,col = trend),
+            group = 1,lwd = 0.25)+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+ 
+  guides(fill=guide_colourbar(barwidth=20,label.position="bottom"),
+         color = "none") 
 
 fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
   filter((adm_date <= as.Date("2023-09-03")&
@@ -285,8 +305,8 @@ se_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
            !is.na(adm_date) & !is.na(age1))
 
 data <- data.frame(
-  peak = c( rep("1st wave",nrow(data.frame(se_peak$age1))),
-            rep("2nd wave",nrow(data.frame(fi_peak$age1)))),
+  peak = c( rep("1st",nrow(data.frame(se_peak$age1))),
+            rep("2nd",nrow(data.frame(fi_peak$age1)))),
   age = c( fi_peak$age1, se_peak$age1 )
 )
 
@@ -295,12 +315,13 @@ data <- data.frame(
 ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
       geom_density(alpha = 0.6) +
       scale_fill_manual(values = c("#582C83FF","#FFC72CFF")) +
-      scale_x_reverse(limit = c(6,0),breaks = seq(0,6,by=1), 
+      scale_x_reverse(limit = c(6,0),
+                      breaks = seq(0,6,by=1), 
                       minor_breaks = NULL)+
       scale_y_continuous(minor_breaks = NULL)+
       coord_flip()+
       theme_minimal()+
-      labs(x = "Age", y ="Density",tag = "C",fill = "Outbreak")+
+      labs(x = "Age", y ="Density",tag = "E",fill = "Wave")+
       theme(axis.title.y = element_blank(),
             axis.ticks.x = element_blank(),
             legend.position = "bottom",
@@ -310,20 +331,133 @@ ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
             axis.text.y = element_text(size = 18),
             legend.text = element_text(size = 18),
             legend.title = element_text(size = 18))
+
+
+library(ISOweek)
+count_dangky_week <- readRDS("D:/OUCRU/hfmd/data/count_dangky_week.rds")
+child <- count_dangky_week %>% filter(birth_year >= 2017) %>% group_by(birth_week, birth_year) %>%
+  summarise(n=sum(n)) %>% arrange(birth_year)
+colnames(child) <- c("week","year","birth")
+## combine week 52 and 53
+
+child$week <- ifelse(child$week == 53,52,child$week)
+
+child <- child %>% group_by(year) %>%
+  mutate(newn = ifelse(week == 52, sum(birth[week==52]), birth)) %>%
+  {data.frame(.$week, .$year, .$newn )} %>% unique() %>%
+  magrittr::set_colnames(c("week","year","birth"))
+
+child$week2 <- seq(1:length(child$week))
+
+time <- data.frame()
+
+for (i in 2017:2022){
+  range <- child$week[child$year == i]
+  if (length(range) == 52){
+    time_add <- seq.int(i + 7/365 ,(i+1) - 7/365,
+                        length.out = length(range)) %>% data.frame()
+  } else {
+    time_add <- seq.int(i + 7/365 ,(i+1) - 7/365,
+                        length.out = 52)[1:length(range)] %>% data.frame()
+  }
+  time <- rbind(time,time_add)
+}
+
+
+child[,5] <- time %>%
+  magrittr::set_colnames(c("time"))
+
+## model fitting
+fit <- mgcv::gam(birth ~ s(week) + s(week2),method = "REML",data = child)
+
+
+cutpoint <- function(point){
+  fitt <- mgcv::gam(birth ~ s(week) + s(week2),
+                    method = "REML",data = child[-c(point:nrow(child)),])
+  
+  new_data2 <- data.frame(week = rep(1:52,7))
+  
+  new_data2$week2 <- seq(1,nrow(new_data2))
+  new_data2$year <- rep(2017:2023,each = 52)
+  
+  time <- data.frame()
+  for (i in 2017:2023){
+    range <- new_data2$week[new_data2$year == i]
+    time_add <- data.frame(seq.int(i + 7/365 ,(i+1) - 7/365,
+                                   length.out = length(range)))
+    time <- rbind(time,time_add)
+  }
+  
+  new_data2[4] <- time %>%
+    magrittr::set_colnames(c("time"))
+  
+  est2 <- predict.gam(fitt,newdata = new_data2,
+                      type="response",se.fit = TRUE)
+  
+  new_data2 <- new_data2 %>% mutate(
+    fit = est2$fit,
+    lwr = est2$fit - qt(0.95,nrow(new_data2))*est2$se.fit,
+    upr = est2$fit + qt(0.95,nrow(new_data2))*est2$se.fit,
+  )
+  out <- list()
+  out$point <- point
+  out$df <- new_data2
+  return(out)
+}
+
+
+plot_cp <- function(model){
+  dta <- model$df %>% 
+    mutate(time2 = sprintf("%04d-W%02d-1", year, week),
+           time2 = ISOweek2date(time2)) 
+  ggplot(data = dta) +
+    geom_line(aes(x = time2,y = fit),col = "blue")+
+    geom_ribbon(aes(x = time2,ymin = lwr, ymax = upr), fill = "royalblue",alpha = 0.4)+
+    geom_vline(xintercept = dta$time2[dta$week2 == model$point])+
+    labs(y = "Number of births",
+         x = "Year")+
+    theme_minimal()
+}
+
+
+
+
+
+model <- cutpoint(270)
+
+b_ss <- plot_cp(model)+
+  geom_point(data = child[1:270,]%>% 
+               mutate(time2 = sprintf("%04d-W%02d-1", year, week),
+                      time2 = ISOweek2date(time2)) , 
+             aes(x = time2, y = birth),alpha = 0.5)+
+  # annotate("text", x= 2017, y=3500, label= "Fitting") +
+  # annotate("text", x = 2023.5, y=3500, label = "Estimation")+
+  scale_x_date(date_labels = "%Y",
+               breaks = seq(as.Date("2017-01-01"),
+                                 as.Date("2024-01-01"),
+                                 by = "1 year"),
+               limits = c(as.Date("2017-01-01"),
+                          as.Date("2024-01-01")))+
+  labs(tag = "D")+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))
+
 ```
+
+
 
 ```{r}
-#| fig-width: 15
-#| fig-height: 9
-#| out-width: "100%"
-#| fig-format: png
-
-((ts/hm)|(plot_spacer()/ad))+
-  plot_layout(widths = c(2.5,1))
-
-ggsave("./fig_manuscript/fig1.svg",
-       width = 15,height = 8,dpi = 500)
+library(nortest)
+ks.test(age~peak,data = data,altervative = "two.sided")
 ```
+
 
 ### Age distribution of raw data
 
@@ -412,7 +546,11 @@ cm_ch1_cases_ratio <- table1 %>% select(district1,CH1) %>%
                    labels = c("< 1",">= 1",">= 2",">= 3"),
                    right = F)
   )
+```
 
+### Catchment area using hospitalizations
+
+```{r}
 cm_ch1_cases_ratio %>%
   left_join(qhtp, ., by = join_by(varname_2 == district1)) %>%
   ggplot() +
@@ -431,6 +569,40 @@ cm_ch1_cases_ratio %>%
           color = "yellow", size = 1)+
   theme_void()
 ```
+
+### Catchment area using serological data
+
+```{r}
+library(ggsci)
+
+data_pt %>% group_by(qhchuan) %>% 
+  count() %>% as.data.frame() %>%
+  dplyr::mutate(pre = n / sum(n)) %>% 
+  left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = pre),show.legend = T)+
+  # scale_fill_continuous(low="yellow", high="red",
+  #                       guide="colorbar",na.value="white",
+  #                       name = "Percentage",
+  #                       # limits = c(0,0.12),
+  #                       labels = scales::label_percent())+
+  scale_fill_gsea(
+    na.value = "white",
+    # breaks = c(0.1, 0.2, 0.3, 0.4, 0.5),
+    # limits = c(0, 0.5)
+    # rescaler = function(x, to = c(0, 1), from = NULL) {
+    #   scales::rescale(x ^ 0.5)
+    # },
+    labels = scales::label_percent(),
+    name = "Percentage (%)"
+  )+
+  geom_sf_text(aes(label = nl_name_2),size=2)+
+  geom_sf(data = tdnd1, shape = 17,
+          color = "blue", size = 2)+
+  theme_void()
+```
+
+### Number of serum samples collected
 
 ```{r}
 tdnd1 <- data.frame(long = 106.6702,
@@ -667,51 +839,28 @@ age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>%
         axis.text.y = element_text(size = 18),
         strip.text.x = element_text(size = 18))
 
-cases_incid <- ggplot()+
+
+ex_incid_cm <- ggplot()+
   geom_histogram(data = dat %>% bind_rows(.id = "id"),
-                 aes(cohort),
-                 binwidth = 0.5,
-                 color = "white",      
-                 fill = "black")+
-  scale_x_continuous(breaks = seq(0,14,by = 2),
-                     limits = c(0,14))+
+                 aes(cohort),binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.5)+
+  geom_line(data = incidences %>% bind_rows(.id = "id"),
+            aes(x = cohort, y = incidence/12))+
+  scale_y_continuous(name = "Reported data",
+                     breaks = seq(0,1000,by=200),
+                     sec.axis = sec_axis(~.*12, 
+                                         name="Serological data",
+                                         breaks = seq(0,12000,by=2000)))+
   facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
                                    "Apr 2023 - Aug 2023",
                                    "Aug 2023 - Dec 2023")))+
   coord_cartesian(ylim=c(0,1000))+
-  scale_y_continuous(breaks = seq(0,1000,by = 200))+
   labs(tag = "A",
        y = "Total cases count",
        x = "Age (years)")+
-  theme_bw()+
-  theme(
-    legend.position = "top",
-    axis.text.x = element_text(size = 18),
-    axis.text.y = element_text(size = 18),
-    legend.text = element_text(size = 18),
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.title.x = element_text(size = 18),
-    axis.title.y = element_text(size = 18),
-    legend.title = element_text(size = 18),
-    strip.text = element_text(size = 18),
-    panel.grid.minor.x = element_blank())
-
-
-ex_incid_cm <- incidences %>%
-  bind_rows(.id = "id") %>%
-  ggplot(aes(x = cohort, y = incidence))+
-  geom_line()+
-  theme_bw()+
-  labs(tag = "B",
-       y = "Total cases count",
-       x = "Age (years)")+
-  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
-                                   "Apr 2023 - Aug 2023",
-                                   "Aug 2023 - Dec 2023")))+
-  coord_cartesian(ylim=c(0,12000))+
   scale_x_continuous(breaks = seq(0,14,by = 2),
                      limits = c(0,14))+
-  scale_y_continuous(breaks = seq(0,12000,by = 2000))+
+  theme_bw()+
   theme(
     legend.position = "top",
     axis.text.x = element_text(size = 18),
@@ -730,7 +879,7 @@ ggplot()+
            alpha = 0.5) +
   geom_point(aes(x = as.Date(col_date), y =  pos*1000),
             shape = "|",data = data_pt)+
-  labs(x = "Admission week",y = "Cases",tag = "C")+
+  labs(x = "Admission week",y = "Cases",tag = "B")+
   annotate("rect", fill = "blue",
            xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
            xmax = as.Date(c("2023-01-04","2023-04-30","2023-08-30","2023-12-30")), 
@@ -749,24 +898,39 @@ ggplot()+
     plot.tag = element_text(face = "bold", size = 18),
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18))
-
-
-
-
-age_profile_sp_cm/
-  ts_cm + labs(x = "Admission week",y = "Cases",tag = "B")
-
-
 ```
 
-```{r}
-#| fig-width: 13
-#| fig-height: 10
-#| fig-cap: Figure A shows the histogram representing the age profile of the raw data, with the smoothed curve fitted using the GAM model. Figure B shows the age profile of total case counts estimated from the serological data. Figure C shows the incidence reported in the CH1 catchment area.
 
-cases_incid/
-  ex_incid_cm/
+```{r}
+#| fig-width: 18
+#| fig-height: 10
+#| out-width: "100%"
+#| fig-format: png
+
+library(grid)
+
+left_col  <- age_profile_sp_cm / ts/ hm
+
+right_col <- plot_spacer() / b_ss / 
+  wrap_elements(full = ad  + theme(plot.margin = margin(0, 250, 25, 0)))
+
+(left_col | right_col) +
+  plot_layout(widths = c(2.5, 2))
+
+ggsave("./fig_manuscript/fig1_2.svg",
+       width = 18,height = 10,dpi = 500)
+```
+
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6
+
+ex_incid_cm/
   ts_cm
+
+ggsave("./fig_manuscript/fig2_2.svg",
+       width = 18,height = 10,dpi = 500)
 ```
 
 ### Supplementation plot
