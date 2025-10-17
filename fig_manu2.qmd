@@ -285,15 +285,16 @@ hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
   geom_line(data = ch,aes(x = date,y = c5,col = trend),
             group = 1,lwd = 0.25)+
   theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_blank(),
         axis.ticks.x = element_blank(),
-        legend.position = "bottom",
+        legend.position = "top",
         plot.tag = element_text(face = "bold", size = 18),
-        axis.title.x = element_text(size = 18),
-        axis.text.x = element_text(size = 18),
+        axis.text.x = element_blank(),
         axis.text.y = element_text(size = 18),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 18))+ 
-  guides(fill=guide_colourbar(barwidth=20,label.position="bottom"),
+  guides(fill=guide_colourbar(barwidth=20,
+                              label.position="top"),
          color = "none") 
 
 fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
@@ -313,24 +314,24 @@ data <- data.frame(
 ## density plot
 
 ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
-      geom_density(alpha = 0.6) +
-      scale_fill_manual(values = c("#582C83FF","#FFC72CFF")) +
-      scale_x_reverse(limit = c(6,0),
-                      breaks = seq(0,6,by=1), 
-                      minor_breaks = NULL)+
-      scale_y_continuous(minor_breaks = NULL)+
-      coord_flip()+
-      theme_minimal()+
-      labs(x = "Age", y ="Density",tag = "E",fill = "Wave")+
-      theme(axis.title.y = element_blank(),
-            axis.ticks.x = element_blank(),
-            legend.position = "bottom",
-            plot.tag = element_text(face = "bold", size = 18),
-            axis.title.x = element_text(size = 18),
-            axis.text.x = element_text(size = 18),
-            axis.text.y = element_text(size = 18),
-            legend.text = element_text(size = 18),
-            legend.title = element_text(size = 18))
+  geom_density(alpha = 0.6) +
+  scale_fill_manual(values = c("#582C83FF","#FFC72CFF")) +
+  scale_x_reverse(limit = c(6,0),
+                  breaks = seq(0,6,by=1), 
+                  minor_breaks = NULL)+
+  scale_y_continuous(minor_breaks = NULL,position = "right")+
+  coord_flip()+
+  theme_minimal()+
+  labs(x = "Age", y ="Density",tag = "F",fill = "Wave")+
+  theme(axis.title.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        # legend.position = "top",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_blank(),
+        legend.text = element_text(size = 18),
+        legend.title = element_text(size = 18))
 
 
 library(ISOweek)
@@ -420,9 +421,6 @@ plot_cp <- function(model){
 }
 
 
-
-
-
 model <- cutpoint(270)
 
 b_ss <- plot_cp(model)+
@@ -438,7 +436,7 @@ b_ss <- plot_cp(model)+
                                  by = "1 year"),
                limits = c(as.Date("2017-01-01"),
                           as.Date("2024-01-01")))+
-  labs(tag = "D")+
+  labs(tag = "E")+
   theme(axis.title.y = element_text(size = 18),
         axis.ticks.x = element_blank(),
         legend.position = "bottom",
@@ -851,11 +849,11 @@ ex_incid_cm <- ggplot()+
                      sec.axis = sec_axis(~.*12, 
                                          name="Serological data",
                                          breaks = seq(0,12000,by=2000)))+
-  facet_wrap(~factor(id,labels = c("Dec 2022 - Apr 2023",
-                                   "Apr 2023 - Aug 2023",
-                                   "Aug 2023 - Dec 2023")))+
+  facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
+                                   "4/2023 - 8/2023",
+                                   "8/2023 - 12/2023")))+
   coord_cartesian(ylim=c(0,1000))+
-  labs(tag = "A",
+  labs(tag = "D",
        y = "Total cases count",
        x = "Age (years)")+
   scale_x_continuous(breaks = seq(0,14,by = 2),
@@ -863,7 +861,7 @@ ex_incid_cm <- ggplot()+
   theme_bw()+
   theme(
     legend.position = "top",
-    axis.text.x = element_text(size = 18),
+    axis.text.x = element_text(size = 15),
     axis.text.y = element_text(size = 18),
     legend.text = element_text(size = 18),
     plot.tag = element_text(face = "bold", size = 18),
@@ -909,15 +907,35 @@ ggplot()+
 
 library(grid)
 
-left_col  <- age_profile_sp_cm / ts/ hm
+# left_col  <- age_profile_sp_cm / ts/ hm
+# 
+# right_col <- plot_spacer() / b_ss / 
+#   wrap_elements(full = ad  + theme(plot.margin = margin(0, 250, 25, 0)))
+# 
+# (left_col | right_col) +
+#   plot_layout(widths = c(2.5, 2))
+# 
+# ggsave("./fig_manuscript/fig1_2.svg",
+#        width = 18,height = 10,dpi = 500)
+```
 
-right_col <- plot_spacer() / b_ss / 
-  wrap_elements(full = ad  + theme(plot.margin = margin(0, 250, 25, 0)))
 
-(left_col | right_col) +
+```{r}
+#| fig-width: 18
+#| fig-height: 10
+#| out-width: "100%"
+#| fig-format: png
+
+left_col2  <- age_profile_sp_cm / ts/ hm
+
+right_col2 <- ex_incid_cm / b_ss / 
+  wrap_elements(full = ad  + theme(plot.margin = margin(-20, 250, 20*3.25, 0),
+                                   legend.position = "right"))
+
+(left_col2 | right_col2) +
   plot_layout(widths = c(2.5, 2))
 
-ggsave("./fig_manuscript/fig1_2.svg",
+ggsave("./fig_manuscript/fig1_2a.svg",
        width = 18,height = 10,dpi = 500)
 ```
 
@@ -1069,5 +1087,127 @@ ts/
   atk
 
 ```
+### births seasonality
 
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+
+b_ss
+```
+
+
+
+## Next step analysis
+
+### Figure 1 
+
+```{r}
+#| fig-width: 18
+#| fig-height: 10
+#| out-width: "100%"
+#| fig-format: png
+
+birth_23 <- model$df %>% 
+  mutate(time2 = sprintf("%04d-W%02d-1", year, week),
+         time2 = ISOweek2date(time2)) %>% 
+  filter(year(time2) >= 2023) %>% 
+  ggplot() +
+  geom_line(aes(x = time2,y = fit),col = "blue")+
+  geom_ribbon(aes(x = time2,ymin = lwr, ymax = upr), fill = "royalblue",alpha = 0.4)+
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b",
+               limits = as.Date(c("2023-01-01","2023-12-25")),
+               expand = c(0, 0))+
+  labs(y = "Number of births",
+       x = "Month")+
+  theme_minimal()+
+  theme(
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18))
+
+
+width_ratio <- c(2.5, 1)
+row1 <-  ((ts/hm) | (plot_spacer()/
+                       wrap_elements(full = ad  + 
+                                       theme(plot.margin = margin(-15,0, 7, 0)))))+
+  plot_layout(widths = width_ratio)
+
+row3 <- (birth_23 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+(row1 / row3) +
+  plot_layout(heights = c(2.5,1))
+```
+
+
+
+### Age distribution calculated from births data
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+
+birth_matrix <- model$df %>%
+  bind_rows(
+    model$df %>%
+      filter(year == 2020, week == 52) %>%
+      mutate(week = 53,
+             fit = 1945.271)
+  ) %>%
+  arrange(year, week) %>% 
+  mutate(birth = sprintf("%04d-W%02d-1", year, week),
+         birth = ISOweek2date(birth))
+
+date_consider <- birth_matrix %>% 
+  filter(year(birth) == 2023) %>% 
+  pull(birth)
+
+
+age_dis_fn <- data.frame()
+
+for (i in 1:length(date_consider)){
+  age_dis_week <- birth_matrix %>% 
+    mutate(age = difftime(date_consider[i],birth, units = "weeks") %>% 
+             as.numeric(),
+           age = age*(1/52),
+           date = date_consider[i]) %>% 
+    # filter(age > 0) %>% 
+    select(-birth) 
+
+  age_dis_fn <- rbind(age_dis_fn,age_dis_week)
+    
+}
+
+
+ggplot(age_dis_fn, 
+       aes(x=date, y=age, fill = fit)) +
+  theme_minimal()+
+  geom_raster()+
+  scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
+  scale_x_date(date_breaks = "1 month",date_labels = "%b")+
+  labs(
+    # tag = "C",
+    fill = "Density")+
+  scale_fill_paletteer_c("grDevices::Inferno")+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+ 
+  guides(fill=guide_colourbar(barwidth=20,label.position="bottom"),
+         color = "none") 
+
+```
 

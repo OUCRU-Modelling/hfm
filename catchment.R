@@ -667,3 +667,38 @@ cases_incid/
 #   geom_line()+
 #   facet_wrap(~id,scale = "free")
 
+
+## probability of hospitalization
+
+
+
+centroids <- st_centroid(qhtp)
+
+district_xy <- centroids %>%
+  mutate(
+    lon = st_coordinates(centroids)[,1],
+    lat = st_coordinates(centroids)[,2]
+  ) %>%
+  select(district = varname_2, lon, lat) %>%
+  as.data.frame() %>%
+  select(-geom)
+
+df1 %>%
+  filter(year(adm_date) == 2023 &
+           medi_cen %in% c("Bệnh viện Nhi đồng 1",
+                           "Bênh viện Nhi Đồng 1",
+                           "Bệnh viện Nhi Đồng 1")) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  select(age1,district2) %>%
+  mutate(age2 = round(age1*2)/2) %>%
+  group_by(district2,age2) %>%
+  count()
+
+age_structure
