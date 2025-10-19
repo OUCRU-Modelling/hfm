@@ -1147,7 +1147,6 @@ row3 <- (birth_23 | plot_spacer())+
 ```
 
 
-
 ### Age distribution calculated from births data
 
 ```{r}
@@ -1195,7 +1194,7 @@ ggplot(age_dis_fn,
   scale_x_date(date_breaks = "1 month",date_labels = "%b")+
   labs(
     # tag = "C",
-    fill = "Density")+
+    fill = "Number of births")+
   scale_fill_paletteer_c("grDevices::Inferno")+
   theme(axis.title.y = element_text(size = 18),
         axis.ticks.x = element_blank(),
@@ -1209,5 +1208,208 @@ ggplot(age_dis_fn,
   guides(fill=guide_colourbar(barwidth=20,label.position="bottom"),
          color = "none") 
 
+```
+
+### Expected CH1 hospitalizations
+
+I filter number of children admitted in CH1 from HCDC data for the numerator, and population of each age and each district from 2019 census data combined with birth data from hep B registry data (age 0) for the denominator.
+
+$$
+P(CH1 \ hospitalization_{[a,d]}) = \frac{cases_{[a,d]}}{population_{[a,d]}}
+$$
+
+Then I fitted the GAM for $P(CH1 \ hospitalization_{[a,d]})$ as a function of age for each district to predict the continuous age from figure in 4.4.2.
+
+```{r}
+
+c_ad <- df1 %>%
+  filter(year(adm_date) == 2023 &
+           medi_cen %in% c("Bệnh viện Nhi đồng 1",
+                           "Bênh viện Nhi Đồng 1",
+                           "Bệnh viện Nhi Đồng 1")) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  select(age,district2) %>%
+  group_by(district2,age) %>%
+  filter(age < 17) %>%
+  count() %>%
+  ungroup()
+
+
+N_ad <- census2019 |>
+  filter(province == "Thành phố Hồ Chí Minh") |>
+  mutate(district = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  group_by(district,age) |>
+  summarise(n = sum(n),.groups = "drop") |>
+  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
+  arrange(age) |>
+  filter(age < 17)
+
+birth_2019 <- count_dangky_week %>%
+  filter(birth_year == 2019) %>%
+  mutate(district = district_reg %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  filter(district %in% unique(N_ad$district)) %>%
+  group_by(district) %>%
+  summarise(n=sum(n),.groups = "drop") %>%
+  mutate(age = 0)
+
+prob_a_d <- left_join(c_ad,rbind(birth_2019,N_ad),
+          by = join_by(age == age,
+                       district2 == district)) %>%
+  mutate(prob_hos=n.x/n.y)
+
+# ggplot(prob_a_d, aes(x = age,y=prob_hos,color = district2))+
+#   geom_line()
+
+```
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+#| fig-cap: "The points show the original hospitalization probability, and the lines show fitted value of GAM"
+age_new <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>% pull(age)
+
+pred_prob <- prob_a_d %>%
+  group_by(district2) %>%
+  group_modify(~ {
+    mod <- gam(prob_hos ~ s(age,bs = "bs"), data = .x, method = "REML")
+    pred <- predict(mod, newdata = tibble(age = age_new), type = "response")
+    tibble(age = age_new, fit = pred)
+  }) %>%
+  ungroup()
+
+ggplot()+
+  geom_line(data = pred_prob, aes(x = age,y = fit))+
+  geom_point(data = prob_a_d,aes(x = age,y = prob_hos))+
+  labs(y = "Hospitalizations probability")+
+  facet_wrap(~district2)+
+  theme_bw()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18)) 
+```
+
+Then I used predicted hospitalization probability multiply the age distribution at the end 2023 estimated from section 4.4.2 to calculate the expected age distribution caught by CH1.
+
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+#| fig-cap: "Expected age distribution caught by CH1 at the end 2023"
+
+exp_age_23 <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>%
+  right_join(.,pred_prob,by = join_by(age)) %>%
+  arrange(district2) %>%
+  mutate(expected_admission = fit.x*fit.y) 
+
+exp_age_23 %>%
+  ggplot(aes(x = age,y = expected_admission))+
+  geom_line()+
+  scale_x_continuous(limits = c(0,7),
+                     breaks = seq(0,7,by=1))+
+  labs(y = "Expected CH1 admission")+
+  facet_wrap(~district2)+
+  theme_bw()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))
+```
+
+### Expected age structure of children caught by CH1
+
+In this step, I filtered district in catchment area estimated in 4.2.1 and sum it by age, this is $N_a$.
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+#| fig-format: png
+expected_age_cm <- exp_age_23 %>% 
+  filter(district2 %in% district_consider) %>% 
+  group_by(age) %>% 
+  summarise(n = sum(expected_admission)) 
+
+expected_age_cm %>% 
+  ggplot(aes(x = age,y = n))+
+  geom_line()+
+  theme_minimal()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))
+  
+```
+
+### Expected incidence
+
+Then applied constrained algorithm to estimated age profile and used the formula to calculated expected incidence
+
+$$
+(seroprevalence_{t,a}-seroprevalence_{t - \Delta t,a- \Delta t}) \times N_a
+$$
+
+```{r}
+age_pro5 <- age_profile_constrained_cohort2(hfmd_cm,age_values = expected_age_cm$age)
+
+attack_rates2 <- map2(head(age_pro5, -1),
+                      age_pro5[-1],
+                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
+                       mutate(sp_gap = (fit.y - fit.x)))
+
+map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort ==age))) %>% 
+  bind_rows(.id = "id") %>% 
+  mutate(exp_in = sp_gap*n) %>% 
+  ggplot()+
+  geom_line(aes(x = cohort,y = exp_in))+
+  geom_histogram(data = dat %>% bind_rows(.id = "id"),
+                 aes(cohort),binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.2)+
+  facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
+                                   "4/2023 - 8/2023",
+                                   "8/2023 - 12/2023")))+
+  theme_bw()
 ```
 

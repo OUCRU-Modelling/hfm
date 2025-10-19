@@ -670,6 +670,8 @@ cases_incid/
 
 ## probability of hospitalization
 
+#### prob_hos * age_distribution 2023 = children catched in CH1
+#### children catched in CH1*seroprevalence = expected infectious in catchment area
 
 
 centroids <- st_centroid(qhtp)
@@ -683,7 +685,7 @@ district_xy <- centroids %>%
   as.data.frame() %>%
   select(-geom)
 
-df1 %>%
+c_ad <- df1 %>%
   filter(year(adm_date) == 2023 &
            medi_cen %in% c("Bệnh viện Nhi đồng 1",
                            "Bênh viện Nhi Đồng 1",
@@ -696,9 +698,121 @@ df1 %>%
            trimws(which = "both") %>%
            stri_trans_general("latin-ascii") %>%
            tolower()) %>%
-  select(age1,district2) %>%
-  mutate(age2 = round(age1*2)/2) %>%
-  group_by(district2,age2) %>%
-  count()
+  select(age,district2) %>%
+  group_by(district2,age) %>%
+  filter(age < 17) %>%
+  count() %>%
+  ungroup()
 
-age_structure
+N_ad <- census2019 |>
+  filter(province == "Thành phố Hồ Chí Minh") |>
+  mutate(district = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  group_by(district,age) |>
+  summarise(n = sum(n),.groups = "drop") |>
+  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
+  arrange(age) |>
+  filter(age < 17)
+
+
+birth_2019 <- count_dangky_week %>%
+  filter(birth_year == 2019) %>%
+  mutate(district = district_reg %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  filter(district %in% unique(N_ad$district)) %>%
+  group_by(district) %>%
+  summarise(n=sum(n),.groups = "drop") %>%
+  mutate(age = 0)
+
+
+## hospitalizations probability
+prob_a_d <- left_join(c_ad,rbind(birth_2019,N_ad),
+          by = join_by(age == age,
+                       district2 == district)) %>%
+  mutate(prob_hos=n.x/n.y*100)
+
+
+ggplot(prob_a_d, aes(x = age,y=prob_hos,color = district2))+
+  geom_line()
+
+district_xy
+
+prob_h_xy <- left_join(prob_a_d,district_xy, by = join_by(district2 == district)) %>%
+  mutate(lon2 = lon*100-10000,
+         lat2 = lat*100-1000)
+
+model_prob_h <- gam(prob_hos ~ s(age)+te(lon2,lat2),
+    method = "REML",
+    data = prob_h_xy)
+
+
+age_new <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>% pull(age)
+
+new_data <- expand.grid(age = age_new,
+                        lon2 = unique(prob_h_xy$lon2),
+                        lat2 = unique(prob_h_xy$lat2)
+                        )
+
+pred_prob <- cbind(new_data,fit = predict(model_prob_h,newdata = new_data,"response"))
+
+pred_prob %>% left_join(.,unique(prob_h_xy[,c("district2","lon2","lat2")]),
+                        by = join_by(lon2,lat2)) %>% na.omit() %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line()+
+  geom_point(data = prob_a_d,aes(x = age,y = prob_hos))+
+  facet_wrap(~district2)
+
+## model for each district
+
+predict2 <- function(...) predict(..., type = "response") |> as.vector()
+
+
+pred_prob <- prob_h_xy %>%
+  group_by(district2) %>%
+  group_modify(~ {
+    # Fit the GAM for each district
+    mod <- gam(prob_hos ~ s(age,bs = "bs"), data = .x, method = "REML")
+
+    # Predict for new ages
+    pred <- predict(mod, newdata = tibble(age = age_new), type = "response")
+
+    # Return tidy tibble
+    tibble(age = age_new, fit = pred)
+  }) %>%
+  ungroup()
+
+ggplot()+
+  geom_line(data = pred_prob, aes(x = age,y = fit))+
+  geom_point(data = prob_a_d,aes(x = age,y = prob_hos))+
+  facet_wrap(~district2)
+
+pred_prob %>% View()
+
+age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>%
+  right_join(.,pred_prob,by = join_by(age)) %>%
+  arrange(district2) %>%
+  mutate(expected_admission = fit.x*fit.y) %>%
+  ggplot(aes(x = age,y = expected_admission))+
+  geom_line()+
+  facet_wrap(~district2)
+
+
+
+#   ggplot(aes(x= age,y = fit))+
+#   geom_line()
+#
+# prob_a_d
