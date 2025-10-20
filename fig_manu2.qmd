@@ -244,7 +244,7 @@ ts <- data.frame(wwww$wdat$date,wwww$wdat$age) %>%
                      limit =c(0,3000), 
                      minor_breaks = NULL)+
   scale_fill_manual(values = c("#582C83FF","#FFC72CFF"))+
-  labs(tag = "B")+ 
+  labs(tag = "C")+ 
   annotate("rect", fill = "grey",
            xmin = c("2023-01-04","2023-04-05","2023-08-02","2023-12-06"), 
            xmax = c("2023-01-11","2023-04-26","2023-08-30","2023-12-27"), 
@@ -270,7 +270,7 @@ hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
   theme_minimal()+
   scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
   scale_x_discrete(name = "Admission week",labels = leb_month)+
-  labs(tag = "C",fill = "Density")+
+  labs(tag = "D",fill = "Density")+
   # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
   geom_line(data = ch,aes(x = date,y = c0,col = trend),
             group = 1,lwd = 0.25)+
@@ -297,7 +297,7 @@ hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
                               label.position="top"),
          color = "none") 
 
-fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
+  fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
   filter((adm_date <= as.Date("2023-09-03")&
             !is.na(adm_date) & !is.na(age1)))
 
@@ -436,7 +436,6 @@ b_ss <- plot_cp(model)+
                                  by = "1 year"),
                limits = c(as.Date("2017-01-01"),
                           as.Date("2024-01-01")))+
-  labs(tag = "E")+
   theme(axis.title.y = element_text(size = 18),
         axis.ticks.x = element_blank(),
         legend.position = "bottom",
@@ -825,7 +824,7 @@ age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>%
                      labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
              ncol = 4)+
   geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
-  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="A")+
+  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="B")+
   scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
   # coord_cartesian(ylim = c(0, 1))+
   theme_bw()+ 
@@ -951,7 +950,7 @@ ggsave("./fig_manuscript/fig2_2.svg",
        width = 18,height = 10,dpi = 500)
 ```
 
-### Supplementation plot
+## Supplementation plot
 
 ### Attack rate
 
@@ -1096,13 +1095,15 @@ ts/
 #| fig-format: png
 
 b_ss
+
+
+ggsave("./fig_manuscript/birth_seasonality.svg",
+       width = 15,height = 9,dpi = 500)
 ```
 
 
 
 ## Next step analysis
-
-### Figure 1 
 
 ```{r}
 #| fig-width: 18
@@ -1122,7 +1123,8 @@ birth_23 <- model$df %>%
                limits = as.Date(c("2023-01-01","2023-12-25")),
                expand = c(0, 0))+
   labs(y = "Number of births",
-       x = "Month")+
+       x = "Month",
+       tag = "E")+
   theme_minimal()+
   theme(
     axis.text.x = element_text(size = 18),
@@ -1131,19 +1133,6 @@ birth_23 <- model$df %>%
     plot.tag = element_text(face = "bold", size = 18),
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18))
-
-
-width_ratio <- c(2.5, 1)
-row1 <-  ((ts/hm) | (plot_spacer()/
-                       wrap_elements(full = ad  + 
-                                       theme(plot.margin = margin(-15,0, 7, 0)))))+
-  plot_layout(widths = width_ratio)
-
-row3 <- (birth_23 | plot_spacer())+
-  plot_layout(widths = width_ratio)
-
-(row1 / row3) +
-  plot_layout(heights = c(2.5,1))
 ```
 
 
@@ -1399,7 +1388,7 @@ attack_rates2 <- map2(head(age_pro5, -1),
                      ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
                        mutate(sp_gap = (fit.y - fit.x)))
 
-map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort ==age))) %>% 
+exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort ==age))) %>% 
   bind_rows(.id = "id") %>% 
   mutate(exp_in = sp_gap*n) %>% 
   ggplot()+
@@ -1410,6 +1399,51 @@ map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort ==age))) 
   facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
                                    "4/2023 - 8/2023",
                                    "8/2023 - 12/2023")))+
-  theme_bw()
+  labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18),
+    panel.grid.minor.x = element_blank())
+```
+
+### Figure 1
+
+```{r}
+#| fig-width: 15
+#| fig-height: 15
+#| out-width: "100%"
+#| fig-format: png
+
+
+width_ratio <- c(2.5, 1)
+
+row0 <- (exp_in_ch1 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+
+row1 <- (age_profile_sp_cm | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+
+row2 <-  ((ts/hm) | (plot_spacer()/
+                       wrap_elements(full = ad  + 
+                                       theme(plot.margin = margin(-15,0, 7, 0)))))+
+  plot_layout(widths = width_ratio)
+
+row3 <- (birth_23 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+(row0 /row1 /row2 / row3) +
+  plot_layout(heights = c(1,1,3,1))
+
+ggsave("./fig_manuscript/fig2_3.svg",
+       width = 15,height = 15,dpi = 500)
 ```
 

@@ -741,7 +741,7 @@ birth_2019 <- count_dangky_week %>%
 prob_a_d <- left_join(c_ad,rbind(birth_2019,N_ad),
           by = join_by(age == age,
                        district2 == district)) %>%
-  mutate(prob_hos=n.x/n.y*100)
+  mutate(prob_hos=n.x/n.y)
 
 
 ggplot(prob_a_d, aes(x = age,y=prob_hos,color = district2))+
@@ -749,9 +749,9 @@ ggplot(prob_a_d, aes(x = age,y=prob_hos,color = district2))+
 
 district_xy
 
-prob_h_xy <- left_join(prob_a_d,district_xy, by = join_by(district2 == district)) %>%
-  mutate(lon2 = lon*100-10000,
-         lat2 = lat*100-1000)
+# prob_h_xy <- left_join(prob_a_d,district_xy, by = join_by(district2 == district)) %>%
+#   mutate(lon2 = lon*100-10000,
+#          lat2 = lat*100-1000)
 
 model_prob_h <- gam(prob_hos ~ s(age)+te(lon2,lat2),
     method = "REML",
@@ -777,10 +777,7 @@ pred_prob %>% left_join(.,unique(prob_h_xy[,c("district2","lon2","lat2")]),
 
 ## model for each district
 
-predict2 <- function(...) predict(..., type = "response") |> as.vector()
-
-
-pred_prob <- prob_h_xy %>%
+pred_prob <- prob_a_d %>%
   group_by(district2) %>%
   group_modify(~ {
     # Fit the GAM for each district
@@ -801,18 +798,143 @@ ggplot()+
 
 pred_prob %>% View()
 
+exp_age_23 <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>%
+  right_join(.,pred_prob,by = join_by(age)) %>%
+  arrange(district2) %>%
+  mutate(expected_admission = fit.x*fit.y)
+
+
+expected_age_cm <- exp_age_23 %>%
+  filter(district2 %in% district_consider) %>%
+  group_by(age) %>%
+  summarise(n = sum(expected_admission))
+
+age_pro5 <- age_profile_constrained_cohort2(hfmd_cm,age_values = expected_age_cm$age)
+
+attack_rates2 <- map2(head(age_pro5, -1),
+                      age_pro5[-1],
+                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
+                       mutate(sp_gap = (fit.y - fit.x)))
+
+attack_rates2 %>% bind_rows() %>% View()
+
+map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort ==age))) %>%
+  bind_rows(.id = "id") %>%
+  mutate(exp_in = sp_gap*n) %>%
+  ggplot()+
+  geom_line(aes(x = cohort,y = exp_in))+
+  geom_histogram(data = dat %>% bind_rows(.id = "id"),
+                 aes(cohort),binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.2)+
+  facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
+                                   "4/2023 - 8/2023",
+                                   "8/2023 - 12/2023")))
+
+
+left_join(attack_rates2,expected_age_cm, by = join_by(cohort == age))
+
+age_structure
+
+exp_age_23 %>%
+  ggplot(aes(x = age,y = expected_admission))+
+  geom_line()+
+  scale_x_continuous(limits = c(0,7),
+                     breaks = seq(0,7,by=1))+
+  facet_wrap(~district2)
+
+
 age_dis_fn %>% filter(date == range(date)[2]) %>%
   select(age,fit) %>%
   right_join(.,pred_prob,by = join_by(age)) %>%
   arrange(district2) %>%
-  mutate(expected_admission = fit.x*fit.y) %>%
-  ggplot(aes(x = age,y = expected_admission))+
-  geom_line()+
-  facet_wrap(~district2)
-
+  mutate(expected_admission = fit.x*fit.y)
 
 
 #   ggplot(aes(x= age,y = fit))+
 #   geom_line()
 #
 # prob_a_d
+
+
+age_structure
+
+## smooth heatmap as function of age and time
+
+count_a_t_23 <- df23 %>% select(adm_week,age) %>%
+  group_by(adm_week,age) %>%
+  count() %>%
+  filter(age <7) %>%
+  ungroup() %>%
+  complete(adm_week,age, fill = list(n = 0))
+
+
+
+
+co <- data.frame()
+
+for (i in 0:6){
+  gen <- seq(0,1,le=53) + i
+  co <- rbind(co,gen)
+}
+
+
+ch <- data.frame(date = count_a_t_23$adm_week %>% unique(),
+                 c0 = as.numeric(co[1,]),
+                 c1 = as.numeric(co[2,]),
+                 c2 = as.numeric(co[3,]),
+                 c3 = as.numeric(co[4,]),
+                 c4 = as.numeric(co[5,]),
+                 c5 = as.numeric(co[6,]))
+
+ch <- ch %>% mutate(
+  trend = c(rep("#80FFFFFF",23),
+            rep("#FFFFFFFF",30))
+)
+
+ch$group <- consecutive_id(ch$trend)
+ch <- head(do.call(rbind, by(ch, ch$group, rbind, NA)), -1)
+ch[, c("trend", "group")] <- lapply(ch[, c("trend", "group")], na.locf)
+ch[] <- lapply(ch, na.locf, fromLast = T)
+
+ch$trend <- factor(ch$trend,
+                   levels = c("#80FFFFFF","#FFFFFFFF"))
+
+count_a_t_23 %>%
+ggplot(aes(x=adm_week, y=age, fill = n)) +
+  theme_minimal()+
+  geom_raster(interpolate = TRUE)+
+  scale_y_reverse(name = "Age (years)",
+                  breaks = seq(0,6,by=1))+
+  scale_x_date(date_breaks = "1 month",date_labels = "%b")+
+  labs(
+    # tag = "C",
+    fill = "Number of admission")+
+  scale_fill_paletteer_c("grDevices::Inferno")+
+  # geom_line(data = ch,aes(x = date,y = c0,col = trend),
+  #           group = 1,lwd = 0.25)+
+  # geom_line(data = ch,aes(x = date,y = c1,col = trend),
+  #           group = 1,lwd = 0.25)+
+  # geom_line(data = ch,aes(x = date,y = c2,col = trend),
+  #           group = 1,lwd = 0.25)+
+  # geom_line(data = ch,aes(x = date,y = c3,col = trend),
+  #           group = 1,lwd = 0.25)+
+  # geom_line(data = ch,aes(x = date,y = c4,col = trend),
+  #           group = 1,lwd = 0.25)+
+  # geom_line(data = ch,aes(x = date,y = c5,col = trend),
+  #           group = 1,lwd = 0.25)+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "top",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+
+  guides(fill=guide_colourbar(barwidth=20,
+                              label.position="top"),
+         color = "none")
+
+wwww$wdat %>%
+  mutate(age2 = round(age)) %>%
