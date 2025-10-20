@@ -297,7 +297,49 @@ hm <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
                               label.position="top"),
          color = "none") 
 
-  fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
+
+hm2 <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
+  stat_density(
+    aes(fill = after_stat(count)),
+    geom = "raster",
+    position = "identity",
+    interpolate = TRUE
+  )+
+  scale_fill_paletteer_c("grDevices::Inferno")+
+  # scale_fill_gradient(low="#040404FF", high= "#FFFE9EFF")+
+  # scale_fill_distiller(palette = "Blues")+
+  theme_minimal()+
+  scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
+  scale_x_discrete(name = "Admission week",labels = leb_month)+
+  labs(tag = "D",fill = "Number of hospitalizations")+
+  # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
+  geom_line(data = ch,aes(x = date,y = c0,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c1,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c2,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c3,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c4,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c5,col = trend),
+            group = 1,lwd = 0.25)+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "top",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+ 
+  guides(fill=guide_colourbar(barwidth=20,
+                              label.position="top"),
+         color = "none")
+
+
+fi_peak <- df1 %>% filter(year(adm_date) == "2023") %>%
   filter((adm_date <= as.Date("2023-09-03")&
             !is.na(adm_date) & !is.na(age1)))
 
@@ -1432,7 +1474,7 @@ row1 <- (age_profile_sp_cm | plot_spacer())+
   plot_layout(widths = width_ratio)
 
 
-row2 <-  ((ts/hm) | (plot_spacer()/
+row2 <-  ((ts/hm2) | (plot_spacer()/
                        wrap_elements(full = ad  + 
                                        theme(plot.margin = margin(-15,0, 7, 0)))))+
   plot_layout(widths = width_ratio)
