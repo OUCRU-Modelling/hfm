@@ -936,5 +936,174 @@ ggplot(aes(x=adm_week, y=age, fill = n)) +
                               label.position="top"),
          color = "none")
 
-wwww$wdat %>%
-  mutate(age2 = round(age)) %>%
+ggplot(data=wwww$wdat, aes(x=date, y=age)) +
+  stat_density(
+    aes(fill = after_stat(count)),
+    geom = "raster",
+    position = "identity",
+    interpolate = TRUE
+  )+
+  scale_fill_paletteer_c("grDevices::Inferno")+
+  # scale_fill_gradient(low="#040404FF", high= "#FFFE9EFF")+
+  # scale_fill_distiller(palette = "Blues")+
+  theme_minimal()+
+  scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
+  scale_x_discrete(name = "Admission week",labels = leb_month)+
+  labs(tag = "D",fill = "Number of hospitalizations")+
+  # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
+  geom_line(data = ch,aes(x = date,y = c0,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c1,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c2,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c3,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c4,col = trend),
+            group = 1,lwd = 0.25)+
+  geom_line(data = ch,aes(x = date,y = c5,col = trend),
+            group = 1,lwd = 0.25)+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "top",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+
+  guides(fill=guide_colourbar(barwidth=20,
+                              label.position="top"),
+         color = "none")
+
+
+# constrained_age_profiles_cohort2_cm %>%
+#   bind_rows() %>%
+  # ggplot(aes(x = age, y = fit)) +
+  # geom_line(aes(x = age, fit))+
+
+mean_collection_times
+
+constrained_age_profiles_cohort2_cm %>%
+  bind_rows() %>%
+  ggplot(aes(x = age, y = fit)) +
+  geom_line(aes(x = age, fit))+
+  geom_point(data = data_pt %>%
+               mutate(collection_time = factor(col_time,
+                                               levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023"))),
+             aes(x = age, y = pos),shape = "|")+
+  facet_wrap(~factor(collection_time,
+                     labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             ncol = 4)+
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
+  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="B")+
+  scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
+  # coord_cartesian(ylim = c(0, 1))+
+  theme_bw()+
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        strip.text.x = element_text(size = 18))
+
+age_new <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>% pull(age)
+
+c(age_new,seq(7,15,le = 512))
+
+
+
+c_ad <- df1 %>%
+  filter(year(adm_date) == 2023 &
+           medi_cen %in% c("Bệnh viện Nhi đồng 1",
+                           "Bênh viện Nhi Đồng 1",
+                           "Bệnh viện Nhi Đồng 1")) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  select(age,district2) %>%
+  group_by(district2,age) %>%
+  filter(age < 17) %>%
+  count() %>%
+  ungroup()
+
+
+N_ad <- census2019 |>
+  filter(province == "Thành phố Hồ Chí Minh") |>
+  mutate(district = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  group_by(district,age) |>
+  summarise(n = sum(n),.groups = "drop") |>
+  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
+  arrange(age) |>
+  filter(age < 17)
+
+birth_2019 <- count_dangky_week %>%
+  filter(birth_year == 2019) %>%
+  mutate(district = district_reg %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  filter(district %in% unique(N_ad$district)) %>%
+  group_by(district) %>%
+  summarise(n=sum(n),.groups = "drop") %>%
+  mutate(age = 0)
+
+prob_a_d <- left_join(c_ad,rbind(birth_2019,N_ad),
+                      by = join_by(age == age,
+                                   district2 == district)) %>%
+  mutate(prob_hos=n.x/n.y)
+
+
+pred_prob <- prob_a_d %>%
+  group_by(district2) %>%
+  group_modify(~ {
+    mod <- gam(prob_hos ~ s(age,bs = "bs"), data = .x, method = "REML")
+    pred <- predict(mod,
+                    newdata = tibble(age = c(age_new,seq(7,15,le = 512))),
+                    type = "response")
+    tibble(age = c(age_new,seq(7,15,le = 512))  , fit = pred)
+  }) %>%
+  ungroup()
+
+
+exp_age_23 <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+  select(age,fit) %>%
+  right_join(.,pred_prob,by = join_by(age)) %>%
+  arrange(district2) %>%
+  mutate(expected_admission = fit.x*fit.y)
+
+exp_age_23 %>%
+  ggplot(aes(x = age,y = expected_admission))+
+  geom_line()+
+  scale_x_continuous(limits = c(0,15),
+                     breaks = seq(0,15,by=1))+
+  labs(y = "Expected CH1 admission")+
+  facet_wrap(~district2)+
+  theme_bw()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))

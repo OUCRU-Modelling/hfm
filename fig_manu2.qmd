@@ -860,7 +860,9 @@ age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>%
   bind_rows() %>%  
   ggplot(aes(x = age, y = fit)) +
   geom_line(aes(x = age, fit))+
-  geom_point(data = data_pt %>% mutate(collection_time = col_time),
+  geom_point(data = data_pt %>% 
+               mutate(collection_time = factor(col_time,
+                                               levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023"))),
              aes(x = age, y = pos),shape = "|")+
   facet_wrap(~factor(collection_time,
                      labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
@@ -880,7 +882,7 @@ age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>%
 
 
 ex_incid_cm <- ggplot()+
-  geom_histogram(data = dat %>% bind_rows(.id = "id"),
+  geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0 ),
                  aes(cohort),binwidth = 0.5,
                  color = "white",fill = "black",alpha = 0.5)+
   geom_line(data = incidences %>% bind_rows(.id = "id"),
