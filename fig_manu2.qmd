@@ -1437,7 +1437,7 @@ exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(co
   mutate(exp_in = sp_gap*n) %>% 
   ggplot()+
   geom_line(aes(x = cohort,y = exp_in))+
-  geom_histogram(data = dat %>% bind_rows(.id = "id"),
+  geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0),
                  aes(cohort),binwidth = 0.5,
                  color = "white",fill = "black",alpha = 0.2)+
   facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
