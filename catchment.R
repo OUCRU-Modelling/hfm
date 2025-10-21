@@ -1107,3 +1107,14 @@ exp_age_23 %>%
         axis.text.y = element_text(size = 18),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 18))
+
+
+ggplot()+
+  geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0 ),
+                 aes(cohort),binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.5)+
+  facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
+                                   "4/2023 - 8/2023",
+                                   "8/2023 - 12/2023")))
+
+dat %>% bind_rows(.id = "id") %>% filter(id == 3)

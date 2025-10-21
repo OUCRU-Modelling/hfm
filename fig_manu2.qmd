@@ -94,7 +94,7 @@ sero <- rbind(t1222,t1223,t423,t823)
 sero_add <- full_join(cleaned,sero, by =  c("id" = "id"))
 
 data_pt <- sero_add %>% filter(!is.na(age)&!is.na(qhchuan)) %>%
-  select(-c(add_mod,pxchuan,neutralization)) %>%
+  dplyr::select(-c(add_mod,pxchuan,neutralization)) %>%
   as.data.frame() %>% 
   mutate(col_date = make_date(col_year,col_month,col_day))
 
@@ -501,14 +501,38 @@ ks.test(age~peak,data = data,altervative = "two.sided")
 ### Age distribution of raw data
 
 ```{r}
+library(fitdistrplus)
+fit1 <- fitdist(fi_peak %>% filter(age1 >0) %>% pull(age1),"lnorm")
+fit2 <- fitdist(se_peak %>% filter(age1 >0) %>% pull(age1),"lnorm")
+
+x_vals <- seq(0, 7, le = 512)
+
+
+fit_1p <- data.frame(peak = "1st",age = x_vals, density = dlnorm(x_vals, 
+                                                       meanlog = fit1$estimate[1], 
+                                                       sdlog = fit1$estimate[2]))
+
+fit_2p <- data.frame(peak = "2nd",age = x_vals, density = dlnorm(x_vals, 
+                                                                 meanlog = fit2$estimate[1], 
+                                                                 sdlog = fit2$estimate[2]))
+
+
 data %>% 
   ggplot(aes(age))+
   geom_histogram(binwidth = 0.5,
                  color = "white",      
-                 fill = "black")+
+                 fill = "black",
+                 alpha = .5)+
+  geom_line(data = rbind(fit_1p,fit_2p),aes(x = age,y = density*10000))+
   facet_wrap(~peak)+
-  scale_x_continuous(breaks = seq(0,7,by=.5),limits = c(0,7))+
-  theme_minimal()
+  scale_x_continuous(breaks = seq(0,7,by=1),limits = c(0,7))+
+  theme_minimal()+
+  scale_y_continuous(
+    name = "Cases count",
+    sec.axis = sec_axis( trans=~./10000, name="Density")
+  ) 
+detach("package:fitdistrplus", unload = TRUE)
+detach("package:MASS", unload = TRUE)
 ```
 
 
@@ -564,7 +588,7 @@ tdnd1 <- data.frame(long = 106.6708,
   st_as_sf(coords = c("long", "lat"), crs = 4326)
 
 
-cm_ch1_cases_ratio <- table1 %>% select(district1,CH1) %>%
+cm_ch1_cases_ratio <- table1 %>% dplyr::select(district1,CH1) %>%
   mutate(district1 = district1 %>%
            str_replace_all(
              c("Thanh pho Thu Duc" = "Thu Đuc")) %>%
@@ -1361,7 +1385,8 @@ Then I used predicted hospitalization probability multiply the age distribution 
 #| fig-format: png
 #| fig-cap: "Expected age distribution caught by CH1 at the end 2023"
 
-exp_age_23 <- age_dis_fn %>% filter(date == range(date)[2]) %>%
+exp_age_23 <- age_dis_fn %>% 
+  filter(date == range(date)[2]) %>%
   select(age,fit) %>%
   right_join(.,pred_prob,by = join_by(age)) %>%
   arrange(district2) %>%
@@ -1396,7 +1421,7 @@ In this step, I filtered district in catchment area estimated in 4.2.1 and sum i
 #| out-width: "100%"
 #| fig-format: png
 expected_age_cm <- exp_age_23 %>% 
-  filter(district2 %in% district_consider) %>% 
+  # filter(district2 %in% district_consider) %>% 
   group_by(age) %>% 
   summarise(n = sum(expected_admission)) 
 
