@@ -34,9 +34,13 @@ viro2 <- viro_df %>%
            SeroGroup1 != "ENT" ~ SeroGroup1
          ),
          admission_date = as.Date(DateAdmission),
-         adm_month = month(admission_date),
-         age_adm = interval(DateBirth, admission_date) / years(1)) %>% 
-  select(city,sero_gr,admission_date,adm_month,age_adm,DateBirth)
+         age_adm = interval(DateBirth, admission_date) / years(1),
+         adm_month = month(admission_date,label = TRUE),
+         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
+         age_bin = cut(age_adm,
+                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
+                       right = FALSE)) %>% 
+  select(city,sero_gr,admission_date,adm_month,adm_month2,age_adm,age_bin,DateBirth)
 
 viro2$city <- factor(viro2$city,
                          levels = c("tp hcm",viro2$city[!viro2$city == "tp hcm"] %>% 
@@ -46,6 +50,7 @@ viro2 %>%
   tbl_summary(by=sero_gr,
               include = c(city,sero_gr))
 ```
+
 
 ```{r,results='hide'}
 link <- "https://data.opendevelopmentmekong.net/dataset/999c96d8-fae0-4b82-9a2b-e481f6f50e12/resource/2818c2c5-e9c3-440b-a9b8-3029d7298065/download/diaphantinhenglish.geojson?fbclid=IwAR1coUVLkuEoJRsgaH81q6ocz1nVeGBirqpKRBN8WWxXQIJREUL1buFi1eE"
@@ -79,286 +84,39 @@ viro2 %>%
 ## Time 
 
 ```{r}
-viro2 %>% 
+viro2 <- viro2 %>% filter(city == "tp hcm")
+
+viro_count_p <- viro2 %>% 
   mutate(adm_month = as.Date(floor_date(admission_date, "month"))) %>%
   group_by(adm_month,sero_gr) %>% 
   count() %>% 
-  ggplot(aes(x = adm_month,y=n,fill = sero_gr))+
+  ungroup() %>% 
+  group_by(adm_month) %>% 
+  mutate(perc = n / sum(n)) %>% 
+  ungroup
+
+
+viro_count_p %>%
+ggplot(aes(x = adm_month,y=n,fill = sero_gr))+
   geom_col()+
   scale_x_date(date_labels = "%b",
-               date_breaks = "1 month")+
+               date_breaks = "1 month",
+               limits = c(as.Date("2023-05-01"),
+                          as.Date("2023-12-01")))+
   labs(fill = "Sero group", y = "Number of samples",x = "Month of admission")+
   theme_minimal()+
   theme(legend.position="bottom")
-```
 
-## Age
-
-```{r}
-viro2 %>%
-  mutate(adm_month = as.Date(floor_date(admission_date, "month")),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>%
-  group_by(age_bin, sero_gr) %>%
-  summarise(n = n(), .groups = "drop_last") %>%
-  mutate(perc = n / sum(n)) %>%
-  ungroup() %>%
-  complete(age_bin,sero_gr,fill = list(perc=0)) %>% 
-  ggplot(aes(x = age_bin, y = perc, fill = sero_gr)) +
-  geom_col(position = "stack", color = "black") +
-  ggsci::scale_fill_jco() +
-  labs(x = "Age (years)", y = "Percentage (%)", fill = "Serotype") +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
-  )
-```
-
-## Age and time
-
-### EV-A71 positive samples as funtion of age and time
-
-```{r}
-#| fig-width: 10
-#| fig-height: 6 
-#| out-width: "100%"
-
-viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>% 
-  filter(sero_gr == "EV-A71") %>%
-  select(adm_month2,age_adm) %>%
-  as.data.frame() %>% 
-  ggplot(aes(x=adm_month2, y = age_adm)) +
-  stat_density(
-    aes(fill = after_stat(count)),
-    geom = "raster",
-    position = "identity",
-    interpolate = TRUE
-  )+
-  scale_fill_paletteer_c("grDevices::Inferno")+
-  theme_minimal()+
-  scale_y_reverse(name = "Age (years)",breaks = seq(0,12,by = 1))+
-  labs(fill = "Number of EV-A71 samples",x = "Month of admission")+
-  theme(legend.position = "bottom",
-        legend.key.width =  unit(1, "cm"))
-
-```
-
-### age distribution EV-A71 positive samples as funtion of age and time
-
-```{r}
-#| fig-width: 10
-#| fig-height: 6 
-#| out-width: "100%"
-
-viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>% 
-  filter(sero_gr == "EV-A71" & month(adm_month2) >= 6) %>%
-  select(adm_month2,age_adm) %>%
-  as.data.frame() %>% 
-  ggplot(aes(x=adm_month2, y = age_adm)) +
-  stat_density(
-    aes(fill = after_stat(density)),
-    geom = "raster",
-    position = "identity",
-    interpolate = TRUE
-  )+
-  scale_fill_paletteer_c("grDevices::Inferno")+
-  theme_minimal()+
-  scale_y_reverse(name = "Age (years)",
-                  limits = c(0,6),
-                  breaks = seq(0,6,by = 1))+
-  labs(fill = "Density",x = "Month of admission")+
-  theme(legend.position = "bottom",
-        legend.key.width =  unit(1, "cm"))
-
-```
-
-I limited the age from 0-6 years old
-
-### Select from May-Aug
-
-This age profile coresspond with 2 sucessive collection time points in the 2nd figure in Fig1A 
-
-```{r}
-#| fig-width: 10
-#| fig-height: 6 
-#| out-width: "100%"
-
-viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>% 
-  filter(sero_gr == "EV-A71" & month(adm_month2) <= 8) %>%
-  select(adm_month2,age_adm) %>%
-  as.data.frame() %>% 
-  ggplot(aes(x=adm_month2, y = age_adm)) +
-  stat_density(
-    aes(fill = after_stat(count)),
-    geom = "raster",
-    position = "identity",
-    interpolate = TRUE
-  )+
-  scale_fill_paletteer_c("grDevices::Inferno")+
-  theme_minimal()+
-  scale_y_reverse(name = "Age (years)",
-                  limits = c(0,6),
-                  breaks = seq(0,6,by = 1))+
-  labs(fill = "Number of EV-A71 samples",x = "Month of admission")+
-  theme(legend.position = "bottom",
-        legend.key.width =  unit(1, "cm"))
-```
-
-Raw data
-
-```{r}
-count <- viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>% 
-  filter(sero_gr == "EV-A71" & month(adm_month2) <= 8) %>% 
-  ggplot(aes(age_adm))+
-  geom_histogram(binwidth = 0.5,
-                 color = "white",fill = "black",alpha = 0.5)+
-  scale_x_continuous(breaks = seq(0,12,by = 1),
-                     limits = c(0,12))+
-  labs(x = "Age(years)",y = "Number of EV-A71 samples")+
-  theme_minimal()
-
-
-per <- viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>%
-  filter(month(adm_month2) <= 8) %>%
-  group_by(age_bin,sero_gr) %>%
-  summarise(n = n(), .groups = "drop_last") %>%
-  mutate(perc = n / sum(n)) %>%
-  ungroup() %>% 
-  complete(age_bin,sero_gr,fill = list(perc =0)) %>%
-  filter(sero_gr == "EV-A71") %>% 
-  ggplot(aes(x = age_bin, y = perc))+
+viro_count_p %>% filter(sero_gr == "EV-A71")  %>% 
+  ggplot(aes(x = adm_month,y=perc))+
   geom_col()+
-  scale_y_continuous(name = "Percentage of EV-A71 samples",
-                     labels = scales::label_percent(scale = 100))+
-  labs(x = "Age group")+
+  scale_x_date(date_labels = "%b",
+               date_breaks = "1 month",
+               limits = c(as.Date("2023-05-01"),
+                          as.Date("2023-12-01")))+
+  labs(y = "Percentage of EV-A71 samples",x = "Month of admission")+
   theme_minimal()+
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 1)
-  )
-
-library(patchwork)
-
-count/
-  per
-
-```
-
-### Select from Aug-Dec
-
-This age profile coresspond with 2 sucessive collection time points in the 3rd figure in Fig1A 
-
-```{r}
-#| fig-width: 10
-#| fig-height: 6 
-#| out-width: "100%"
-
-viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>% 
-  filter(sero_gr == "EV-A71" & month(adm_month2) >= 8) %>%
-  select(adm_month2,age_adm) %>%
-  as.data.frame() %>% 
-  ggplot(aes(x=adm_month2, y = age_adm)) +
-  stat_density(
-    aes(fill = after_stat(count)),
-    geom = "raster",
-    position = "identity",
-    interpolate = TRUE
-  )+
-  scale_fill_paletteer_c("grDevices::Inferno")+
-  theme_minimal()+
-  scale_y_reverse(name = "Age (years)",
-                  limits = c(0,6),
-                  breaks = seq(0,6,by = 1))+
-  labs(fill = "Number of EV-A71 samples",x = "Month of admission")+
-  theme(legend.position = "bottom",
-        legend.key.width =  unit(1, "cm"))
-```
-
-Raw data
-
-```{r}
-count <- viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>% 
-  filter(sero_gr == "EV-A71" & month(adm_month2) >= 8) %>% 
-  ggplot(aes(age_adm))+
-  geom_histogram(binwidth = 0.5,
-                 color = "white",fill = "black",alpha = 0.5)+
-  scale_x_continuous(breaks = seq(0,12,by = 1),
-                     limits = c(0,12))+
-  labs(x = "Age(years)",y = "Number of EV-A71 samples")+
-  theme_minimal()
-
-
-per <- viro2 %>%
-  mutate(adm_month = month(admission_date,label = TRUE),
-         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
-         age_bin = cut(age_adm,
-                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
-                       right = FALSE)) %>%
-  na.omit() %>%
-  filter(month(adm_month2) >= 8) %>%
-  group_by(age_bin,sero_gr) %>%
-  summarise(n = n(), .groups = "drop_last") %>%
-  mutate(perc = n / sum(n)) %>%
-  ungroup() %>% 
-  complete(age_bin,sero_gr,fill = list(perc =0)) %>% 
-  filter(sero_gr == "EV-A71") %>% 
-  ggplot(aes(x = age_bin, y = perc))+
-  geom_col()+
-  scale_y_continuous(name = "Percentage of EV-A71 samples",
-                     labels = scales::label_percent(scale = 100))+
-  labs(x = "Age group")+
-  theme_minimal()+
-  theme(
-    axis.text.x = element_text(angle = 90, hjust = 1)
-  )
-
-library(patchwork)
-
-count/
-  per
+  theme(legend.position="bottom")
 
 ```
 
@@ -366,3 +124,103 @@ count/
 ## Epidemiology analysis
 
 ![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-24-1.png)
+
+## Analyse first peak and the second peak
+
+Based on the figure 1, I seperate sample from June - Aug as the 1st peak, and from Sep-Dec as the 2nd peak
+
+### First peak
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6 
+#| out-width: "100%"
+#| fig-cap: "Percentage of serogroup in each age group in the first peak"
+
+viro2 %>%
+  mutate() %>%
+  na.omit() %>% 
+  filter(month(adm_month2) >= 6 & month(adm_month2) <= 8) %>% 
+  na.omit() %>%
+  group_by(age_bin, sero_gr) %>%
+  summarise(n = n(), .groups = "drop_last") %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup() %>%
+  ggplot(aes(x = age_bin, y = perc, fill = sero_gr)) +
+  geom_col(position = "stack", color = "black") +
+  ggsci::scale_fill_jco() +
+  labs(x = "Age (years)", y = "Percentage (%)", fill = "Serogroup") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6 
+#| out-width: "100%"
+#| fig-cap: "Number of EV-A71 serum samples in each age group in the first peak"
+
+viro2 %>%
+  mutate() %>%
+  na.omit() %>% 
+  filter(month(adm_month2) >= 6 & month(adm_month2) <= 8) %>% 
+  na.omit() %>%
+  filter(sero_gr == "EV-A71") %>% 
+  ggplot(aes(age_adm)) +
+  geom_histogram(binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.5)+
+  labs(x = "Age (years)", y = "Number of EV-A71 samples") +
+  theme_minimal()
+```
+
+### Second peak
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6 
+#| out-width: "100%"
+#| fig-cap: "Percentage of serogroup in each age group in the second peak"
+
+viro2 %>%
+  mutate() %>%
+  na.omit() %>% 
+  filter(month(adm_month2) >= 9) %>% 
+  na.omit() %>%
+  group_by(age_bin, sero_gr) %>%
+  summarise(n = n(), .groups = "drop_last") %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup() %>%
+  ggplot(aes(x = age_bin, y = perc, fill = sero_gr)) +
+  geom_col(position = "stack", color = "black") +
+  ggsci::scale_fill_jco() +
+  labs(x = "Age (years)", y = "Percentage (%)", fill = "Serogroup") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6 
+#| out-width: "100%"
+#| fig-cap: "Number of EV-A71 serum samples in each age group in the second peak"
+
+viro2 %>%
+  mutate() %>%
+  na.omit() %>% 
+  filter(month(adm_month2) >= 9) %>% 
+  na.omit() %>%
+  filter(sero_gr == "EV-A71") %>% 
+  ggplot(aes(age_adm)) +
+  geom_histogram(binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.5)+
+  labs(x = "Age (years)", y = "Number of EV-A71 samples") +
+  theme_minimal()
+```
+
+
+
