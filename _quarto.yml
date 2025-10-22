@@ -16,13 +16,13 @@ book:
   title: "HFMD 2023"
   chapters:
     - index.qmd
-    - sero.qmd
     # - model.qmd
     - sero_description.qmd
     - viro_des.qmd
     - fig_manu2.qmd
     - analysis_N.qmd
     - tsir_r0.qmd
+    - sero.qmd
 
 format:
   html:
