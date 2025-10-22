@@ -365,4 +365,4 @@ count/
 
 ## Epidemiology analysis
 
-![Figure1](D:/OUCRU/assigned github/hfmd/fig_manuscript/fig2_3.svg)
+![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-24-1.png)
