@@ -1514,5 +1514,8 @@ row3 <- (birth_23 | plot_spacer())+
 
 ggsave("./fig_manuscript/fig2_3.svg",
        width = 15,height = 15,dpi = 500)
+
+ggsave("./fig_manuscript/fig2_3.png",
+       width = 15,height = 15,dpi = 500)
 ```
 
