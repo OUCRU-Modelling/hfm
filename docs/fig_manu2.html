@@ -267,6 +267,7 @@ window.Quarto = {
   <li><a href="#expected-incidence" id="toc-expected-incidence" class="nav-link" data-scroll-target="#expected-incidence"><span class="header-section-number">4.5.4</span> Expected incidence</a></li>
   <li><a href="#figure-1" id="toc-figure-1" class="nav-link" data-scroll-target="#figure-1"><span class="header-section-number">4.5.5</span> Figure 1</a></li>
   </ul></li>
+  <li><a href="#combined-with-virology" id="toc-combined-with-virology" class="nav-link" data-scroll-target="#combined-with-virology"><span class="header-section-number">5</span> Combined with virology</a></li>
   </ul>
 </nav>
     </div>
@@ -607,7 +608,7 @@ window.Quarto = {
 <span id="cb4-121"><a href="#cb4-121" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
 <span id="cb4-122"><a href="#cb4-122" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_reverse</span>(<span class="at">name =</span> <span class="st">"Age (years)"</span>,<span class="at">lim=</span> <span class="fu">rev</span>(<span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">6</span>)),<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">6</span>))<span class="sc">+</span></span>
 <span id="cb4-123"><a href="#cb4-123" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_discrete</span>(<span class="at">name =</span> <span class="st">"Admission week"</span>,<span class="at">labels =</span> leb_month)<span class="sc">+</span></span>
-<span id="cb4-124"><a href="#cb4-124" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">tag =</span> <span class="st">"D"</span>,<span class="at">fill =</span> <span class="st">"Number of hospitalizations"</span>)<span class="sc">+</span></span>
+<span id="cb4-124"><a href="#cb4-124" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">tag =</span> <span class="st">"D"</span>,<span class="at">fill =</span> <span class="st">"Number of</span><span class="sc">\n</span><span class="st">hospitalizations"</span>)<span class="sc">+</span></span>
 <span id="cb4-125"><a href="#cb4-125" aria-hidden="true" tabindex="-1"></a>  <span class="co"># theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+</span></span>
 <span id="cb4-126"><a href="#cb4-126" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">data =</span> ch,<span class="fu">aes</span>(<span class="at">x =</span> date,<span class="at">y =</span> c0,<span class="at">col =</span> trend),</span>
 <span id="cb4-127"><a href="#cb4-127" aria-hidden="true" tabindex="-1"></a>            <span class="at">group =</span> <span class="dv">1</span>,<span class="at">lwd =</span> <span class="fl">0.25</span>)<span class="sc">+</span></span>
@@ -1906,6 +1907,112 @@ P(CH1 \ hospitalization_{[a,d]}) = \frac{cases_{[a,d]}}{population_{[a,d]}}
 <span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>       <span class="at">width =</span> <span class="dv">15</span>,<span class="at">height =</span> <span class="dv">15</span>,<span class="at">dpi =</span> <span class="dv">500</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
+</section>
+</section>
+<section id="combined-with-virology" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Combined with virology</h1>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readxl)</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>viro_df <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">"D:/OUCRU/hfmd/data/03EI Data 2023 shared.xlsx"</span>)</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>viro2 <span class="ot">&lt;-</span> viro_df <span class="sc">%&gt;%</span> </span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">city =</span> City <span class="sc">%&gt;%</span> </span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>           <span class="fu">trimws</span>(<span class="at">which =</span> <span class="st">"both"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>           <span class="fu">stri_trans_general</span>(<span class="st">"latin-ascii"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>           <span class="fu">tolower</span>(),</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>         <span class="at">sero_gr =</span> <span class="fu">case_when</span>(</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>           SeroGroup1 <span class="sc">==</span> <span class="st">"ENT"</span> <span class="sc">~</span> <span class="st">"EV"</span>,</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>           SeroGroup1 <span class="sc">!=</span> <span class="st">"ENT"</span> <span class="sc">~</span> SeroGroup1</span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>         ),</span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>         <span class="at">admission_date =</span> <span class="fu">as.Date</span>(DateAdmission),</span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>         <span class="at">age_adm =</span> <span class="fu">interval</span>(DateBirth, admission_date) <span class="sc">/</span> <span class="fu">years</span>(<span class="dv">1</span>),</span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a>         <span class="at">adm_month =</span> <span class="fu">month</span>(admission_date,<span class="at">label =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a>         <span class="at">adm_month2 =</span> <span class="fu">as.Date</span>(<span class="fu">floor_date</span>(admission_date, <span class="st">"month"</span>))<span class="sc">%&gt;%</span> <span class="fu">as.character</span>(),</span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>         <span class="at">age_bin =</span> <span class="fu">cut</span>(age_adm,</span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a>                       <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fu">max</span>(age_adm, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">+</span> <span class="fl">0.5</span>, <span class="at">by =</span> <span class="fl">0.5</span>),</span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a>                       <span class="at">right =</span> <span class="cn">FALSE</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(city,sero_gr,admission_date,adm_month,adm_month2,age_adm,age_bin,DateBirth)</span>
+<span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>viro2<span class="sc">$</span>city <span class="ot">&lt;-</span> <span class="fu">factor</span>(viro2<span class="sc">$</span>city,</span>
+<span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>                         <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"tp hcm"</span>,viro2<span class="sc">$</span>city[<span class="sc">!</span>viro2<span class="sc">$</span>city <span class="sc">==</span> <span class="st">"tp hcm"</span>] <span class="sc">%&gt;%</span> </span>
+<span id="cb32-24"><a href="#cb32-24" aria-hidden="true" tabindex="-1"></a>                                      <span class="fu">unique</span>()))</span>
+<span id="cb32-25"><a href="#cb32-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-26"><a href="#cb32-26" aria-hidden="true" tabindex="-1"></a>viro2 <span class="ot">&lt;-</span> viro2 <span class="sc">%&gt;%</span> <span class="fu">filter</span>(city <span class="sc">==</span> <span class="st">"tp hcm"</span>)</span>
+<span id="cb32-27"><a href="#cb32-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-28"><a href="#cb32-28" aria-hidden="true" tabindex="-1"></a>viro2 <span class="ot">&lt;-</span> viro2 <span class="sc">%&gt;%</span></span>
+<span id="cb32-29"><a href="#cb32-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">pos =</span> <span class="fu">case_when</span>(</span>
+<span id="cb32-30"><a href="#cb32-30" aria-hidden="true" tabindex="-1"></a>    sero_gr <span class="sc">==</span> <span class="st">"EV-A71"</span> <span class="sc">~</span> <span class="cn">TRUE</span>,</span>
+<span id="cb32-31"><a href="#cb32-31" aria-hidden="true" tabindex="-1"></a>    sero_gr <span class="sc">!=</span> <span class="st">"EV-A71"</span> <span class="sc">~</span> <span class="cn">FALSE</span>),</span>
+<span id="cb32-32"><a href="#cb32-32" aria-hidden="true" tabindex="-1"></a>    <span class="at">peak =</span> <span class="fu">case_when</span>(</span>
+<span id="cb32-33"><a href="#cb32-33" aria-hidden="true" tabindex="-1"></a>      <span class="fu">month</span>(admission_date) <span class="sc">&gt;=</span> <span class="dv">6</span> <span class="sc">&amp;</span> <span class="fu">month</span>(admission_date) <span class="sc">&lt;=</span> <span class="dv">8</span> <span class="sc">~</span> <span class="st">"6/2023 - 8/2023"</span>,</span>
+<span id="cb32-34"><a href="#cb32-34" aria-hidden="true" tabindex="-1"></a>      <span class="fu">month</span>(admission_date) <span class="sc">&gt;=</span> <span class="dv">9</span> <span class="sc">~</span> <span class="st">"9/2023 - 12/2023"</span></span>
+<span id="cb32-35"><a href="#cb32-35" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb32-36"><a href="#cb32-36" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb32-37"><a href="#cb32-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">age =</span> age_adm)</span>
+<span id="cb32-38"><a href="#cb32-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-39"><a href="#cb32-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-40"><a href="#cb32-40" aria-hidden="true" tabindex="-1"></a>lab_ev71_p <span class="ot">&lt;-</span> viro2 <span class="sc">%&gt;%</span></span>
+<span id="cb32-41"><a href="#cb32-41" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(peak) <span class="sc">%&gt;%</span></span>
+<span id="cb32-42"><a href="#cb32-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_modify</span>(<span class="sc">~</span>.x <span class="sc">%&gt;%</span> <span class="fu">age_profile</span>(<span class="at">age_values =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">6</span>,<span class="at">le =</span> <span class="dv">512</span>)))  <span class="sc">%&gt;%</span></span>
+<span id="cb32-43"><a href="#cb32-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y =</span> fit))<span class="sc">+</span></span>
+<span id="cb32-44"><a href="#cb32-44" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>()<span class="sc">+</span></span>
+<span id="cb32-45"><a href="#cb32-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> viro2,<span class="fu">aes</span>(<span class="at">x =</span> age,<span class="at">y=</span>pos),<span class="at">shape =</span> <span class="st">"|"</span>)<span class="sc">+</span></span>
+<span id="cb32-46"><a href="#cb32-46" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_ribbon</span>(<span class="fu">aes</span>(<span class="at">ymin =</span> lwr,<span class="at">ymax =</span> upr),<span class="at">fill =</span> <span class="st">"blue"</span>,<span class="at">alpha =</span> <span class="fl">0.3</span>)<span class="sc">+</span></span>
+<span id="cb32-47"><a href="#cb32-47" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>,<span class="dv">6</span>,<span class="at">by =</span> <span class="dv">1</span>))<span class="sc">+</span></span>
+<span id="cb32-48"><a href="#cb32-48" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">name =</span> <span class="st">"Percentage (%)"</span>,</span>
+<span id="cb32-49"><a href="#cb32-49" aria-hidden="true" tabindex="-1"></a>                     <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_percent</span>(<span class="at">scale =</span> <span class="dv">100</span>),</span>
+<span id="cb32-50"><a href="#cb32-50" aria-hidden="true" tabindex="-1"></a>                     <span class="at">position =</span> <span class="st">"right"</span>)<span class="sc">+</span></span>
+<span id="cb32-51"><a href="#cb32-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Age (years)"</span>)<span class="sc">+</span></span>
+<span id="cb32-52"><a href="#cb32-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>peak)<span class="sc">+</span></span>
+<span id="cb32-53"><a href="#cb32-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()<span class="sc">+</span></span>
+<span id="cb32-54"><a href="#cb32-54" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.title.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">18</span>),</span>
+<span id="cb32-55"><a href="#cb32-55" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">18</span>),</span>
+<span id="cb32-56"><a href="#cb32-56" aria-hidden="true" tabindex="-1"></a>        <span class="at">legend.position =</span> <span class="st">"none"</span>,</span>
+<span id="cb32-57"><a href="#cb32-57" aria-hidden="true" tabindex="-1"></a>        <span class="at">plot.tag =</span> <span class="fu">element_text</span>(<span class="at">face =</span> <span class="st">"bold"</span>, <span class="at">size =</span> <span class="dv">18</span>),</span>
+<span id="cb32-58"><a href="#cb32-58" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.title.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">18</span>),</span>
+<span id="cb32-59"><a href="#cb32-59" aria-hidden="true" tabindex="-1"></a>        <span class="at">axis.text.y =</span> <span class="fu">element_blank</span>(),</span>
+<span id="cb32-60"><a href="#cb32-60" aria-hidden="true" tabindex="-1"></a>        <span class="at">strip.text.x =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">18</span>))</span>
+<span id="cb32-61"><a href="#cb32-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-62"><a href="#cb32-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-63"><a href="#cb32-63" aria-hidden="true" tabindex="-1"></a>width_ratio <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">2.5</span>, <span class="dv">2</span>)</span>
+<span id="cb32-64"><a href="#cb32-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-65"><a href="#cb32-65" aria-hidden="true" tabindex="-1"></a>row01 <span class="ot">&lt;-</span> (lab_ev71_p<span class="sc">|</span><span class="fu">plot_spacer</span>())<span class="sc">+</span></span>
+<span id="cb32-66"><a href="#cb32-66" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">widths =</span> width_ratio)</span>
+<span id="cb32-67"><a href="#cb32-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-68"><a href="#cb32-68" aria-hidden="true" tabindex="-1"></a>row0 <span class="ot">&lt;-</span> (exp_in_ch1 <span class="sc">|</span> <span class="fu">plot_spacer</span>())<span class="sc">+</span></span>
+<span id="cb32-69"><a href="#cb32-69" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">widths =</span> width_ratio)</span>
+<span id="cb32-70"><a href="#cb32-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-71"><a href="#cb32-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-72"><a href="#cb32-72" aria-hidden="true" tabindex="-1"></a>row1 <span class="ot">&lt;-</span> (age_profile_sp_cm <span class="sc">|</span> lab_ev71_p)<span class="sc">+</span></span>
+<span id="cb32-73"><a href="#cb32-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">widths =</span> width_ratio)</span>
+<span id="cb32-74"><a href="#cb32-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-75"><a href="#cb32-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-76"><a href="#cb32-76" aria-hidden="true" tabindex="-1"></a>row2 <span class="ot">&lt;-</span>  ((ts<span class="sc">/</span>hm2) <span class="sc">|</span> (<span class="fu">plot_spacer</span>()<span class="sc">/</span></span>
+<span id="cb32-77"><a href="#cb32-77" aria-hidden="true" tabindex="-1"></a>                        <span class="fu">wrap_elements</span>(<span class="at">full =</span> ad  <span class="sc">+</span></span>
+<span id="cb32-78"><a href="#cb32-78" aria-hidden="true" tabindex="-1"></a>                                        <span class="fu">theme</span>(<span class="at">plot.margin =</span> <span class="fu">margin</span>(<span class="sc">-</span><span class="dv">15</span>,<span class="dv">150</span>, <span class="dv">7</span>, <span class="dv">0</span>)))))<span class="sc">+</span></span>
+<span id="cb32-79"><a href="#cb32-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">widths =</span> width_ratio)</span>
+<span id="cb32-80"><a href="#cb32-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-81"><a href="#cb32-81" aria-hidden="true" tabindex="-1"></a>row3 <span class="ot">&lt;-</span> (birth_23 <span class="sc">|</span> <span class="fu">plot_spacer</span>())<span class="sc">+</span></span>
+<span id="cb32-82"><a href="#cb32-82" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">widths =</span> width_ratio)</span>
+<span id="cb32-83"><a href="#cb32-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-84"><a href="#cb32-84" aria-hidden="true" tabindex="-1"></a>(row0 <span class="sc">/</span>row1 <span class="sc">/</span>row2 <span class="sc">/</span> row3) <span class="sc">+</span></span>
+<span id="cb32-85"><a href="#cb32-85" aria-hidden="true" tabindex="-1"></a>  <span class="fu">plot_layout</span>(<span class="at">heights =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">1</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="fig_manu2_files/figure-html/unnamed-chunk-25-1.svg" style="width:100.0%;height:100.0%" class="figure-img"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"./fig_manuscript/fig2_3t.svg"</span>,</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>       <span class="at">width =</span> <span class="dv">15</span>,<span class="at">height =</span> <span class="dv">15</span>,<span class="at">dpi =</span> <span class="dv">500</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
 
 
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" role="list">
@@ -1913,7 +2020,6 @@ P(CH1 \ hospitalization_{[a,d]}) = \frac{cases_{[a,d]}}{population_{[a,d]}}
 Zinszer, Kate, Katia Charland, Ruth Kigozi, Grant Dorsey, Moses R Kamya, and David L Buckeridge. 2014. <span>“Determining Health-Care Facility Catchment Areas in Uganda Using Data on Malaria-Related Visits.”</span> <em>Bulletin of the World Health Organization</em> 92 (3): 178–86. <a href="https://doi.org/10.2471/BLT.13.125260">https://doi.org/10.2471/BLT.13.125260</a>.
 </div>
 </div>
-</section>
 </section>
 
 </main> <!-- /main -->

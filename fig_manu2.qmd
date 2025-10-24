@@ -311,7 +311,7 @@ hm2 <- ggplot(data=wwww$wdat, aes(x=date, y=age)) +
   theme_minimal()+
   scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
   scale_x_discrete(name = "Admission week",labels = leb_month)+
-  labs(tag = "D",fill = "Number of hospitalizations")+
+  labs(tag = "D",fill = "Number of\nhospitalizations")+
   # theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1,size = 8))+
   geom_line(data = ch,aes(x = date,y = c0,col = trend),
             group = 1,lwd = 0.25)+
@@ -490,13 +490,10 @@ b_ss <- plot_cp(model)+
 
 ```
 
-
-
 ```{r}
 library(nortest)
 ks.test(age~peak,data = data,altervative = "two.sided")
 ```
-
 
 ### Age distribution of raw data
 
@@ -534,7 +531,6 @@ data %>%
 detach("package:fitdistrplus", unload = TRUE)
 detach("package:MASS", unload = TRUE)
 ```
-
 
 ## Figure 2: Catchment area of CH1
 
@@ -690,7 +686,6 @@ ggsave("./fig_manuscript/sero-distribution.svg",
        width = 15,height = 8,dpi = 500)
 
 ```
-
 
 ## Figure 3: Estimated cummulative incidence from serological data and cases data
 
@@ -965,7 +960,6 @@ ggplot()+
     axis.title.y = element_text(size = 18))
 ```
 
-
 ```{r}
 #| fig-width: 18
 #| fig-height: 10
@@ -986,7 +980,6 @@ library(grid)
 #        width = 18,height = 10,dpi = 500)
 ```
 
-
 ```{r}
 #| fig-width: 18
 #| fig-height: 10
@@ -1005,7 +998,6 @@ right_col2 <- ex_incid_cm / b_ss /
 ggsave("./fig_manuscript/fig1_2a.svg",
        width = 18,height = 10,dpi = 500)
 ```
-
 
 ```{r}
 #| fig-width: 10
@@ -1154,6 +1146,7 @@ ts/
   atk
 
 ```
+
 ### births seasonality
 
 ```{r}
@@ -1168,8 +1161,6 @@ b_ss
 ggsave("./fig_manuscript/birth_seasonality.svg",
        width = 15,height = 9,dpi = 500)
 ```
-
-
 
 ## Next step analysis
 
@@ -1202,7 +1193,6 @@ birth_23 <- model$df %>%
     axis.title.x = element_text(size = 18),
     axis.title.y = element_text(size = 18))
 ```
-
 
 ### Age distribution calculated from births data
 
@@ -1377,7 +1367,6 @@ ggplot()+
 
 Then I used predicted hospitalization probability multiply the age distribution at the end 2023 estimated from section 4.4.2 to calculate the expected age distribution caught by CH1.
 
-
 ```{r}
 #| fig-width: 15
 #| fig-height: 9
@@ -1518,4 +1507,102 @@ ggsave("./fig_manuscript/fig2_3.svg",
 ggsave("./fig_manuscript/fig2_3.png",
        width = 15,height = 15,dpi = 500)
 ```
+
+# Combined with virology
+
+```{r}
+#| fig-width: 15
+#| fig-height: 15
+#| out-width: "100%"
+
+library(readxl)
+viro_df <- read_excel("D:/OUCRU/hfmd/data/03EI Data 2023 shared.xlsx")
+
+viro2 <- viro_df %>% 
+  mutate(city = City %>% 
+           trimws(which = "both") %>% 
+           stri_trans_general("latin-ascii") %>% 
+           tolower(),
+         sero_gr = case_when(
+           SeroGroup1 == "ENT" ~ "EV",
+           SeroGroup1 != "ENT" ~ SeroGroup1
+         ),
+         admission_date = as.Date(DateAdmission),
+         age_adm = interval(DateBirth, admission_date) / years(1),
+         adm_month = month(admission_date,label = TRUE),
+         adm_month2 = as.Date(floor_date(admission_date, "month"))%>% as.character(),
+         age_bin = cut(age_adm,
+                       breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
+                       right = FALSE)) %>% 
+  select(city,sero_gr,admission_date,adm_month,adm_month2,age_adm,age_bin,DateBirth)
+
+viro2$city <- factor(viro2$city,
+                         levels = c("tp hcm",viro2$city[!viro2$city == "tp hcm"] %>% 
+                                      unique()))
+
+viro2 <- viro2 %>% filter(city == "tp hcm")
+
+viro2 <- viro2 %>%
+  mutate(pos = case_when(
+    sero_gr == "EV-A71" ~ TRUE,
+    sero_gr != "EV-A71" ~ FALSE),
+    peak = case_when(
+      month(admission_date) >= 6 & month(admission_date) <= 8 ~ "6/2023 - 8/2023",
+      month(admission_date) >= 9 ~ "9/2023 - 12/2023"
+    )
+  ) %>%
+  rename(age = age_adm)
+
+
+lab_ev71_p <- viro2 %>%
+  group_by(peak) %>%
+  group_modify(~.x %>% age_profile(age_values = seq(0,6,le = 512)))  %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line()+
+  geom_point(data = viro2,aes(x = age,y=pos),shape = "|")+
+  geom_ribbon(aes(ymin = lwr,ymax = upr),fill = "blue",alpha = 0.3)+
+  scale_x_continuous(breaks = seq(0,6,by = 1))+
+  scale_y_continuous(name = "Percentage (%)",
+                     labels = scales::label_percent(scale = 100),
+                     position = "right")+
+  labs(x = "Age (years)")+
+  facet_wrap(~peak)+
+  theme_bw()+
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_blank(),
+        strip.text.x = element_text(size = 18))
+
+
+width_ratio <- c(2.5, 2)
+
+row01 <- (lab_ev71_p|plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+row0 <- (exp_in_ch1 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+
+row1 <- (age_profile_sp_cm | lab_ev71_p)+
+  plot_layout(widths = width_ratio)
+
+
+row2 <-  ((ts/hm2) | (plot_spacer()/
+                        wrap_elements(full = ad  +
+                                        theme(plot.margin = margin(-15,150, 7, 0)))))+
+  plot_layout(widths = width_ratio)
+
+row3 <- (birth_23 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+(row0 /row1 /row2 / row3) +
+  plot_layout(heights = c(1,1,3,1))
+
+ggsave("./fig_manuscript/fig2_3t.svg",
+       width = 15,height = 15,dpi = 500)
+```
+
 

@@ -251,9 +251,180 @@ viro2 %>%
                        breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
                        right = FALSE)) %>%
   na.omit() %>%
-  filter(sero_gr == "EV-A71" & month(adm_month2) >= 8) %>%
-  ggplot(aes(age_adm))+
+  filter(month(adm_month2) >= 8) %>%
+  group_by(age_bin,sero_gr) %>%
+  summarise(n = n(), .groups = "drop_last") %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup() %>%
+  complete(age_bin,sero_gr,fill = list(perc =0)) %>%
+  filter(sero_gr == "EV-A71") %>%
+  ggplot(aes(x = age_bin, y = perc))+
+  geom_col()+
+  scale_y_continuous(name = "Percentage of EV-A71 samples",
+                     labels = scales::label_percent(scale = 100))+
+  labs(x = "Age group")+
+  theme_minimal()
+
+
+
+viro2 %>%
+  mutate(adm_month = as.Date(floor_date(admission_date, "month"))) %>%
+  group_by(adm_month,sero_gr) %>%
+  count()  %>%
+  summarise(n = n(), .groups = "drop_last") %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup() %>%
+  complete(adm_month,sero_gr,fill = list(perc =0)) %>%
+  filter(sero_gr == "EV-A71") %>%
+  ggplot(aes(x = adm_month,y=perc))+
+  geom_col()+
+  scale_x_date(date_labels = "%b",
+               date_breaks = "1 month")+
+  labs(y = "Number of samples",x = "Month of admission")+
+  theme_minimal()+
+  theme(legend.position="bottom")
+
+###3
+
+
+viro2 %>%
+  mutate(adm_month = as.Date(floor_date(admission_date, "month"))) %>%
+  group_by(adm_month,sero_gr) %>%
+  count()  %>%
+  summarise(n = n(), .groups = "drop") %>%
+  complete(adm_month,sero_gr,fill = list(n =0)) %>%
+  group_by(adm_month) %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup() %>%
+  filter(sero_gr == "EV-A71") %>%
+  ggplot(aes(x = adm_month,y=perc))+
+  geom_col()+
+  scale_x_date(date_labels = "%b",
+               date_breaks = "1 month")+
+  labs(y = "Number of EV-A71 samples",x = "Month of admission")+
+  theme_minimal()+
+  theme(legend.position="bottom")
+
+viro2 %>%
+  mutate(adm_month = as.Date(floor_date(admission_date, "month"))) %>%
+  group_by(adm_month,sero_gr) %>%
+  count()  %>%
+  summarise(n = n(), .groups = "drop") %>%
+  complete(adm_month,sero_gr,fill = list(n =0)) %>%
+  group_by(adm_month) %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup() %>%
+  group_by(adm_month,sero_gr) %>%
+  summarise(n = sum(n),.groups = "drop") %>%
+  ggplot(aes(x = adm_month,y=n,fill = sero_gr))+
+  geom_col()+
+  scale_x_date(date_labels = "%b",
+               date_breaks = "1 month")+
+  labs(fill = "Sero group", y = "Number of samples",x = "Month of admission")+
+  theme_minimal()+
+  theme(legend.position="bottom")
+
+
+
+viro_count_p <- viro2 %>%
+  mutate(adm_month = as.Date(floor_date(admission_date, "month"))) %>%
+  group_by(adm_month,sero_gr) %>%
+  count() %>%
+  ungroup() %>%
+  group_by(adm_month) %>%
+  mutate(perc = n / sum(n)) %>%
+  ungroup
+
+viro_count_p %>% filter(sero_gr == "EV-A71")  %>%
+  ggplot(aes(x = adm_month,y=perc))+
+  geom_col()+
+  scale_x_date(date_labels = "%b",
+               date_breaks = "1 month",
+               limits = c(as.Date("2023-05-01"),
+                          as.Date("2023-12-01")))+
+  labs(y = "Percentage of EV-A71 samples",x = "Month of admission")+
+  theme_minimal()+
+  theme(legend.position="bottom")
+
+
+###
+
+
+viro2 %>%
+  mutate() %>%
+  na.omit() %>%
+  filter(month(adm_month2) >= 9) %>%
+  na.omit() %>%
+  filter(sero_gr == "EV-A71") %>%
+  ggplot(aes(age_adm)) +
   geom_histogram(binwidth = 0.5,
                  color = "white",fill = "black",alpha = 0.5)+
-  scale_x_continuous(breaks = seq(0,12,by = 1),
-                     limits = c(0,12))
+  labs(x = "Age (years)", y = "Number of EV-A71 samples") +
+  theme_minimal()
+
+#####
+
+
+viro2 <- viro2 %>%
+  mutate(pos = case_when(
+    sero_gr == "EV-A71" ~ TRUE,
+    sero_gr != "EV-A71" ~ FALSE),
+    peak = case_when(
+      month(admission_date) >= 6 & month(admission_date) <= 8 ~ "6/2023 - 8/2023",
+      month(admission_date) >= 9 ~ "9/2023 - 12/2023"
+    )
+  ) %>%
+  rename(age = age_adm)
+
+
+lab_ev71_p <- viro2 %>%
+  group_by(peak) %>%
+  group_modify(~.x %>% age_profile(age_values = seq(0,6,le = 512)))  %>%
+  ggplot(aes(x = age,y = fit))+
+  geom_line()+
+  geom_point(data = viro2,aes(x = age,y=pos),shape = "|")+
+  geom_ribbon(aes(ymin = lwr,ymax = upr),fill = "blue",alpha = 0.3)+
+  scale_x_continuous(breaks = seq(0,6,by = 1))+
+  scale_y_continuous(name = "Percentage (%)",
+                     labels = scales::label_percent(scale = 100),
+                     position = "right")+
+  labs(x = "Age (years)")+
+  facet_wrap(~peak)+
+  theme_bw()+
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_blank(),
+        strip.text.x = element_text(size = 18))
+
+# lab_ev71_p <- (plot_spacer()|lab_ev71_p)+
+#   plot_layout(widths = c(1,1))
+
+width_ratio <- c(2.5, 2)
+
+row01 <- (lab_ev71_p|plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+row0 <- (exp_in_ch1 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+
+row1 <- (age_profile_sp_cm | lab_ev71_p)+
+  plot_layout(widths = width_ratio)
+
+
+row2 <-  ((ts/hm2) | (plot_spacer()/
+                        wrap_elements(full = ad  +
+                                        theme(plot.margin = margin(-15,150, 7, 0)))))+
+  plot_layout(widths = width_ratio)
+
+row3 <- (birth_23 | plot_spacer())+
+  plot_layout(widths = width_ratio)
+
+(row0 /row1 /row2 / row3) +
+  plot_layout(heights = c(1,1,3,1))
+
+ggsave("./fig_manuscript/fig2_3t.svg",
+       width = 15,height = 15,dpi = 500)

@@ -13,7 +13,6 @@ library(paletteer)
 invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
-
 # Virology data description
 
 ```{r}
@@ -51,7 +50,6 @@ viro2 %>%
               include = c(city,sero_gr))
 ```
 
-
 ```{r,results='hide'}
 link <- "https://data.opendevelopmentmekong.net/dataset/999c96d8-fae0-4b82-9a2b-e481f6f50e12/resource/2818c2c5-e9c3-440b-a9b8-3029d7298065/download/diaphantinhenglish.geojson?fbclid=IwAR1coUVLkuEoJRsgaH81q6ocz1nVeGBirqpKRBN8WWxXQIJREUL1buFi1eE"
 
@@ -81,7 +79,7 @@ viro2 %>%
   theme(legend.position="bottom")
 ```
 
-## Time 
+## Time
 
 ```{r}
 viro2 <- viro2 %>% filter(city == "tp hcm")
@@ -120,11 +118,6 @@ viro_count_p %>% filter(sero_gr == "EV-A71")  %>%
 
 ```
 
-
-## Epidemiology analysis
-
-![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-24-1.png)
-
 ## Analyse first peak and the second peak
 
 Based on the figure 1, I seperate sample from June - Aug as the 1st peak, and from Sep-Dec as the 2nd peak
@@ -155,7 +148,6 @@ viro2 %>%
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
 ```
-
 
 ```{r}
 #| fig-width: 10
@@ -223,4 +215,6 @@ viro2 %>%
 ```
 
 
+## Combined epidemioly, serology analysis with virology
 
+![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-25-1.svg)
