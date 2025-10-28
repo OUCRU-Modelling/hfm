@@ -211,6 +211,7 @@ case2 %>% ggplot(aes(x = adm_week,y = n )) +
   scale_x_date(breaks = "1 year",date_labels = "%Y")
 
 
+#### note model for all population
 
 
 

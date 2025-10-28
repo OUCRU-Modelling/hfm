@@ -118,9 +118,14 @@ viro_count_p %>% filter(sero_gr == "EV-A71")  %>%
 
 ```
 
+## Epidemiology analysis
+
+![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-24-1.png)
+
+
 ## Analyse first peak and the second peak
 
-Based on the figure 1, I seperate sample from June - Aug as the 1st peak, and from Sep-Dec as the 2nd peak
+Based on the figure 1, I separate sample from June - Aug as the 1st peak, and from Sep-Dec as the 2nd peak
 
 ### First peak
 
