@@ -377,9 +377,9 @@ ad <- ggplot(data=data, aes(x=age, group=peak, fill=peak)) +
 
 
 library(ISOweek)
-count_dangky_week <- readRDS("D:/OUCRU/hfmd/data/count_dangky_week.rds")
+count_dangky_week <- readRDS("D:/OUCRU/hfmd/hcm_birth_data.rds")
 child <- count_dangky_week %>% filter(birth_year >= 2017) %>% group_by(birth_week, birth_year) %>%
-  summarise(n=sum(n)) %>% arrange(birth_year)
+  summarise(n=sum(n),.groups = "drop") %>% arrange(birth_year)
 colnames(child) <- c("week","year","birth")
 ## combine week 52 and 53
 
@@ -796,8 +796,8 @@ age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 5
     group_split()
 }
 
-hfmd_cm <- hfmd %>% filter(qhchuan %in% district_consider)
-constrained_age_profiles_cohort2_cm <- age_profile_constrained_cohort2(hfmd_cm)
+# hfmd_cm <- hfmd %>% filter(qhchuan %in% district_consider)
+constrained_age_profiles_cohort2_cm <- age_profile_constrained_cohort2(hfmd)
 
 attack_rates <- map2(head(constrained_age_profiles_cohort2_cm, -1),
                      constrained_age_profiles_cohort2_cm[-1],
@@ -1269,25 +1269,58 @@ Then I fitted the GAM for $P(CH1 \ hospitalization_{[a,d]})$ as a function of ag
 
 ```{r}
 
-c_ad <- df1 %>%
-  filter(year(adm_date) == 2023 &
-           medi_cen %in% c("Bệnh viện Nhi đồng 1",
-                           "Bênh viện Nhi Đồng 1",
-                           "Bệnh viện Nhi Đồng 1")) %>%
-  mutate(district2 = district %>%
-           str_replace_all(
-             c("Quận 2" = "Thủ Đức",
-               "Quận 9" = "Thủ Đức")) %>%
-           str_remove("Quận|Huyện") %>%
-           trimws(which = "both") %>%
-           stri_trans_general("latin-ascii") %>%
-           tolower()) %>%
-  select(age,district2) %>%
-  group_by(district2,age) %>%
-  filter(age < 17) %>%
-  count() %>%
-  ungroup()
+c_ad <- readRDS("D:/OUCRU/hfmd/data/CH1_out_cleaned.rds")
 
+hcm_birth_data <- count_dangky_week
+
+hcm_birth_data$district_reg <- hcm_birth_data$district_reg %>%
+  str_replace_all(c("Quận 2"  = "Thủ Đức",
+                    "Quận 9"  = "Thủ Đức"))
+
+hcm_birth_data$district_reg <- hcm_birth_data$district_reg %>% str_replace_all(
+  c( "Gò vấp"  = "Gò Vấp"))
+
+hcm_birth_data$district_reg <- hcm_birth_data$district_reg %>%
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both") %>%
+  stri_trans_general("latin-ascii") %>%
+  tolower()
+
+birth_district <- hcm_birth_data %>%
+  group_by(district_reg) %>%
+  group_modify(~ .x |> filter(birth_year >= 2017)%>%
+                 group_by(birth_week,birth_year) %>%
+                 summarise(n = sum(n),.groups = "drop") %>%
+                 mutate(birth_week = replace(birth_week, birth_week == 53, 52),
+                        biweek = (birth_week + 1) %/% 2) %>%
+                 arrange(birth_year) %>%
+                 group_by(birth_year, biweek) %>%
+                 summarise(biweek_birth = sum(n), .groups = "drop") %>%
+                 mutate(biweek2 = 1:nrow(.))
+  )
+
+cutpoint <- 135
+
+birth_district2 <- birth_district %>% filter(biweek2 <= cutpoint) %>%
+  group_split()
+
+modelaa <- birth_district %>% filter(biweek2 <= cutpoint) %>%
+  group_split() %>%
+  map(\(df)gam(biweek_birth ~ s(biweek) + s(biweek2),method = "REML",data = df))
+
+newdata <- data.frame(
+  biweek  = rep(1:26, 2024 - 2017),
+  biweek2 = 1:(26 * (2024 - 2017))
+)
+
+predicted_birth_district <- map2_dfr(modelaa, birth_district2, \(mod, df) {
+  newdata %>%
+    mutate(
+      predicted   = predict(mod, newdata = newdata, type = "response"),
+      district_reg = unique(df$district_reg),
+      birth_year = rep(2017:2023, each = 26)
+    )
+})
 
 N_ad <- census2019 |>
   filter(province == "Thành phố Hồ Chí Minh") |>
@@ -1305,28 +1338,19 @@ N_ad <- census2019 |>
   arrange(age) |>
   filter(age < 17)
 
-birth_2019 <- count_dangky_week %>%
-  filter(birth_year == 2019) %>%
-  mutate(district = district_reg %>%
-           str_replace_all(
-             c("Quận 2" = "Thủ Đức",
-               "Quận 9" = "Thủ Đức")) %>%
-           str_remove("Quận|Huyện") %>%
-           trimws(which = "both") %>%
-           stri_trans_general("latin-ascii") %>%
-           tolower()) %>%
-  filter(district %in% unique(N_ad$district)) %>%
-  group_by(district) %>%
-  summarise(n=sum(n),.groups = "drop") %>%
-  mutate(age = 0)
-
-prob_a_d <- left_join(c_ad,rbind(birth_2019,N_ad),
-          by = join_by(age == age,
-                       district2 == district)) %>%
-  mutate(prob_hos=n.x/n.y)
-
-# ggplot(prob_a_d, aes(x = age,y=prob_hos,color = district2))+
-#   geom_line()
+pop_23_fn <- predicted_birth_district %>% 
+  group_by(district_reg,birth_year) %>% 
+  summarise(birth = sum(predicted), .groups = "drop") %>% 
+  mutate(age_23 = 2023 - birth_year) %>% 
+  filter() %>% 
+  full_join(.,N_ad %>% 
+              mutate(age_23 = 2023-2019+age),
+            by = join_by(age_23,district_reg == district)) %>% 
+  mutate(pop_final = case_when(
+    is.na(n) ~ birth,
+    !is.na(n) ~ n
+  )) %>% 
+  select(district_reg,age_23,pop_final)
 
 ```
 
@@ -1335,100 +1359,41 @@ prob_a_d <- left_join(c_ad,rbind(birth_2019,N_ad),
 #| fig-height: 9
 #| out-width: "100%"
 #| fig-format: png
-#| fig-cap: "The points show the original hospitalization probability, and the lines show fitted value of GAM"
-age_new <- age_dis_fn %>% filter(date == range(date)[2]) %>%
-  select(age,fit) %>% pull(age)
+#| fig-cap: "The points show the original hospitalization, and the lines show fitted value of GAM"
 
-pred_prob <- prob_a_d %>%
-  group_by(district2) %>%
-  group_modify(~ {
-    mod <- gam(prob_hos ~ s(age,bs = "bs"), data = .x, method = "REML")
-    pred <- predict(mod, newdata = tibble(age = age_new), type = "response")
-    tibble(age = age_new, fit = pred)
-  }) %>%
-  ungroup()
+expected_catchment_CH1 <- left_join(c_ad,pop_23_fn,by = join_by(district == district_reg,
+                                      age_gr == age_23)) %>% 
+  mutate(p_hos = n/pop_final) %>% 
+  arrange(age_gr) %>% 
+  group_by(age_gr) %>% 
+  mutate(weight = p_hos/sum(p_hos),
+         expected_cm = n*weight) %>% 
+  ungroup() 
 
-ggplot()+
-  geom_line(data = pred_prob, aes(x = age,y = fit))+
-  geom_point(data = prob_a_d,aes(x = age,y = prob_hos))+
-  labs(y = "Hospitalizations probability")+
-  facet_wrap(~district2)+
-  theme_bw()+
-  theme(axis.title.y = element_text(size = 18),
-        axis.ticks.x = element_blank(),
-        legend.position = "bottom",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.title.x = element_text(size = 18),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 18)) 
-```
-
-Then I used predicted hospitalization probability multiply the age distribution at the end 2023 estimated from section 4.4.2 to calculate the expected age distribution caught by CH1.
-
-```{r}
-#| fig-width: 15
-#| fig-height: 9
-#| out-width: "100%"
-#| fig-format: png
-#| fig-cap: "Expected age distribution caught by CH1 at the end 2023"
-
-exp_age_23 <- age_dis_fn %>% 
-  filter(date == range(date)[2]) %>%
-  select(age,fit) %>%
-  right_join(.,pred_prob,by = join_by(age)) %>%
-  arrange(district2) %>%
-  mutate(expected_admission = fit.x*fit.y) 
-
-exp_age_23 %>%
-  ggplot(aes(x = age,y = expected_admission))+
-  geom_line()+
-  scale_x_continuous(limits = c(0,7),
-                     breaks = seq(0,7,by=1))+
-  labs(y = "Expected CH1 admission")+
-  facet_wrap(~district2)+
-  theme_bw()+
-  theme(axis.title.y = element_text(size = 18),
-        axis.ticks.x = element_blank(),
-        legend.position = "bottom",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.title.x = element_text(size = 18),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 18))
-```
-
-### Expected age structure of children caught by CH1
-
-In this step, I filtered district in catchment area estimated in 4.2.1 and sum it by age, this is $N_a$.
-
-```{r}
-#| fig-width: 15
-#| fig-height: 9
-#| out-width: "100%"
-#| fig-format: png
-expected_age_cm <- exp_age_23 %>% 
-  # filter(district2 %in% district_consider) %>% 
-  group_by(age) %>% 
-  summarise(n = sum(expected_admission)) 
+expected_age_cm <- expected_catchment_CH1  %>% 
+  group_by(age_gr) %>% 
+  summarise(e_admission = sum(expected_cm)) %>%
+  gam(e_admission~s(age_gr,bs = "cs"),method = "REML",data = .) %>% 
+  predict(list(age_gr = seq(0,16,le = 512)),type="response",se.fit = TRUE) %>%
+  as.tibble() %>% 
+  mutate(age = seq(0,16,le = 512),
+         lwr = fit - qt(0.95,nrow(.))*se.fit,
+         upr = fit + qt(0.95,nrow(.))*se.fit) %>% 
+  select(-se.fit)
 
 expected_age_cm %>% 
-  ggplot(aes(x = age,y = n))+
+  ggplot(aes(x = age,y = fit))+
   geom_line()+
+  geom_ribbon(aes(ymin = lwr,ymax=upr),fill = "blue",alpha = .3)+
+  geom_point(aes(x = age_gr, y = e_admission),
+             data = expected_catchment_CH1  %>% 
+               group_by(age_gr) %>% 
+               summarise(e_admission = sum(expected_cm)))+
   theme_minimal()+
-  theme(axis.title.y = element_text(size = 18),
-        axis.ticks.x = element_blank(),
-        legend.position = "bottom",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.title.x = element_text(size = 18),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 18))
-  
+  labs(y = "Expected hospitalization",x = "Age (years)")
+
 ```
+
 
 ### Expected incidence
 
@@ -1439,16 +1404,16 @@ $$
 $$
 
 ```{r}
-age_pro5 <- age_profile_constrained_cohort2(hfmd_cm,age_values = expected_age_cm$age)
+age_pro5 <- age_profile_constrained_cohort2(hfmd,age_values = expected_age_cm$age)
 
 attack_rates2 <- map2(head(age_pro5, -1),
                       age_pro5[-1],
-                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
-                       mutate(sp_gap = (fit.y - fit.x)))
+                      ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
+                        mutate(sp_gap = (fit.y - fit.x)))
 
-exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort ==age))) %>% 
+exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort == age))) %>% 
   bind_rows(.id = "id") %>% 
-  mutate(exp_in = sp_gap*n) %>% 
+  mutate(exp_in = sp_gap*fit) %>% 
   ggplot()+
   geom_line(aes(x = cohort,y = exp_in))+
   geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0),
@@ -1458,6 +1423,7 @@ exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(co
                                    "4/2023 - 8/2023",
                                    "8/2023 - 12/2023")))+
   labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
+  scale_y_continuous(limits = c(0,1000))+
   theme_bw()+
   theme(
     axis.text.x = element_text(size = 15),
@@ -1470,6 +1436,53 @@ exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(co
     strip.text = element_text(size = 18),
     panel.grid.minor.x = element_blank())
 ```
+
+```{r}
+### Expected incidence with 95% CI
+
+map2(head(age_pro5, -1),
+     age_pro5[-1],
+     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
+       mutate(sp_gap = (fit.y - fit.x),
+              se.x = (upr.x - lwr.x) / (2 * 1.96),
+              se.y = (upr.y - lwr.y) / (2 * 1.96),
+              se.diff = sqrt(se.x^2 + se.y^2),
+              fit.diff = fit.y - fit.x,
+              lwr.diff = fit.diff - 1.96 * se.diff,
+              upr.diff = fit.diff + 1.96 * se.diff)) %>% 
+  # bind_rows(.id = "id") %>% 
+  map(~ left_join(.x,expected_age_cm, by = join_by(cohort == age))) %>% 
+  bind_rows(.id = "id") %>% 
+  mutate(exp_in = sp_gap*fit,
+         exp_in_upr = upr.diff*upr,
+         exp_in_lwr = lwr.diff*lwr) %>% 
+  ggplot()+
+  geom_line(aes(x = cohort,y = exp_in))+
+  geom_ribbon(aes(x = cohort,y = exp_in,
+                  ymin = exp_in_lwr,ymax = exp_in_upr),fill = "blue",alpha = .3)+
+  geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0),
+                 aes(cohort),binwidth = 0.5,
+                 color = "white",fill = "black",alpha = 0.2)+
+  facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
+                                   "4/2023 - 8/2023",
+                                   "8/2023 - 12/2023")))+
+  labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
+  # scale_y_continuous(limits = c(0,1000))+
+  coord_cartesian(ylim = c(0,1000), expand = c(0,0))+
+  theme_bw()+
+  theme(
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.title.y = element_text(size = 18),
+    legend.title = element_text(size = 18),
+    strip.text = element_text(size = 18),
+    panel.grid.minor.x = element_blank())
+```
+
+
 
 ### Figure 1
 
