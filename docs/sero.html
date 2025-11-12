@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>7&nbsp; HFMD Seroprevalence – HFMD 2023</title>
+<title>8&nbsp; HFMD Seroprevalence – HFMD 2023</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./tsir_r0.html" rel="prev">
+<link href="./model.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -163,7 +163,7 @@ window.Quarto = {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./sero.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">HFMD Seroprevalence</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./sero.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">HFMD Seroprevalence</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -226,8 +226,14 @@ window.Quarto = {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Seasonality forcing model</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./sero.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">HFMD Seroprevalence</span></span></a>
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">HFMD Seroprevalence</span></span></a>
   </div>
 </li>
     </ul>
@@ -240,38 +246,38 @@ window.Quarto = {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#import-data" id="toc-import-data" class="nav-link active" data-scroll-target="#import-data"><span class="header-section-number">8</span> Import data</a>
+  <li><a href="#import-data" id="toc-import-data" class="nav-link active" data-scroll-target="#import-data"><span class="header-section-number">9</span> Import data</a>
   <ul class="collapse">
-  <li><a href="#serology-data" id="toc-serology-data" class="nav-link" data-scroll-target="#serology-data"><span class="header-section-number">8.1</span> Serology data</a></li>
-  <li><a href="#case" id="toc-case" class="nav-link" data-scroll-target="#case"><span class="header-section-number">8.2</span> Case</a></li>
+  <li><a href="#serology-data" id="toc-serology-data" class="nav-link" data-scroll-target="#serology-data"><span class="header-section-number">9.1</span> Serology data</a></li>
+  <li><a href="#case" id="toc-case" class="nav-link" data-scroll-target="#case"><span class="header-section-number">9.2</span> Case</a></li>
   </ul></li>
-  <li><a href="#function" id="toc-function" class="nav-link" data-scroll-target="#function"><span class="header-section-number">9</span> Function</a></li>
-  <li><a href="#seroprevalence-by-age" id="toc-seroprevalence-by-age" class="nav-link" data-scroll-target="#seroprevalence-by-age"><span class="header-section-number">10</span> Seroprevalence by age</a>
+  <li><a href="#function" id="toc-function" class="nav-link" data-scroll-target="#function"><span class="header-section-number">10</span> Function</a></li>
+  <li><a href="#seroprevalence-by-age" id="toc-seroprevalence-by-age" class="nav-link" data-scroll-target="#seroprevalence-by-age"><span class="header-section-number">11</span> Seroprevalence by age</a>
   <ul class="collapse">
-  <li><a href="#fit-by-glm" id="toc-fit-by-glm" class="nav-link" data-scroll-target="#fit-by-glm"><span class="header-section-number">10.1</span> Fit by GLM</a></li>
-  <li><a href="#fit-by-gam" id="toc-fit-by-gam" class="nav-link" data-scroll-target="#fit-by-gam"><span class="header-section-number">10.2</span> Fit by GAM</a></li>
-  <li><a href="#constrain-in-each-time-point" id="toc-constrain-in-each-time-point" class="nav-link" data-scroll-target="#constrain-in-each-time-point"><span class="header-section-number">10.3</span> Constrain in each time point</a></li>
+  <li><a href="#fit-by-glm" id="toc-fit-by-glm" class="nav-link" data-scroll-target="#fit-by-glm"><span class="header-section-number">11.1</span> Fit by GLM</a></li>
+  <li><a href="#fit-by-gam" id="toc-fit-by-gam" class="nav-link" data-scroll-target="#fit-by-gam"><span class="header-section-number">11.2</span> Fit by GAM</a></li>
+  <li><a href="#constrain-in-each-time-point" id="toc-constrain-in-each-time-point" class="nav-link" data-scroll-target="#constrain-in-each-time-point"><span class="header-section-number">11.3</span> Constrain in each time point</a></li>
   </ul></li>
-  <li><a href="#model-age-and-time-at-the-same-time" id="toc-model-age-and-time-at-the-same-time" class="nav-link" data-scroll-target="#model-age-and-time-at-the-same-time"><span class="header-section-number">11</span> Model age and time at the same time</a>
+  <li><a href="#model-age-and-time-at-the-same-time" id="toc-model-age-and-time-at-the-same-time" class="nav-link" data-scroll-target="#model-age-and-time-at-the-same-time"><span class="header-section-number">12</span> Model age and time at the same time</a>
   <ul class="collapse">
-  <li><a href="#fit-with-scam-model" id="toc-fit-with-scam-model" class="nav-link" data-scroll-target="#fit-with-scam-model"><span class="header-section-number">11.1</span> Fit with SCAM model</a></li>
-  <li><a href="#d-plot" id="toc-d-plot" class="nav-link" data-scroll-target="#d-plot"><span class="header-section-number">11.2</span> 3D plot</a></li>
-  <li><a href="#d-plot-1" id="toc-d-plot-1" class="nav-link" data-scroll-target="#d-plot-1"><span class="header-section-number">11.3</span> 2-D plot</a></li>
-  <li><a href="#glm-with-pava-algorithm" id="toc-glm-with-pava-algorithm" class="nav-link" data-scroll-target="#glm-with-pava-algorithm"><span class="header-section-number">11.4</span> GLM with PAVA algorithm</a>
+  <li><a href="#fit-with-scam-model" id="toc-fit-with-scam-model" class="nav-link" data-scroll-target="#fit-with-scam-model"><span class="header-section-number">12.1</span> Fit with SCAM model</a></li>
+  <li><a href="#d-plot" id="toc-d-plot" class="nav-link" data-scroll-target="#d-plot"><span class="header-section-number">12.2</span> 3D plot</a></li>
+  <li><a href="#d-plot-1" id="toc-d-plot-1" class="nav-link" data-scroll-target="#d-plot-1"><span class="header-section-number">12.3</span> 2-D plot</a></li>
+  <li><a href="#glm-with-pava-algorithm" id="toc-glm-with-pava-algorithm" class="nav-link" data-scroll-target="#glm-with-pava-algorithm"><span class="header-section-number">12.4</span> GLM with PAVA algorithm</a>
   <ul class="collapse">
-  <li><a href="#unconstrained-plot" id="toc-unconstrained-plot" class="nav-link" data-scroll-target="#unconstrained-plot"><span class="header-section-number">11.4.1</span> <strong>Unconstrained plot</strong></a></li>
-  <li><a href="#applying-pava-algorithm" id="toc-applying-pava-algorithm" class="nav-link" data-scroll-target="#applying-pava-algorithm"><span class="header-section-number">11.4.2</span> <strong>Applying PAVA algorithm</strong></a></li>
+  <li><a href="#unconstrained-plot" id="toc-unconstrained-plot" class="nav-link" data-scroll-target="#unconstrained-plot"><span class="header-section-number">12.4.1</span> <strong>Unconstrained plot</strong></a></li>
+  <li><a href="#applying-pava-algorithm" id="toc-applying-pava-algorithm" class="nav-link" data-scroll-target="#applying-pava-algorithm"><span class="header-section-number">12.4.2</span> <strong>Applying PAVA algorithm</strong></a></li>
   </ul></li>
-  <li><a href="#gam-with-pava-algorithm" id="toc-gam-with-pava-algorithm" class="nav-link" data-scroll-target="#gam-with-pava-algorithm"><span class="header-section-number">11.5</span> GAM with PAVA algorithm</a></li>
+  <li><a href="#gam-with-pava-algorithm" id="toc-gam-with-pava-algorithm" class="nav-link" data-scroll-target="#gam-with-pava-algorithm"><span class="header-section-number">12.5</span> GAM with PAVA algorithm</a></li>
   </ul></li>
-  <li><a href="#spatial-distribution-of-serum-sample" id="toc-spatial-distribution-of-serum-sample" class="nav-link" data-scroll-target="#spatial-distribution-of-serum-sample"><span class="header-section-number">12</span> Spatial distribution of serum sample</a></li>
-  <li><a href="#final-visualization" id="toc-final-visualization" class="nav-link" data-scroll-target="#final-visualization"><span class="header-section-number">13</span> Final visualization</a>
+  <li><a href="#spatial-distribution-of-serum-sample" id="toc-spatial-distribution-of-serum-sample" class="nav-link" data-scroll-target="#spatial-distribution-of-serum-sample"><span class="header-section-number">13</span> Spatial distribution of serum sample</a></li>
+  <li><a href="#final-visualization" id="toc-final-visualization" class="nav-link" data-scroll-target="#final-visualization"><span class="header-section-number">14</span> Final visualization</a>
   <ul class="collapse">
-  <li><a href="#unconstrained-fit" id="toc-unconstrained-fit" class="nav-link" data-scroll-target="#unconstrained-fit"><span class="header-section-number">13.1</span> Unconstrained fit</a></li>
+  <li><a href="#unconstrained-fit" id="toc-unconstrained-fit" class="nav-link" data-scroll-target="#unconstrained-fit"><span class="header-section-number">14.1</span> Unconstrained fit</a></li>
   </ul></li>
-  <li><a href="#new-method" id="toc-new-method" class="nav-link" data-scroll-target="#new-method"><span class="header-section-number">14</span> new method</a>
+  <li><a href="#new-method" id="toc-new-method" class="nav-link" data-scroll-target="#new-method"><span class="header-section-number">15</span> new method</a>
   <ul class="collapse">
-  <li><a href="#function-1" id="toc-function-1" class="nav-link" data-scroll-target="#function-1"><span class="header-section-number">14.0.1</span> Function</a></li>
+  <li><a href="#function-1" id="toc-function-1" class="nav-link" data-scroll-target="#function-1"><span class="header-section-number">15.0.1</span> Function</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -281,7 +287,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">HFMD Seroprevalence</span></h1>
+<h1 class="title"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">HFMD Seroprevalence</span></h1>
 </div>
 
 
@@ -318,10 +324,10 @@ window.Quarto = {
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">Sys.setlocale</span>(<span class="st">"LC_TIME"</span>, <span class="st">"English"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<section id="import-data" class="level1" data-number="8">
-<h1 data-number="8"><span class="header-section-number">8</span> Import data</h1>
-<section id="serology-data" class="level2" data-number="8.1">
-<h2 data-number="8.1" class="anchored" data-anchor-id="serology-data"><span class="header-section-number">8.1</span> Serology data</h2>
+<section id="import-data" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Import data</h1>
+<section id="serology-data" class="level2" data-number="9.1">
+<h2 data-number="9.1" class="anchored" data-anchor-id="serology-data"><span class="header-section-number">9.1</span> Serology data</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -365,8 +371,8 @@ window.Quarto = {
 </details>
 </div>
 </section>
-<section id="case" class="level2" data-number="8.2">
-<h2 data-number="8.2" class="anchored" data-anchor-id="case"><span class="header-section-number">8.2</span> Case</h2>
+<section id="case" class="level2" data-number="9.2">
+<h2 data-number="9.2" class="anchored" data-anchor-id="case"><span class="header-section-number">9.2</span> Case</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -417,8 +423,8 @@ window.Quarto = {
 </div>
 </section>
 </section>
-<section id="function" class="level1" data-number="9">
-<h1 data-number="9"><span class="header-section-number">9</span> Function</h1>
+<section id="function" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Function</h1>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -445,10 +451,10 @@ window.Quarto = {
 </details>
 </div>
 </section>
-<section id="seroprevalence-by-age" class="level1" data-number="10">
-<h1 data-number="10"><span class="header-section-number">10</span> Seroprevalence by age</h1>
-<section id="fit-by-glm" class="level2" data-number="10.1">
-<h2 data-number="10.1" class="anchored" data-anchor-id="fit-by-glm"><span class="header-section-number">10.1</span> Fit by GLM</h2>
+<section id="seroprevalence-by-age" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Seroprevalence by age</h1>
+<section id="fit-by-glm" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="fit-by-glm"><span class="header-section-number">11.1</span> Fit by GLM</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -586,8 +592,8 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="fit-by-gam" class="level2" data-number="10.2">
-<h2 data-number="10.2" class="anchored" data-anchor-id="fit-by-gam"><span class="header-section-number">10.2</span> Fit by GAM</h2>
+<section id="fit-by-gam" class="level2" data-number="11.2">
+<h2 data-number="11.2" class="anchored" data-anchor-id="fit-by-gam"><span class="header-section-number">11.2</span> Fit by GAM</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -685,8 +691,8 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="constrain-in-each-time-point" class="level2" data-number="10.3">
-<h2 data-number="10.3" class="anchored" data-anchor-id="constrain-in-each-time-point"><span class="header-section-number">10.3</span> Constrain in each time point</h2>
+<section id="constrain-in-each-time-point" class="level2" data-number="11.3">
+<h2 data-number="11.3" class="anchored" data-anchor-id="constrain-in-each-time-point"><span class="header-section-number">11.3</span> Constrain in each time point</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -757,8 +763,8 @@ window.Quarto = {
 </div>
 </section>
 </section>
-<section id="model-age-and-time-at-the-same-time" class="level1" data-number="11">
-<h1 data-number="11"><span class="header-section-number">11</span> Model age and time at the same time</h1>
+<section id="model-age-and-time-at-the-same-time" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> Model age and time at the same time</h1>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -797,8 +803,8 @@ window.Quarto = {
 6   1 Dec 2022 2022-12-26</code></pre>
 </div>
 </div>
-<section id="fit-with-scam-model" class="level2" data-number="11.1">
-<h2 data-number="11.1" class="anchored" data-anchor-id="fit-with-scam-model"><span class="header-section-number">11.1</span> Fit with SCAM model</h2>
+<section id="fit-with-scam-model" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="fit-with-scam-model"><span class="header-section-number">12.1</span> Fit with SCAM model</h2>
 <p>mpi is monotone increasing SCOP-splines: bs=“mpi”. To achieve monotone increasing smooths this reparameterizes the coefficients so that they form an increasing sequence.</p>
 <p>Model</p>
 <div class="cell">
@@ -809,8 +815,8 @@ window.Quarto = {
 </details>
 </div>
 </section>
-<section id="d-plot" class="level2" data-number="11.2">
-<h2 data-number="11.2" class="anchored" data-anchor-id="d-plot"><span class="header-section-number">11.2</span> 3D plot</h2>
+<section id="d-plot" class="level2" data-number="12.2">
+<h2 data-number="12.2" class="anchored" data-anchor-id="d-plot"><span class="header-section-number">12.2</span> 3D plot</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -848,8 +854,8 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="d-plot-1" class="level2" data-number="11.3">
-<h2 data-number="11.3" class="anchored" data-anchor-id="d-plot-1"><span class="header-section-number">11.3</span> 2-D plot</h2>
+<section id="d-plot-1" class="level2" data-number="12.3">
+<h2 data-number="12.3" class="anchored" data-anchor-id="d-plot-1"><span class="header-section-number">12.3</span> 2-D plot</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -997,8 +1003,8 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="glm-with-pava-algorithm" class="level2" data-number="11.4">
-<h2 data-number="11.4" class="anchored" data-anchor-id="glm-with-pava-algorithm"><span class="header-section-number">11.4</span> GLM with PAVA algorithm</h2>
+<section id="glm-with-pava-algorithm" class="level2" data-number="12.4">
+<h2 data-number="12.4" class="anchored" data-anchor-id="glm-with-pava-algorithm"><span class="header-section-number">12.4</span> GLM with PAVA algorithm</h2>
 <p>In chapter 9 of 2012 serobook, there are an argument that following Friedman and Tibshirani (1984) and Mammen et al.&nbsp;(2001), Shkedy et al.&nbsp;(2003) suggested to estimate π(a) and λ(a) using local polynomials and smoothing splines and, if necessary, <strong>a posteriori apply the PAVA to isotonize the resulting estimate</strong>.</p>
 <p>Without loss of generality they assume <span class="math inline">\(\pi(a_{1}) \leq \pi(a_{2}) \leq ...\leq \pi(a_{i})\)</span>. The PAVA states that if <span class="math inline">\(\pi(a_{i}) \leq \pi(a_{i - 1})\)</span> these values need to be “pooled.” In other words <span class="math inline">\(\hat{\pi}(a_{i})\)</span> and <span class="math inline">\(\hat{\pi}(a_{i-1})\)</span> are both replaced by</p>
 <p><span class="math display">\[\frac{\hat{\pi}(a_{i})+\hat{\pi}(a_{i-1})}{2}\]</span></p>
@@ -1026,8 +1032,8 @@ window.Quarto = {
 <span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(col_date, as_date))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<section id="unconstrained-plot" class="level3" data-number="11.4.1">
-<h3 data-number="11.4.1" class="anchored" data-anchor-id="unconstrained-plot"><span class="header-section-number">11.4.1</span> <strong>Unconstrained plot</strong></h3>
+<section id="unconstrained-plot" class="level3" data-number="12.4.1">
+<h3 data-number="12.4.1" class="anchored" data-anchor-id="unconstrained-plot"><span class="header-section-number">12.4.1</span> <strong>Unconstrained plot</strong></h3>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1048,8 +1054,8 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="applying-pava-algorithm" class="level3" data-number="11.4.2">
-<h3 data-number="11.4.2" class="anchored" data-anchor-id="applying-pava-algorithm"><span class="header-section-number">11.4.2</span> <strong>Applying PAVA algorithm</strong></h3>
+<section id="applying-pava-algorithm" class="level3" data-number="12.4.2">
+<h3 data-number="12.4.2" class="anchored" data-anchor-id="applying-pava-algorithm"><span class="header-section-number">12.4.2</span> <strong>Applying PAVA algorithm</strong></h3>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1178,8 +1184,8 @@ window.Quarto = {
 </div>
 </section>
 </section>
-<section id="gam-with-pava-algorithm" class="level2" data-number="11.5">
-<h2 data-number="11.5" class="anchored" data-anchor-id="gam-with-pava-algorithm"><span class="header-section-number">11.5</span> GAM with PAVA algorithm</h2>
+<section id="gam-with-pava-algorithm" class="level2" data-number="12.5">
+<h2 data-number="12.5" class="anchored" data-anchor-id="gam-with-pava-algorithm"><span class="header-section-number">12.5</span> GAM with PAVA algorithm</h2>
 <p>Model</p>
 <div class="cell">
 <details class="code-fold">
@@ -1282,8 +1288,8 @@ window.Quarto = {
 </div>
 </section>
 </section>
-<section id="spatial-distribution-of-serum-sample" class="level1" data-number="12">
-<h1 data-number="12"><span class="header-section-number">12</span> Spatial distribution of serum sample</h1>
+<section id="spatial-distribution-of-serum-sample" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> Spatial distribution of serum sample</h1>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1375,10 +1381,10 @@ window.Quarto = {
 </details>
 </div>
 </section>
-<section id="final-visualization" class="level1" data-number="13">
-<h1 data-number="13"><span class="header-section-number">13</span> Final visualization</h1>
-<section id="unconstrained-fit" class="level2" data-number="13.1">
-<h2 data-number="13.1" class="anchored" data-anchor-id="unconstrained-fit"><span class="header-section-number">13.1</span> Unconstrained fit</h2>
+<section id="final-visualization" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> Final visualization</h1>
+<section id="unconstrained-fit" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="unconstrained-fit"><span class="header-section-number">14.1</span> Unconstrained fit</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1397,8 +1403,8 @@ window.Quarto = {
 </div>
 </section>
 </section>
-<section id="new-method" class="level1" data-number="14">
-<h1 data-number="14"><span class="header-section-number">14</span> new method</h1>
+<section id="new-method" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> new method</h1>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -1438,8 +1444,8 @@ window.Quarto = {
 # ℹ 3 more variables: col_date &lt;date&gt;, collection &lt;dbl&gt;, col_date2 &lt;dbl&gt;</code></pre>
 </div>
 </div>
-<section id="function-1" class="level3" data-number="14.0.1">
-<h3 data-number="14.0.1" class="anchored" data-anchor-id="function-1"><span class="header-section-number">14.0.1</span> Function</h3>
+<section id="function-1" class="level3" data-number="15.0.1">
+<h3 data-number="15.0.1" class="anchored" data-anchor-id="function-1"><span class="header-section-number">15.0.1</span> Function</h3>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -2070,8 +2076,8 @@ window.Quarto = {
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./tsir_r0.html" class="pagination-link" aria-label="Estimating the basic reproduction rate of HFMD using the time series SIR model in Ho Chi Minh City">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Estimating the basic reproduction rate of HFMD using the time series SIR model in Ho Chi Minh City</span></span>
+      <a href="./model.html" class="pagination-link" aria-label="Seasonality forcing model">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Seasonality forcing model</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

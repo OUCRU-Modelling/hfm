@@ -10,6 +10,7 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 library(paletteer)
+library(mgcv)
 invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
@@ -120,8 +121,7 @@ viro_count_p %>% filter(sero_gr == "EV-A71")  %>%
 
 ## Epidemiology analysis
 
-![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-24-1.png)
-
+![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-23-1.png)
 
 ## Analyse first peak and the second peak
 
@@ -219,7 +219,83 @@ viro2 %>%
   theme_minimal()
 ```
 
+## Resconstruct epicurve with virology data
 
-## Combined epidemioly, serology analysis with virology
+```{r}
+library(stringr)
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
+                  col_types = c("date", "numeric", "text",
+                                "text", "text", "date", "date", "date",
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
 
-![Figure1](./fig_manu2_files/figure-html/unnamed-chunk-25-1.svg)
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>%
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both")
+
+incidence1 <- df1 %>%
+  filter(year(adm_date) == 2023 &
+           medi_cen %in% c("Bệnh viện Nhi đồng 1",
+                           "Bênh viện Nhi Đồng 1",
+                           "Bệnh viện Nhi Đồng 1")) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  mutate(adm_date2 = as.numeric(adm_date),
+         cohort = interval(dob, "2023-01-01") / years(1)) %>%
+  select(adm_date2,cohort,adm_week)
+
+time_f <- incidence1 %>% 
+  filter(adm_date2 > 19510) %>%
+  group_by(adm_week) %>%  
+  count()
+
+
+viro2 %>%
+  mutate(pos = case_when(
+    sero_gr == "EV-A71" ~ TRUE,
+    sero_gr != "EV-A71" ~ FALSE),
+    peak = case_when(
+      month(admission_date) >= 6 & month(admission_date) <= 8 ~ "6/2023 - 8/2023",
+      month(admission_date) >= 9 ~ "9/2023 - 12/2023"
+    ),
+    time = as.numeric(admission_date)
+  ) %>%
+  rename(age = age_adm) %>%  
+  gam(pos~s(time,bs="bs"),family = betar,
+      method = "REML",data = .) %>% 
+  predict(list(time = time_f$adm_week %>% as.numeric()),type = "response",se.fit = TRUE) %>% 
+  as_tibble() %>% 
+  mutate(time = time_f$adm_week ,
+         lwr = fit - qt(0.95,nrow(.))*se.fit,
+         upr = fit + qt(0.95,nrow(.))*se.fit) %>% 
+  left_join(.,time_f, by = join_by(time == adm_week)) %>% 
+  mutate(e_ev71 = fit*n) %>% 
+  ggplot(aes(x = time))+
+  geom_col(aes(y=e_ev71))+
+  geom_line(aes(y = fit*800))+
+  geom_ribbon(aes(y = fit*800,ymin = lwr*800,ymax = upr*800),fill = "blue",alpha = .3)+
+  scale_y_continuous(
+    name = "CH1 admission",
+    sec.axis = sec_axis(~ . /800, name = "EV-A71 percentage"),
+    limits = c(0,800)
+  ) +
+  geom_point(aes(y=n))+
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b")+
+  theme_minimal()
+```
+
