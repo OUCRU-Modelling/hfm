@@ -842,7 +842,6 @@ incidence1 <- df1 %>%
            trimws(which = "both") %>%
            stri_trans_general("latin-ascii") %>%
            tolower()) %>%
-  filter(district2 %in% district_consider) %>%
   mutate(adm_date2 = as.numeric(adm_date),
          cohort = interval(dob, "2023-01-01") / years(1)) %>%
   select(adm_date2,cohort,adm_week)
@@ -1423,7 +1422,7 @@ exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(co
                                    "4/2023 - 8/2023",
                                    "8/2023 - 12/2023")))+
   labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
-  scale_y_continuous(limits = c(0,1000))+
+    coord_cartesian(ylim = c(0,1200))+
   theme_bw()+
   theme(
     axis.text.x = element_text(size = 15),
@@ -1575,10 +1574,11 @@ lab_ev71_p <- viro2 %>%
   geom_point(data = viro2,aes(x = age,y=pos),shape = "|")+
   geom_ribbon(aes(ymin = lwr,ymax = upr),fill = "blue",alpha = 0.3)+
   scale_x_continuous(breaks = seq(0,6,by = 1))+
-  scale_y_continuous(name = "Percentage (%)",
+  scale_y_continuous(name = " EV-A71 Percentage (%)",
                      labels = scales::label_percent(scale = 100),
-                     position = "right")+
-  labs(x = "Age (years)")+
+                     # position = "right"
+                     )+
+  labs(x = "Age (years)",tag = "F")+
   facet_wrap(~peak)+
   theme_bw()+
   theme(axis.title.x = element_text(size = 18),
@@ -1600,11 +1600,11 @@ row0 <- (exp_in_ch1 | plot_spacer())+
 
 
 row1 <- (age_profile_sp_cm | lab_ev71_p)+
-  plot_layout(widths = width_ratio)
+  plot_layout(widths = c(2.6, 1.9))
 
 
 row2 <-  ((ts/hm2) | (plot_spacer()/
-                        wrap_elements(full = ad  +
+                        wrap_elements(full = ad  + labs(tag = "G")+
                                         theme(plot.margin = margin(-15,150, 7, 0)))))+
   plot_layout(widths = width_ratio)
 
