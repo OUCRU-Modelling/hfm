@@ -14,7 +14,6 @@ library(stringi)
 invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
-
 ```{r}
 df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
                   col_types = c("date", "numeric", "text",
@@ -40,7 +39,7 @@ case <- df1 %>% filter(year(adm_date) == 2023 ) %>%
 case$t <- 1:nrow(case)
 ```
 
-## SEIR model for CH1 HFMD admission simulation in 2023 
+## SEIR model for CH1 HFMD admission simulation in 2023
 
 ```{r}
 ch1_adm <- df1 %>%
@@ -76,16 +75,26 @@ $$
 \beta_t = \beta_0 \left(1 - \beta_1 \cos(\omega t)\right)
 $$
 
-
 Assumed:
 
-- S0 = 13000, E0 = 2, I0 = 1, R0 = 0
+-   S0 = 13000, E0 = 1, I0 = 1, R0 = 0
 
-- $\gamma$ = `r 1/52`, $\mu = \frac{1}{80 \times 52}$ 
+-   $\gamma$ = `r 1/52`, $\mu = \frac{1}{80 \times 52}$
 
-```{r}
+I found best fitting $\beta_0, \beta_t, \omega$ by minimizing the negative log likelihood, where the log of the observed incidence is assumed to follow a normal distribution that has a mean of log of the model prediction, scaled by $\rho$, and a standard deviation that equals the residual standard deviation:
+
+$$
+log \ observed\ incidence\ at\ time\ t \sim Normal(log(\rho \times i(t)),\sigma)
+$$
+
+Here $\rho$ and $\sigma$ are estimated by performing an intercept only linear regression of the logged observed incidence against the logged prediction as an offset term, where the estimated intercept corresponds to $log(\rho)$ and the standard deviation of the linear regression corresponds to $\sigma$
+
+```{r,results='hide'}
+#| message: false
+#| warning: false
+#| fig-height: 6
 #| fig-width: 10
-#| fig-height: 4
+#| fig-cap: The points show the observed incidence in CH1 in 2023, while the solid line is the incidence simulated by the SEIR model. The dashed line represents $\beta_t$, and the blue line shows the number of susceptible individuals.
 
 library(odin2)
 library(dust2)
@@ -181,8 +190,6 @@ starting_param_val <- list(beta_1 = .5,
 estimates <- mle2(minuslogl = mll_seir, start = lapply(starting_param_val, log), method = "Nelder-Mead")
 params <- exp(coef(estimates))
 
-
-
 run_mod(seir_seasonality, 
         pars = list(
           beta_0 = params[1],
@@ -197,38 +204,25 @@ run_mod(seir_seasonality,
         ), 
         duration=53, timestep=1)%>% 
   filter(t != 0) %>% 
-  cbind(ch1_adm_time_series) %>% 
-  ggplot(aes(x = adm_week,y = Inc))+
-  geom_line()+
+  cbind(ch1_adm_time_series) %>%
+  mutate(beta_t = params[1]*(1 + params[2]*cos(params[3]*t)),
+         N = S+E+I+R,
+         foi = beta_t*(I/N)) %>% 
+  ggplot(aes(x = adm_week))+
+  geom_line(aes(y = Inc))+
+  geom_line(aes(y=beta_t*1000),linetype = "dashed")+
+  geom_line(aes(y=S/10),color = "blue",alpha = .3)+
   geom_point(aes(x = adm_week,y=n),
-             data = ch1_adm_time_series)
+             data = ch1_adm_time_series)+
+  geom_vline(xintercept = as.Date("2023-05-21"))+
+    geom_vline(xintercept = as.Date("2023-09-10"))+
+    annotate(
+      geom = "text", x = as.Date("2023-06-12"), y = 1300,
+      label = "Summer break", hjust = 0, vjust = 1, size = 7
+    )+
+    theme_minimal()
 ```
 
-
-```{r}
-# out %>%
-#   mutate(beta_t = params[1]*(1 - params[2]*cos(params[3]*time)),
-#          foi = beta_t*I,
-#          date = ch1_adm_time_series$adm_week) %>%
-#   ggplot(aes(x = date))+
-#   geom_line(aes(y=C))+
-#   geom_line(aes(y=beta_t*1000),linetype = "dashed")+
-#   geom_line(aes(y=S/10),color = "blue",alpha = .3)+
-#   # geom_line(aes(y=foi),linetype = "dotted")+
-#   geom_point(aes(x = adm_week,y=n),
-#              data = ch1_adm_time_series)+
-#   scale_y_continuous(
-#     name = "Incidence",
-#     sec.axis = sec_axis(~ . /1000, name = "Beta(t)")
-#   )+
-#   geom_vline(xintercept = as.Date("2023-05-21"))+
-#   geom_vline(xintercept = as.Date("2023-09-10"))+
-#   annotate(
-#     geom = "text", x = as.Date("2023-06-12"), y = 1300,
-#     label = "Summer break", hjust = 0, vjust = 1, size = 4
-#   )+
-#   theme_minimal()
-```
 
 ## Gathering data on timing children go to school
 
