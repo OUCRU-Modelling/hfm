@@ -222,6 +222,11 @@ viro2 %>%
 ## Resconstruct epicurve with virology data
 
 ```{r}
+#| fig-width: 12
+#| fig-height: 8 
+#| out-width: "100%"
+#| fig-cap: The points are the percentage of EV-A71 positive samples from virological data. The bar shows total number of CH1 admission overtime in 2023. The line with blue 95 CI is the fitted GAM model with binomial family of EV-A71 sample percentage as a function of collection month. The line with red 95 CI the reconstructed epicurve of EV-A71 cases by multiply the fitted EV-A71 proportion to the reported cases.
+
 library(stringr)
 df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
                   col_types = c("date", "numeric", "text",
@@ -258,13 +263,12 @@ incidence1 <- df1 %>%
          cohort = interval(dob, "2023-01-01") / years(1)) %>%
   select(adm_date2,cohort,adm_week)
 
-time_f <- incidence1 %>% 
-  filter(adm_date2 > 19510) %>%
-  group_by(adm_week) %>%  
-  count()
+time_f <- incidence1 %>%
+  group_by(adm_week) %>%
+  count() %>%
+  ungroup()
 
-
-viro2 %>%
+viro2 <- viro2 %>%
   mutate(pos = case_when(
     sero_gr == "EV-A71" ~ TRUE,
     sero_gr != "EV-A71" ~ FALSE),
@@ -272,30 +276,70 @@ viro2 %>%
       month(admission_date) >= 6 & month(admission_date) <= 8 ~ "6/2023 - 8/2023",
       month(admission_date) >= 9 ~ "9/2023 - 12/2023"
     ),
-    time = as.numeric(admission_date)
-  ) %>%
-  rename(age = age_adm) %>%  
-  gam(pos~s(time,bs="bs"),family = betar,
-      method = "REML",data = .) %>% 
-  predict(list(time = time_f$adm_week %>% as.numeric()),type = "response",se.fit = TRUE) %>% 
-  as_tibble() %>% 
-  mutate(time = time_f$adm_week ,
-         lwr = fit - qt(0.95,nrow(.))*se.fit,
-         upr = fit + qt(0.95,nrow(.))*se.fit) %>% 
-  left_join(.,time_f, by = join_by(time == adm_week)) %>% 
-  mutate(e_ev71 = fit*n) %>% 
-  ggplot(aes(x = time))+
-  geom_col(aes(y=e_ev71))+
-  geom_line(aes(y = fit*800))+
-  geom_ribbon(aes(y = fit*800,ymin = lwr*800,ymax = upr*800),fill = "blue",alpha = .3)+
+    adm_week = as.Date(floor_date(admission_date, "week")),
+    adm_month = as.Date(floor_date(admission_date, "month")),
+    time = as.numeric(adm_month)
+  )
+
+dt_vr <- viro2 %>% 
+  group_by(adm_month) %>%
+  count(pos) %>%
+  ungroup() %>%
+  pivot_wider(names_from = pos,values_from = n,names_prefix = "pos") %>%
+  replace(is.na(.),0) %>%
+  mutate(total = posTRUE+posFALSE,
+         per = posTRUE/total,
+         time = adm_month %>% as.numeric())
+
+modelll <- gam(pos~s(time,bs = "bs",k=7),family = binomial,method = "REML",data = viro2)
+
+link_inv <- modelll$family$linkinv
+
+recon_epicurve <- modelll %>%
+  predict(list(time = time_f %>%
+                 filter(adm_week >= min(viro2$admission_date)) %>%
+                 pull(adm_week) %>% head(-4) %>% 
+                 as.numeric()
+  ),se.fit = TRUE) %>%
+  as_tibble() %>%
+  mutate(time = time_f %>%
+           filter(adm_week >= min(viro2$admission_date)) %>%
+           pull(adm_week) %>% head(-4),
+         lwr = link_inv(fit - 1.96*se.fit),
+         upr = link_inv(fit + 1.96*se.fit),
+         fit = link_inv(fit)
+         ) %>%
+  select(-se.fit) %>%
+  left_join(time_f,., by = join_by(adm_week == time)) %>%
+  mutate(e_ev71 = fit*n,
+         e_ev71_lwr = lwr*n,
+         e_ev71_upr = upr*n) %>%
+  replace(is.na(.),-1) %>%
+  ggplot(aes(x = adm_week))+
+  geom_line(aes(y = fit*1000))+
+  geom_ribbon(aes(y = fit*1000,ymin = lwr*1000,ymax = upr*1000),fill = "blue",alpha = .3)+
+  geom_line(aes(y = e_ev71))+
+  geom_ribbon(aes(y = e_ev71_upr,ymin = e_ev71_lwr,ymax = e_ev71_upr),fill = "red",alpha = .7)+
   scale_y_continuous(
     name = "CH1 admission",
-    sec.axis = sec_axis(~ . /800, name = "EV-A71 percentage"),
-    limits = c(0,800)
+    sec.axis = sec_axis(~ . /1000, name = "EV-A71 percentage"),
+    limits = c(0,1000)
   ) +
-  geom_point(aes(y=n))+
+  geom_col(aes(y=n),alpha = 0.3)+
+  geom_point(data = dt_vr, aes(x = adm_month,y = per*1000))+
   scale_x_date(date_breaks = "1 month",
-               date_labels = "%b")+
-  theme_minimal()
-```
+               date_labels = "%b",
+               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")))+
+  theme_minimal()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_text(size = 15),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))
 
+recon_epicurve
+```

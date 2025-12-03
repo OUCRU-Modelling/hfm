@@ -211,7 +211,40 @@ case2 %>% ggplot(aes(x = adm_week,y = n )) +
   scale_x_date(breaks = "1 year",date_labels = "%Y")
 
 
-#### note model for all population
+#### sir model using MCMC inference
+
+library(rstan)
+library(here)
+library(bayesplot)
+library(ggplot2)
+library(outbreaks)
+
+options(mc.cores = parallel::detectCores())
+
+cases <- influenza_england_1978_school$in_bed
+N <- 763;
+n_days <- length(cases)
+t <- seq(1, n_days, by = 1)
+t0 <- 0
+
+
+i0 <- 1
+s0 <- N - i0
+r0 <- 0
+y0 = c(S = s0, I = i0, R = r0)
+
+data_sir <- list(n_days = n_days, y0 = y0, t0 = t0, ts = t,
+                 N = N, cases = cases)
+
+model <- stan_model(here("model.stan"))
+fit <- sampling(model,data=data_sir,iter=2000,chains=4, seed=2435)
+posterior_array <- as.array(fit)
+pars <- c("beta", "gamma")
+summary(fit, pars = pars)$summary[,1]
+
+
+
+
 
 
 

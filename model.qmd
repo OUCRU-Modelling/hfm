@@ -63,7 +63,7 @@ ch1_adm_time_series <- ch1_adm %>%
 ```
 
 \begin{align}
-\frac{dS}{dt} &= \mu N - \beta_t \frac{S I}{N} - \mu S, \\
+\frac{dS}{dt} &= \mu N - \beta_t \frac{SI}{N} - \mu S, \\
 \frac{dE}{dt} &= \beta_t \frac{S I}{N} - \sigma E - \mu E, \\
 \frac{dI}{dt} &= \sigma E - \gamma I - \mu I, \\
 \frac{dR}{dt} &= \gamma I - \mu R.
