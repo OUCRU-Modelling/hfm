@@ -607,83 +607,82 @@ cm_ch1_cases_ratio <- table1 %>% dplyr::select(district1,CH1) %>%
   )
 ```
 
-### Catchment area using hospitalizations
-
 ```{r}
-cm_ch1_cases_ratio %>%
-  left_join(qhtp, ., by = join_by(varname_2 == district1)) %>%
-  ggplot() +
-  geom_sf(aes(fill = cut,geometry = geom),show.legend = T)+
-  scale_fill_manual(
-    values = c(
-      "< 1" = "#FFFFFFFF",
-      ">= 1" = "#6BAED6FF",
-      ">= 2" = "#2171B5FF",
-      ">= 3" = "#08306BFF"
-    ),
-    name = "95% CI Upper bound of \ncumulative case ratio of each districts"
-  )+
-  geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
-  geom_sf(data = tdnd1, shape = 17,
-          color = "yellow", size = 1)+
-  theme_void()
+### Catchment area using hospitalizations
+# cm_ch1_cases_ratio %>%
+#   left_join(qhtp, ., by = join_by(varname_2 == district1)) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = cut,geometry = geom),show.legend = T)+
+#   scale_fill_manual(
+#     values = c(
+#       "< 1" = "#FFFFFFFF",
+#       ">= 1" = "#6BAED6FF",
+#       ">= 2" = "#2171B5FF",
+#       ">= 3" = "#08306BFF"
+#     ),
+#     name = "95% CI Upper bound of \ncumulative case ratio of each districts"
+#   )+
+#   geom_sf_text(aes(label = nl_name_2,geometry = geom),size=2,color = "black")+
+#   geom_sf(data = tdnd1, shape = 17,
+#           color = "yellow", size = 1)+
+#   theme_void()
 ```
 
 ### Catchment area using serological data
 
 ```{r}
-library(ggsci)
-
-data_pt %>% group_by(qhchuan) %>% 
-  count() %>% as.data.frame() %>%
-  dplyr::mutate(pre = n / sum(n)) %>% 
-  left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
-  ggplot() +
-  geom_sf(aes(fill = pre),show.legend = T)+
-  # scale_fill_continuous(low="yellow", high="red",
-  #                       guide="colorbar",na.value="white",
-  #                       name = "Percentage",
-  #                       # limits = c(0,0.12),
-  #                       labels = scales::label_percent())+
-  scale_fill_gsea(
-    na.value = "white",
-    # breaks = c(0.1, 0.2, 0.3, 0.4, 0.5),
-    # limits = c(0, 0.5)
-    # rescaler = function(x, to = c(0, 1), from = NULL) {
-    #   scales::rescale(x ^ 0.5)
-    # },
-    labels = scales::label_percent(),
-    name = "Percentage (%)"
-  )+
-  geom_sf_text(aes(label = nl_name_2),size=2)+
-  geom_sf(data = tdnd1, shape = 17,
-          color = "blue", size = 2)+
-  theme_void()
+# library(ggsci)
+# 
+# data_pt %>% group_by(qhchuan) %>% 
+#   count() %>% as.data.frame() %>%
+#   dplyr::mutate(pre = n / sum(n)) %>% 
+#   left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
+#   ggplot() +
+#   geom_sf(aes(fill = pre),show.legend = T)+
+#   # scale_fill_continuous(low="yellow", high="red",
+#   #                       guide="colorbar",na.value="white",
+#   #                       name = "Percentage",
+#   #                       # limits = c(0,0.12),
+#   #                       labels = scales::label_percent())+
+#   scale_fill_gsea(
+#     na.value = "white",
+#     # breaks = c(0.1, 0.2, 0.3, 0.4, 0.5),
+#     # limits = c(0, 0.5)
+#     # rescaler = function(x, to = c(0, 1), from = NULL) {
+#     #   scales::rescale(x ^ 0.5)
+#     # },
+#     labels = scales::label_percent(),
+#     name = "Percentage (%)"
+#   )+
+#   geom_sf_text(aes(label = nl_name_2),size=2)+
+#   geom_sf(data = tdnd1, shape = 17,
+#           color = "blue", size = 2)+
+#   theme_void()
 ```
 
 ### Number of serum samples collected
 
 ```{r}
-tdnd1 <- data.frame(long = 106.6702,
-                    lat  = 10.7686) %>%
-  st_as_sf(coords = c("long", "lat"), crs = 4326)
-
-data_pt %>% group_by(qhchuan) %>% 
-  count() %>% as.data.frame() %>%
-    # dplyr::mutate(pre = n / sum(n)) %>% 
-  left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
-  ggplot() +
-    geom_sf(aes(fill = n),show.legend = T)+
-    paletteer::scale_fill_paletteer_c("ggthemes::Classic Red",
-                                    na.value="white",
-                                    name = "Number of \nserum samples")+
-    # geom_sf_text(aes(label = nl_name_2),size=2)+
-    geom_sf(data = tdnd1, shape = 17,
-           color = "blue", size = 2)+
-    theme_void()
-
-ggsave("./fig_manuscript/sero-distribution.svg",
-       width = 15,height = 8,dpi = 500)
+# tdnd1 <- data.frame(long = 106.6702,
+#                     lat  = 10.7686) %>%
+#   st_as_sf(coords = c("long", "lat"), crs = 4326)
+# 
+# data_pt %>% group_by(qhchuan) %>% 
+#   count() %>% as.data.frame() %>%
+#     # dplyr::mutate(pre = n / sum(n)) %>% 
+#   left_join(qhtp, ., by = join_by(varname_2 == qhchuan)) %>% 
+#   ggplot() +
+#     geom_sf(aes(fill = n),show.legend = T)+
+#     paletteer::scale_fill_paletteer_c("ggthemes::Classic Red",
+#                                     na.value="white",
+#                                     name = "Number of \nserum samples")+
+#     # geom_sf_text(aes(label = nl_name_2),size=2)+
+#     geom_sf(data = tdnd1, shape = 17,
+#            color = "blue", size = 2)+
+#     theme_void()
+# 
+# ggsave("./fig_manuscript/sero-distribution.svg",
+#        width = 15,height = 8,dpi = 500)
 
 ```
 
@@ -693,10 +692,10 @@ ggsave("./fig_manuscript/sero-distribution.svg",
 #| fig-width: 13
 #| fig-height: 7
 
-district_consider <- cm_ch1_cases_ratio %>%
-  filter(cut != "< 1") %>%
-  pull(district1) %>%
-  as.character()
+# district_consider <- cm_ch1_cases_ratio %>%
+#   filter(cut != "< 1") %>%
+#   pull(district1) %>%
+#   as.character()
 
 ## function to calculate age profile
 hfmd <- data_pt %>%
@@ -797,12 +796,12 @@ age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 5
 }
 
 # hfmd_cm <- hfmd %>% filter(qhchuan %in% district_consider)
-constrained_age_profiles_cohort2_cm <- age_profile_constrained_cohort2(hfmd)
-
-attack_rates <- map2(head(constrained_age_profiles_cohort2_cm, -1),
-                     constrained_age_profiles_cohort2_cm[-1],
-                     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort") |>
-                       mutate(attack = (fit.y - fit.x) / (1 - fit.x)))
+# constrained_age_profiles_cohort2_cm <- age_profile_constrained_cohort2(hfmd)
+# 
+# attack_rates <- map2(head(constrained_age_profiles_cohort2_cm, -1),
+#                      constrained_age_profiles_cohort2_cm[-1],
+#                      ~ left_join(na.exclude(.x), na.exclude(.y), "cohort") |>
+#                        mutate(attack = (fit.y - fit.x) / (1 - fit.x)))
 
 ## population
 
@@ -816,7 +815,7 @@ age_structure <- census2019 |>
            trimws(which = "both") %>%
            stri_trans_general("latin-ascii") %>%
            tolower()) %>%
-  filter(district %in% district_consider) %>%
+  # filter(district %in% district_consider) %>%
   group_by(age) |>
   summarise(n = sum(n)) |>
   mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
@@ -825,138 +824,86 @@ age_structure <- census2019 |>
 
 mod <- lm(n ~ age, age_structure)
 
-incidences <- map(attack_rates,
-                  ~ mutate(.x, incidence = (1 - fit.x) * attack *
-                             predict(mod, list(age = cohort))))
+# incidences <- map(attack_rates,
+#                   ~ mutate(.x, incidence = (1 - fit.x) * attack *
+#                              predict(mod, list(age = cohort))))
+# 
+# incidence1 <- df1 %>%
+#   filter(year(adm_date) == 2023 &
+#            medi_cen %in% c("Bệnh viện Nhi đồng 1",
+#                            "Bênh viện Nhi Đồng 1",
+#                            "Bệnh viện Nhi Đồng 1")) %>%
+#   mutate(district2 = district %>%
+#            str_replace_all(
+#              c("Quận 2" = "Thủ Đức",
+#                "Quận 9" = "Thủ Đức")) %>%
+#            str_remove("Quận|Huyện") %>%
+#            trimws(which = "both") %>%
+#            stri_trans_general("latin-ascii") %>%
+#            tolower()) %>%
+#   mutate(adm_date2 = as.numeric(adm_date),
+#          cohort = interval(dob, "2023-01-01") / years(1)) %>%
+#   select(adm_date2,cohort,adm_week)
+# 
 
-incidence1 <- df1 %>%
-  filter(year(adm_date) == 2023 &
-           medi_cen %in% c("Bệnh viện Nhi đồng 1",
-                           "Bênh viện Nhi Đồng 1",
-                           "Bệnh viện Nhi Đồng 1")) %>%
-  mutate(district2 = district %>%
-           str_replace_all(
-             c("Quận 2" = "Thủ Đức",
-               "Quận 9" = "Thủ Đức")) %>%
-           str_remove("Quận|Huyện") %>%
-           trimws(which = "both") %>%
-           stri_trans_general("latin-ascii") %>%
-           tolower()) %>%
-  mutate(adm_date2 = as.numeric(adm_date),
-         cohort = interval(dob, "2023-01-01") / years(1)) %>%
-  select(adm_date2,cohort,adm_week)
+# ex_incid_cm <- ggplot()+
+#   geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0 ),
+#                  aes(cohort),binwidth = 0.5,
+#                  color = "white",fill = "black",alpha = 0.5)+
+#   geom_line(data = incidences %>% bind_rows(.id = "id"),
+#             aes(x = cohort, y = incidence/12))+
+#   scale_y_continuous(name = "Reported data",
+#                      breaks = seq(0,1000,by=200),
+#                      sec.axis = sec_axis(~.*12, 
+#                                          name="Serological data",
+#                                          breaks = seq(0,12000,by=2000)))+
+#   facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
+#                                    "4/2023 - 8/2023",
+#                                    "8/2023 - 12/2023")))+
+#   coord_cartesian(ylim=c(0,1000))+
+#   labs(tag = "D",
+#        y = "Total cases count",
+#        x = "Age (years)")+
+#   scale_x_continuous(breaks = seq(0,14,by = 2),
+#                      limits = c(0,14))+
+#   theme_bw()+
+#   theme(
+#     legend.position = "top",
+#     axis.text.x = element_text(size = 15),
+#     axis.text.y = element_text(size = 18),
+#     legend.text = element_text(size = 18),
+#     plot.tag = element_text(face = "bold", size = 18),
+#     axis.title.x = element_text(size = 18),
+#     axis.title.y = element_text(size = 18),
+#     legend.title = element_text(size = 18),
+#     strip.text = element_text(size = 18),
+#     panel.grid.minor.x = element_blank())
 
-mean_collection_times <- hfmd |>
-  group_by(collection) |>
-  summarise(mean_col_date = mean(col_date2)) |>
-  with(setNames(mean_col_date, collection))
-
-ouut <- list()
-dat <- list()
-
-for (i in 1:3){
-  
-  dat[[i]] <- incidence1 %>%
-    filter(adm_date2 >= as.numeric(mean_collection_times[i]) &
-             adm_date2 <= as.numeric(mean_collection_times[i+1])) %>%
-    # mutate(age_gr = cut(cohort, breaks = seq(0,16),right = T)) %>%
-    # na.omit(age_gr) %>%
-    # group_by(age_gr) %>%
-    # count() %>%
-    # mutate(age_gr2 = as.numeric(age_gr)) %>% 
-    # ungroup() %>% 
-    # select(-age_gr)
-    {}
-  
-  # ouut[[i]] <- scam(n ~ s(age_gr2,bs = "po"),data = dat[[i]]) %>%
-  #   predict(list(age_gr2 = incidences[[i]]$cohort))%>%
-  #   tibble(age = incidences[[i]]$cohort,
-  #          incidence  = .)
-}
-
-age_profile_sp_cm <- constrained_age_profiles_cohort2_cm %>% 
-  bind_rows() %>%  
-  ggplot(aes(x = age, y = fit)) +
-  geom_line(aes(x = age, fit))+
-  geom_point(data = data_pt %>% 
-               mutate(collection_time = factor(col_time,
-                                               levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023"))),
-             aes(x = age, y = pos),shape = "|")+
-  facet_wrap(~factor(collection_time,
-                     labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
-             ncol = 4)+
-  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
-  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="B")+
-  scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
-  # coord_cartesian(ylim = c(0, 1))+
-  theme_bw()+ 
-  theme(axis.title.x = element_text(size = 18),
-        axis.text.x = element_text(size = 18),
-        legend.position = "none",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.title.y = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        strip.text.x = element_text(size = 18))
-
-
-ex_incid_cm <- ggplot()+
-  geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(cohort >0 ),
-                 aes(cohort),binwidth = 0.5,
-                 color = "white",fill = "black",alpha = 0.5)+
-  geom_line(data = incidences %>% bind_rows(.id = "id"),
-            aes(x = cohort, y = incidence/12))+
-  scale_y_continuous(name = "Reported data",
-                     breaks = seq(0,1000,by=200),
-                     sec.axis = sec_axis(~.*12, 
-                                         name="Serological data",
-                                         breaks = seq(0,12000,by=2000)))+
-  facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
-                                   "4/2023 - 8/2023",
-                                   "8/2023 - 12/2023")))+
-  coord_cartesian(ylim=c(0,1000))+
-  labs(tag = "D",
-       y = "Total cases count",
-       x = "Age (years)")+
-  scale_x_continuous(breaks = seq(0,14,by = 2),
-                     limits = c(0,14))+
-  theme_bw()+
-  theme(
-    legend.position = "top",
-    axis.text.x = element_text(size = 15),
-    axis.text.y = element_text(size = 18),
-    legend.text = element_text(size = 18),
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.title.x = element_text(size = 18),
-    axis.title.y = element_text(size = 18),
-    legend.title = element_text(size = 18),
-    strip.text = element_text(size = 18),
-    panel.grid.minor.x = element_blank())
-
-ts_cm <- incidence1 %>% group_by(adm_week) %>% count() %>% 
-ggplot()+
-  geom_bar(aes(x = as.Date(adm_week), y = n),stat = "identity",
-           alpha = 0.5) +
-  geom_point(aes(x = as.Date(col_date), y =  pos*1000),
-            shape = "|",data = data_pt)+
-  labs(x = "Admission week",y = "Cases",tag = "B")+
-  annotate("rect", fill = "blue",
-           xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
-           xmax = as.Date(c("2023-01-04","2023-04-30","2023-08-30","2023-12-30")), 
-           ymin = 0, ymax = Inf, alpha = .2)+
-  theme_classic()+
-  scale_y_continuous(breaks = seq(0,1000,by = 500),
-                     limit =c(0-1,1000+1))+
-  scale_x_date(
-    breaks = as.Date(c("2022-12-15", "2023-04-15", "2023-08-15", "2023-12-15")),
-    labels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"),
-    limits = c(as.Date("2022-11-24"),as.Date("2024-01-01")))+
-  theme(
-    axis.text.x = element_text(size = 18),
-    axis.text.y = element_text(size = 18),
-    legend.text = element_text(size = 18),
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.title.x = element_text(size = 18),
-    axis.title.y = element_text(size = 18))
+# ts_cm <- incidence1 %>% group_by(adm_week) %>% count() %>% 
+# ggplot()+
+#   geom_bar(aes(x = as.Date(adm_week), y = n),stat = "identity",
+#            alpha = 0.5) +
+#   geom_point(aes(x = as.Date(col_date), y =  pos*1000),
+#             shape = "|",data = data_pt)+
+#   labs(x = "Admission week",y = "Cases",tag = "B")+
+#   annotate("rect", fill = "blue",
+#            xmin = as.Date(c("2022-12-01","2023-04-01","2023-08-01","2023-12-01")), 
+#            xmax = as.Date(c("2023-01-04","2023-04-30","2023-08-30","2023-12-30")), 
+#            ymin = 0, ymax = Inf, alpha = .2)+
+#   theme_classic()+
+#   scale_y_continuous(breaks = seq(0,1000,by = 500),
+#                      limit =c(0-1,1000+1))+
+#   scale_x_date(
+#     breaks = as.Date(c("2022-12-15", "2023-04-15", "2023-08-15", "2023-12-15")),
+#     labels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"),
+#     limits = c(as.Date("2022-11-24"),as.Date("2024-01-01")))+
+#   theme(
+#     axis.text.x = element_text(size = 18),
+#     axis.text.y = element_text(size = 18),
+#     legend.text = element_text(size = 18),
+#     plot.tag = element_text(face = "bold", size = 18),
+#     axis.title.x = element_text(size = 18),
+#     axis.title.y = element_text(size = 18))
 ```
 
 ```{r}
@@ -965,7 +912,7 @@ ggplot()+
 #| out-width: "100%"
 #| fig-format: png
 
-library(grid)
+# library(grid)
 
 # left_col  <- age_profile_sp_cm / ts/ hm
 # 
@@ -985,28 +932,28 @@ library(grid)
 #| out-width: "100%"
 #| fig-format: png
 
-left_col2  <- age_profile_sp_cm / ts/ hm
-
-right_col2 <- ex_incid_cm / b_ss / 
-  wrap_elements(full = ad  + theme(plot.margin = margin(-20, 250, 20*3.25, 0),
-                                   legend.position = "right"))
-
-(left_col2 | right_col2) +
-  plot_layout(widths = c(2.5, 2))
-
-ggsave("./fig_manuscript/fig1_2a.svg",
-       width = 18,height = 10,dpi = 500)
+# left_col2  <- age_profile_sp_cm / ts/ hm
+# 
+# right_col2 <- ex_incid_cm / b_ss / 
+#   wrap_elements(full = ad  + theme(plot.margin = margin(-20, 250, 20*3.25, 0),
+#                                    legend.position = "right"))
+# 
+# (left_col2 | right_col2) +
+#   plot_layout(widths = c(2.5, 2))
+# 
+# ggsave("./fig_manuscript/fig1_2a.svg",
+#        width = 18,height = 10,dpi = 500)
 ```
 
 ```{r}
 #| fig-width: 10
 #| fig-height: 6
 
-ex_incid_cm/
-  ts_cm
-
-ggsave("./fig_manuscript/fig2_2.svg",
-       width = 18,height = 10,dpi = 500)
+# ex_incid_cm/
+#   ts_cm
+# 
+# ggsave("./fig_manuscript/fig2_2.svg",
+#        width = 18,height = 10,dpi = 500)
 ```
 
 ## Supplementation plot
@@ -1393,7 +1340,6 @@ expected_age_cm %>%
 
 ```
 
-
 ### Expected incidence
 
 Then applied constrained algorithm to estimated age profile and used the formula to calculated expected incidence
@@ -1403,12 +1349,45 @@ $$
 $$
 
 ```{r}
+
 age_pro5 <- age_profile_constrained_cohort2(hfmd,age_values = expected_age_cm$age)
 
 attack_rates2 <- map2(head(age_pro5, -1),
                       age_pro5[-1],
                       ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
                         mutate(sp_gap = (fit.y - fit.x)))
+
+incidence1 <- df1 %>%
+  filter(year(adm_date) == 2023 &
+           medi_cen %in% c("Bệnh viện Nhi đồng 1",
+                           "Bênh viện Nhi Đồng 1",
+                           "Bệnh viện Nhi Đồng 1")) %>%
+  mutate(district2 = district %>%
+           str_replace_all(
+             c("Quận 2" = "Thủ Đức",
+               "Quận 9" = "Thủ Đức")) %>%
+           str_remove("Quận|Huyện") %>%
+           trimws(which = "both") %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower()) %>%
+  mutate(adm_date2 = as.numeric(adm_date),
+         cohort = interval(dob, "2023-01-01") / years(1)) %>%
+  select(adm_date2,cohort,adm_week)
+
+mean_collection_times <- hfmd |>
+  group_by(collection) |>
+  summarise(mean_col_date = mean(col_date2)) |>
+  with(setNames(mean_col_date, collection))
+
+ouut <- list()
+dat <- list()
+
+for (i in 1:3){
+
+  dat[[i]] <- incidence1 %>%
+    filter(adm_date2 >= as.numeric(mean_collection_times[i]) &
+             adm_date2 <= as.numeric(mean_collection_times[i+1]))
+}
 
 exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(cohort == age))) %>% 
   bind_rows(.id = "id") %>% 
@@ -1434,6 +1413,31 @@ exp_in_ch1 <- map(attack_rates2, ~ left_join(.x,expected_age_cm, by = join_by(co
     legend.title = element_text(size = 18),
     strip.text = element_text(size = 18),
     panel.grid.minor.x = element_blank())
+
+age_profile_sp_cm <- age_pro5 %>%
+  bind_rows() %>%
+  ggplot(aes(x = age, y = fit)) +
+  geom_line(aes(x = age, fit))+
+  geom_point(data = data_pt %>%
+               mutate(collection_time = factor(col_time,
+                                               levels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023"))),
+             aes(x = age, y = pos),shape = "|")+
+  facet_wrap(~factor(collection_time,
+                     labels = c("Dec 2022","Apr 2023","Aug 2023","Dec 2023")),
+             ncol = 4)+
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.3) +
+  labs(y = "Seroprevalence (%)",x = "Age (years)",tag="B")+
+  scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
+  # coord_cartesian(ylim = c(0, 1))+
+  theme_bw()+
+  theme(axis.title.x = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        legend.position = "none",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        strip.text.x = element_text(size = 18))
+
 ```
 
 ```{r}
@@ -1480,8 +1484,6 @@ map2(head(age_pro5, -1),
     strip.text = element_text(size = 18),
     panel.grid.minor.x = element_blank())
 ```
-
-
 
 ### Figure 1
 
@@ -1617,5 +1619,3 @@ row3 <- (birth_23 | plot_spacer())+
 ggsave("./fig_manuscript/fig2_3t.svg",
        width = 15,height = 15,dpi = 500)
 ```
-
-

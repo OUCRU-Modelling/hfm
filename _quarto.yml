@@ -30,8 +30,6 @@ format:
     code-fold: true
     code-copy: true
     fig-format: svg
-  pdf:
-    documentclass: scrreprt
 
 editor: visual
 

@@ -1,0 +1,130 @@
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(gtsummary)
+library(patchwork)
+library(lubridate)
+library(stringr)
+library(mgcv)
+library(janitor)
+library(predtools)
+library(magrittr)
+library(slider)
+library(scam)
+library(epitools)
+library(sf)
+library(stringi)
+invisible(Sys.setlocale("LC_TIME", "English"))
+
+df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
+                  col_types = c("date", "numeric", "text",
+                                "text", "text", "date", "date", "date",
+                                "text", "text", "text"))
+colnames(df1) <- c("dob", "age", "gender", "commune", "district",
+                   "reported_date", "onset_date","adm_date",
+                   "medi_cen","inout","severity")
+df1$dob <- df1$dob %>% as_date()
+df1$adm_date <- df1$adm_date %>% as_date()
+
+df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
+df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
+df1$district <- df1$district %>% str_replace_all(
+  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
+df1$district <- df1$district %>%
+  str_remove("Quận|Huyện|Thành phố") %>%
+  trimws(which = "both")
+
+df23 <- df1 %>% filter(year(adm_date) == 2023) 
+df23 <- df23[!duplicated(df23), ]
+
+df23 <- df23 %>% 
+  mutate(
+    wave = case_when(
+      adm_date <= as.Date("2023-09-03") ~ "1st wave",
+      adm_date > as.Date("2023-09-03") ~ "2nd wave"
+      ),
+    severity2 = case_when(
+      severity %in% c("1","1a") ~ "1",
+      severity %in% c("3","4") ~ "3 or 4",
+      severity %in% c("2") ~ "2a",
+      !severity %in% c("1","1a","3","4") ~ severity
+    ) %>% as.factor(),
+    inout2 = case_when(
+      inout == "Điều trị nội trú" ~ "Inpatients",
+      inout == "Điều trị ngoại trú" ~ "Outpatients",
+      !inout %in% c("Điều trị nội trú","Điều trị ngoại trú") ~ "Others"
+    ) %>% factor(levels = c("Inpatients","Outpatients","Others")),
+    gender2 = case_when(
+      gender %in% c("Nam","nam","NAM") ~ "Male",
+      gender %in% c("Nữ","nữ","NỮ") ~ "Female"
+    ) %>% as.factor()
+  ) 
+
+library(gtsummary)
+
+
+# -----------------------------
+# 1. Age table
+# -----------------------------
+tab_age <-
+  df23 %>% 
+  tbl_summary(by = wave,
+              label = list(age ~ "Age (Years)",
+                           gender2 ~ "Gender"),
+              include = c(age,gender2)) %>%
+  remove_row_type(type = "missing") 
+
+# -----------------------------
+# 2. Severity table
+# -----------------------------
+tab_sev <-
+  df23 %>% 
+  select(wave, severity2) %>% 
+  mutate(rn = row_number()) %>% 
+  tidyr::spread(severity2, severity2) %>% 
+  select(-`<NA>`) %>% 
+  mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) %>% 
+  select(-rn) %>% 
+  tbl_summary(by = wave) %>% 
+  add_p() %>%
+  modify_table_body(
+    ~ .x %>%
+      mutate(row_type = "level",
+             variable = "wave") %>%
+      {bind_rows(
+        tibble(variable = "wave", row_type = "label", label = "Severity"),
+        .
+      )}
+  )
+
+# -----------------------------
+# 3. In/out table
+# -----------------------------
+tab_inout <-
+  df23 %>% 
+  select(wave, inout2) %>% 
+  mutate(rn = row_number()) %>% 
+  tidyr::spread(inout2, inout2) %>% 
+  mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) %>% 
+  select(-rn) %>% 
+  tbl_summary(by = wave) %>% 
+  add_p() %>%
+  modify_table_body(
+    ~ .x %>%
+      mutate(row_type = "level",
+             variable = "wave") %>%
+      {bind_rows(
+        tibble(variable = "wave", row_type = "label", label = "Treatment"),
+        .
+      )}
+  )
+
+# -----------------------------
+# 4. Combine all three tables
+# -----------------------------
+final_table <-
+  tbl_stack(list(tab_age, tab_sev, tab_inout))
+
+final_table
+```

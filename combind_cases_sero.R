@@ -24,148 +24,6 @@ dataaaa %>%
   ggplot(aes(x = age2,y = ob_sp,color = collection,size = total))+
   geom_point()
 
-# Simple Force of Infection (FOI) model with maternal immunity and waning
-library(dplyr)
-library(ggplot2)
-
-# Parameters
-omega <- 2       # maternal immunity waning rate (per year)
-delta <- 0.25  # age step (in years)
-
-# Define stepwise FOI for each year (example values)
-lambda_t <- c("2019"=0.3, "2020"=0.05, "2021"=0.15, "2022"=0.25)
-
-# Simulate ages 0–10
-ages <- seq(0, 10, by = delta)
-n_age <- length(ages)
-
-# Initialize states at birth (t=2022)
-M <- numeric(n_age)
-X <- numeric(n_age)
-
-
-# Initial conditions: all newborns maternally immune
-M[1] <- 1
-X[1] <- 0
-
-
-# Define a function for yearly FOI by age
-foi_by_time <- function(age) {
-  # Assign each age to calendar year cohort, example logic
-  if (age < 3) lambda_t["2022"]
-  else if (age < 5) lambda_t["2021"]
-  else if (age < 7) lambda_t["2020"]
-  else lambda_t["2019"]
-}
-
-library(extraDistr)
-
-lambda_t = rhnorm(n=1, sigma = 1)
-omega = rnorm(n = 1,mean = 2,sd = 1)
-M[1] = runif(n = 1,0,1)
-
-# Recursive simulation
-for (i in 2:n_age) {
-
-  M[i] <- M[i-1] - (1 - exp(-omega * delta)) * M[i-1]
-  X[i] <- X[i-1] + (1 - exp(-omega * delta)) * M[i-1] - (1 - exp(-lambda_t * delta)) * X[i-1]
-}
-
-# Combine
-df <- data.frame(
-  age = ages,
-  seropositive = 1 - X
-)
-
-# Plot seroprevalence curve
-ggplot(df, aes(x = age, y = seropositive)) +
-  geom_line(size = 1.2, color = "blue") +
-  labs(y = "Seroprevalence", x = "Age (years)",
-       title = "Estimated Age-Seroprevalence Curve (Example FOI Model)") +
-  theme_minimal()
-
-
-
-# In R
-library(rstan)
-
-# Model file (simplified)
-stan_code <- "
-data {
-  int<lower=1> N;           // number of age groups
-  vector[N] age;
-  int y[N];                 // number seropositive
-  int n[N];                 // total tested
-}
-parameters {
-  real<lower=0> lambda[4];  // FOI for each year period
-  real<lower=0> rho;
-  real<lower=0> nu;
-}
-model {
-  vector[N] p;              // predicted seroprevalence
-  for (i in 1:N) {
-    // call same recursion as above, embedded in Stan loop
-    // p[i] = predicted seroprevalence at age[i]
-  }
-  y ~ binomial(n, p);
-}
-"
-
-fit <- stan(model_code = stan_code, data = list(...))
-
-
-### SIR model
-
-# --- Simulate model ---
-simulate_SIR <- function(params, tmax = 572) {
-  times <- seq(0, tmax, by = 1)
-  out <- ode(y = c(S = 0.85, I = 1e-4, R = 0),
-             times = times, func = sir_model,
-             parms = params)
-  as.data.frame(out)
-}
-
-sir_model <- function(t, state, params) {
-  with(as.list(c(state, params)), {
-    beta_t <- r0 * (1 + theta * cos(2 * pi * (t - phi) / 52)) * (1 - delta)
-    dS <- mu - beta_t * S * (I + omega) - mu * S
-    dI <- beta_t * S * (I + omega) - (gamma + mu) * I
-    dR <- gamma * I - mu * R
-    list(c(dS, dI, dR))
-  })
-}
-
-
-params <- list(
-  r0 = 2,   # baseline transmission rate
-  theta = 0.2,     # seasonal amplitude
-  phi = 1,     # seasonal offset
-  delta = 0.5, # NPI effect
-  mu = 1/(80*52),
-  gamma = 1,
-  phi = 0.0001,
-  omega = 2e-6
-)
-
-
-
-sim <- simulate_SIR(params)
-
-sim %>%
-  ggplot(aes(x = time,y = I))+
-  geom_line()+
-  scale_x_continuous(breaks = seq(1,600,by=52))+
-  ylim(c(0,1))
-
-
-
-library(deSolve)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-
-
 ### data ND1
 
 ch1_adm <- df1 %>%
@@ -182,6 +40,7 @@ ch1_adm <- df1 %>%
            stri_trans_general("latin-ascii") %>%
            tolower())
 
+## age distribution of CH1 admission
 wwww2 <- slide_age(time1 = ch1_adm$adm_date,
           age1 =  ch1_adm$age1,
           w1 = 7, s1=7)
@@ -201,6 +60,8 @@ ggplot(data=wwww2$wdat, aes(x=date, y=age)) +
   # scale_x_discrete(name = "Admission week",labels = leb_month)+
   labs(tag = "D",fill = "Number of\nhospitalizations")
 
+########
+
 ch1_adm_time_series <- ch1_adm %>%
   group_by(adm_week) %>%
   count() %>%
@@ -211,6 +72,7 @@ ch1_adm_time_series %>%
   ggplot(aes(x = time,y = n))+
   geom_point()
 
+### code model deSolve
 library(deSolve)
 library(bbmle)
 
@@ -300,164 +162,6 @@ out %>%
   )+
   theme_minimal()
 
-### combind with serology data
-
-mll2 <- function(beta0, beta1,omega,sigma) {
-  # Make sure that parameters are positive
-  beta0 <- exp(beta0)
-  beta1 <- exp(beta1)
-  omega <- exp(omega)
-  sigma <- exp(sigma)
-  # mu <- exp(mu)
-
-  out <- run_seir(beta0 = beta0, beta1 = beta1, omega = omega,sigma = sigma,
-                   gamma = 1/52, mu = 1/(80*52),
-                   S0 = 13000, E0 = 2, I0 = 1, R0 = 0,times = seq(0,18))
-  pred <- out %>% filter(time != 0) %>% pull(C)
-  llh <- lm(log(ch1_adm_time_series$n[1:length(pred)]) ~ 1 + offset(log(pred)))
-  p <- coef(llh) %>% as.numeric()
-  sigma2 <- summary(llh)$sigma
-
-  # Return the negative log-likelihood
-  L1 <- - sum(dnorm(x = log(ch1_adm_time_series$n[1:length(pred)]), mean = log(pred) + log(p), sd = sigma2))
-
-  ### serology
-
-  lambda <- out %>%
-    mutate(beta_t = beta0*(1 - beta1*cos(omega*time)),
-           foi = beta_t*I) %>%
-    pull(foi)
-
-  sero_conv_prob <- function(t1, t3, lambda, dt = 1) {
-    idx <- seq(t1, t3, by = dt)
-    risk <- sum(lambda[idx]) * dt
-    p_conv <- 1 - exp(-risk)
-    return(p_conv)
-  }
-
-  L2 <- -sum(dbinom(15, 100, sero_conv_prob(1, 17, lambda), log = TRUE))
-
-  return(L1 + L2)
-}
-
-starting_param_val <- list(beta0 = 0.5,beta1 = .05,sigma = .3,omega = (2*pi)/(52/2.2))
-estimates <- mle2(minuslogl = mll2, start = lapply(starting_param_val, log), method = "Nelder-Mead")
-params <- exp(coef(estimates))
-
-out <- run_seir(beta0 = params[1], beta1 = params[2], omega = params[3],sigma = params[4],
-                gamma = 1/52, mu = 1/(80*52),
-                S0 = 13000, E0 = 2, I0 = 1, R0 = 0,times = seq(0,17))
-
-pred <- out %>% filter(time != 0) %>% pull(C)
-llh <- lm(log(ch1_adm_time_series$n[1:length(pred)]) ~ 1 + offset(log(pred)))
-p <- coef(llh) %>% as.numeric()
-sigma2 <- summary(llh)$sigma
-
-# Return the negative log-likelihood
-L1 <- - sum(dnorm(x = log(ch1_adm_time_series$n[1:length(pred)]), mean = log(pred) + log(p), sd = sigma2))
-
-### serology
-
-lambda <- out %>%
-  mutate(beta_t = beta0*(1 - beta1*cos(omega*time)),
-         foi = beta_t*I) %>%
-  pull(foi)
-
-sero_conv_prob <- function(t1, t3, lambda, dt = 1) {
-  idx <- seq(t1, t3, by = dt)
-  risk <- sum(lambda[idx]) * dt
-  p_conv <- 1 - exp(-risk)
-  return(p_conv)
-}
-
-L2 <- -sum(dbinom(15, 100, sero_conv_prob(1, 17, lambda), log = TRUE))
-
-
-out %>%
-  mutate(beta_t = params[1]*(1 - params[2]*cos(params[3]*time)),
-         foi = beta_t*I,
-         # date = ch1_adm_time_series$adm_week
-         ) %>%
-  ggplot(aes(x = time))+
-  geom_line(aes(y=C))+
-  # geom_line(aes(y=beta_t*1000),linetype = "dashed")+
-  # geom_line(aes(y=S/10),color = "blue",alpha = .3)+
-  geom_line(aes(y=foi),linetype = "dotted")+
-  # geom_point(aes(x = adm_week,y=n),
-  #            data = ch1_adm_time_series)+
-  # scale_y_continuous(
-  #   name = "Incidence",
-  #   sec.axis = sec_axis(~ . /1000, name = "Beta(t)")
-  # )+
-  # geom_vline(xintercept = as.Date("2023-05-21"))+
-  # geom_vline(xintercept = as.Date("2023-09-10"))+
-  # annotate(
-  #   geom = "text", x = as.Date("2023-06-12"), y = 1300,
-  #   label = "Summer break", hjust = 0, vjust = 1, size = 10
-  # )+
-  theme_minimal()
-
-
-
-lambda <- out %>%
-  mutate(beta_t = .3*(1 + .7*cos((2*pi)/(52/2.2)*time)),
-         foi = beta_t*I,
-         date = ch1_adm_time_series$adm_week) %>%
-  pull(foi)
-
-
-sero_conv_prob <- function(t1, t3, lambda, dt = 1) {
-  idx <- seq(t1, t3, by = dt)
-  risk <- sum(lambda[idx]) * dt
-  p_conv <- 1 - exp(-risk)
-  return(p_conv)
-}
-
-model_simulated <- out %>%
-  mutate(beta_t = .3*(1 + .7*cos((2*pi)/(52/2.2)*time)),
-         foi = beta_t*I,
-         date = ch1_adm_time_series$adm_week)
-
-# viro_res <- viro2 %>%
-#   mutate(adm_week = floor_date(admission_date, "week")) %>%
-#   group_by(adm_week) %>%
-#   count(pos) %>%
-#   ungroup() %>%
-#   pivot_wider(names_from = pos,values_from = n,names_prefix = "EV_A71_") %>%
-#   replace(is.na(.),0) %>%
-#   mutate(total = EV_A71_TRUE+EV_A71_FALSE,
-#          per = EV_A71_TRUE/total) %>%
-#   select(adm_week,per)
-
-sp_each <- data.frame()
-for (i in 1:3){
-  sp_each1 <- hfmd %>%
-    filter(collection %in% c(5+i,6+i) & age <= 6) %>%
-    count(pos) %>%
-    pivot_wider(names_from = pos,values_from = n,names_prefix = "EV_A71_") %>%
-    mutate(total = EV_A71_TRUE+EV_A71_FALSE,
-           sp = EV_A71_TRUE/total,
-           col_time = i) %>%
-    select(col_time, sp)
-  sp_each <- rbind(sp_each,sp_each1)
-}
-
-sp_each
-
-
-sero_conv_prob(1, 17, lambda_t)
-
-sero_conv_prob(13, 34, lambda_t)
-
-sero_conv_prob(31, 52, lambda_t)
-
-
--sum(dbinom(15, 100, sero_conv_prob(1, 17, lambda_t), log = TRUE))
-
-
-left_join(model_simulated,viro_res,by = join_by(date == adm_week))
-
-
 
 ### time series hfmd
 
@@ -467,104 +171,7 @@ hfmd_1224 <- df1 %>%
   ungroup() %>%
   mutate(time = 1:nrow(.))
 
-run_sir <- function(beta0 = beta0, beta1 = beta1, omega = omega,
-                    gamma = gamma, mu = mu,
-                    S0 = S0, I0 = I0, R0 = R0, C0 = C0,
-                    times = times) {
-
-  sir_model <- function(t, state, params) {
-    with(as.list(c(state, params)), {
-      N <- S + E + I + R
-      beta_t <- beta0 * (1 + beta1 * cos(omega*t))
-      dS <- mu*N - beta_t * S * I/N - mu * S
-      dI <- beta_t * S * I/N - gamma * I - mu * I
-      dR <- gamma * I - mu * R
-      dC <- beta_t * S * I/N
-      list(c(dS, dI, dR, dC))
-    })
-  }
-
-  true_params <- list(
-    beta0  = beta0,
-    beta1  = beta1,
-    omega  = omega,
-    # sigma  = sigma,
-    gamma  = gamma,
-    mu     = mu
-  )
-
-  init <- c(S = S0, I = I0, R = R0, C0 = C0)
-
-  out <- ode(y = init, times = times, func = sir_model, parms = true_params)
-  out <- as.data.frame(out)
-  out$C <- c(I0, diff(out$C))  # cumulative incidence
-  out
-}
-
-
-mll <- function(beta0,beta1,sigma,omega) {
-  # Make sure that parameters are positive
-  beta0 <- exp(beta0)
-  beta1 <- exp(beta1)
-  sigma <- exp(sigma)
-  omega <- exp(omega)
-  # mu <- exp(mu)
-
-  pred <- run_seir(beta0 = beta0,beta1 = beta1,sigma = sigma,omega = omega,
-                   gamma = 1/365, mu = 10/365,
-                   S0 = 500000, E0 = 1000, I0 = 1000,C0 = 0,times = seq(0,597))
-  pred <- pred %>% filter(time != 0) %>% pull(C)
-  llh <- lm(log(hfmd_1224$n) ~ 1 + offset(log(pred)))
-  p <- coef(llh) %>% as.numeric()
-  sigma2 <- summary(llh)$sigma
-
-  # Return the negative log-likelihood
-  - sum(dnorm(x = log(hfmd_1224$n), mean = log(pred) + log(p), sd = sigma2))
-}
-
-starting_param_val <- list(beta0 = .075,beta1 = 1.3,sigma = 0.07,omega = 28)
-estimates <- mle2(minuslogl = mll, start = lapply(starting_param_val, log), method = "Nelder-Mead")
-params <- exp(coef(estimates))
-
-
-# out <- run_seir(beta0 = .6,beta1 = 2,sigma = 0.01,omega = 30,
-#                 gamma = 7/365, mu = 5/365,
-#                 S0 = 400000, E0 = 3000, I0 = 1000, R0 = 0, C0 = 0,times = seq(0,597))
-
-run <- function(beta0 = .6,beta1 = 2,sigma = 0.01,omega = 30,
-                gamma = 7/365, mu = 5/365,
-                S0 = 400000, E0 = 3000, I0 = 1000){
-  run_seir(beta0 = beta0, beta1 = beta1, omega = omega,
-           sigma = sigma, gamma = gamma, mu = mu,
-           S0 = S0, E0 = E0, I0 = I0, R0 = 0, C0 = 0,times = seq(0,1000)) %>%
-    filter(time != 0) %>%
-    ggplot(aes(x = time))+
-    geom_line(aes(y=C))+
-    geom_line(aes(y = S/100),color = "blue")+
-    geom_point(aes(y=n),data = hfmd_1224) +
-    # xlim(c(20,600))+
-    # ylim(c(-2000,3000))
-    {}
-}
-
-ggplot()+
-geom_point(aes(x = time,y=n),data = hfmd_1224)
-
-run(beta0 = .1,beta1 = 1.3,sigma = 0.04,omega = 2*pi/52,
-    gamma = 2/365, mu = 10/365,
-    S0 = 400000, E0 = 2000, I0 = 1000)
-
-
-run_seir(beta0 = .1,beta1 = 1.3,omega = 2*pi/52,
-         gamma = 2/365, mu = 10/365,
-         S0 = 400000, I0 = 1000, R0 = 0, C0 = 0,times = seq(0,1000))
-
-ggplot() +
-geom_point(aes(x = time,y=n),data = hfmd_1224)
-
-
 ### from sratch
-
 
 library(odin2)
 library(dust2)
@@ -610,7 +217,7 @@ run_mod <- function(mod, pars, duration=100, timestep=1){
       t = times
     )
 
-  out$Inc <- c(I0, diff(out$CInc))
+  out$Inc <- c(pars$init_I, diff(out$CInc))
   out
 }
 
@@ -664,6 +271,7 @@ starting_param_val <- list(beta_1 = .5,
                            # gamma = 1/52,
                            # mu = 1/(80*52),
                            omega = 2*3.14/(52/2.2))
+
 estimates <- mle2(minuslogl = mll, start = lapply(starting_param_val, log), method = "Nelder-Mead")
 params <- exp(coef(estimates))
 
@@ -775,6 +383,8 @@ out <- run_mod(seir_seasonality,
   mutate(beta_t = params[1]*(1 + params[2]*cos(params[3]*t)),
          N = S+E+I+R,
          foi = beta_t*(I/N))
+
+
 out %>%
   ggplot(aes(x = adm_week))+
   geom_line(aes(y = Inc))+
@@ -844,18 +454,10 @@ seroconversion_model <- out %>%
            adm_week <= range(sero_consider$col_date)[2]) %>%
   get_seroconversion()
 
-0.1666667 - 0.1333333
-
--dbinom(round((0.1666667-0.1333333)*100),100,prob = seroconversion_model,log = T)
-?dnorm
-
-
-
-dbinom(46:54, 100, 0.5)
 ## fit for 2022-2023
 
 ch1_adm_2123 <- df1 %>%
-  filter(year(adm_date) %in% c(2021,2022,2023) &
+  filter(year(adm_date) %in% c(2022,2023) &
            medi_cen %in% c("Bệnh viện Nhi đồng 1",
                            "Bênh viện Nhi Đồng 1",
                            "Bệnh viện Nhi Đồng 1")) %>%
@@ -871,6 +473,57 @@ ch1_adm_2123 <- df1 %>%
   count() %>%
   ungroup() %>%
   filter(adm_week > as.Date("2021-06-06"))
+
+seir_seasonality <- odin2::odin({
+  N <- S + E + I + R
+  deriv(S) <- b - beta_t * S * I / N - mu * S
+  deriv(E) <- beta_t * S * I / N - sigma * E - mu * E
+  deriv(I) <- sigma * E - gamma * I - mu * I
+  deriv(R) <- gamma * I - mu * R
+  deriv(CInc) <- sigma * E
+
+  # seasonality forcing
+  beta_0 <- parameter(0.4)
+  beta_1 <- parameter(0)
+  omega <- parameter(2*3.14/52) # use week as time unit by default
+  sigma <- parameter(0.2)
+  beta_t <- beta_0*(1 + beta_1*cos(omega*time))
+
+  # initialize starting population
+  init_S <- parameter(9500)
+  init_I <- parameter(500)
+  init_E <- parameter(500)
+  gamma <- parameter(0.05)
+  mu <- parameter(0.05)
+  b <- parameter(2000)
+
+  initial(S) <- init_S
+  initial(E) <- init_E
+  initial(I) <- init_I
+  initial(R) <- 0
+  initial(CInc) <- 0
+
+})
+
+
+run_mod <- function(mod, pars, duration=100, timestep=1){
+  # --- initialize simulation time ----
+  times <- seq(0, duration, timestep)
+
+  sys <- dust_system_create(mod, pars)
+  dust_system_set_state_initial(sys)
+  out <- dust_system_simulate(sys, times)
+  out <- dust_unpack_state(sys, out)
+
+  out <- out %>%
+    as.data.frame() %>%
+    mutate(
+      t = times
+    )
+
+  out$Inc <- c(1, diff(out$CInc))
+  out
+}
 
 mll_seir <- function(beta_0, beta_1,omega,sigma,gamma,mu) {
   # Make sure that parameters are positive
@@ -888,7 +541,7 @@ mll_seir <- function(beta_0, beta_1,omega,sigma,gamma,mu) {
     sigma = sigma,
     gamma = gamma,
     mu = mu,
-    init_S = 15000,
+    init_S = 28000,
     init_E = 1,
     init_I = 1
   )
@@ -904,12 +557,12 @@ mll_seir <- function(beta_0, beta_1,omega,sigma,gamma,mu) {
   - sum(dnorm(x = log(ch1_adm_2123$n), mean = log(pred) + log(p), sd = sigma2))
 }
 
-starting_param_val <- list(beta_0 = 0.9,
-                           beta_1 = 1,
-                           sigma = .8,
-                           omega = 0.8,
-                           gamma = 12/52,
-                           mu = 25/(80*52))
+starting_param_val <- list(beta_0 = .9,
+                           beta_1 = 1.6,
+                           sigma = .1,
+                           omega = .2,
+                           gamma = 4/52,
+                           mu = 1/(80*52))
 
 estimates <- mle2(minuslogl = mll_seir, start = lapply(starting_param_val, log), method = "Nelder-Mead")
 params <- exp(coef(estimates))
@@ -934,23 +587,138 @@ run_mod(seir_seasonality,
   geom_line()+
   geom_point(aes(y=n))
 
+parms <- list(
+  beta_0 = 0.5,
+  beta_1 = .5,
+  sigma = 0.5,
+  omega = 2*pi/52*2,
+  gamma = 1/52,
+  mu = 1/52,
+  init_S = 13000,
+  init_E = 1,
+  init_I = 1,
+  b = 100
+)
 
 run_mod(seir_seasonality,
-        pars = list(
-          beta_0 = 0.9,
-          beta_1 = 1,
-          sigma = .8,
-          omega = 0.8,
-          gamma = 12/52,
-          mu = 25/(80*52),
-          init_S = 15000,
-          init_E = 1,
-          init_I = 1
-        ),
-        duration=nrow(ch1_adm_2123-1), timestep=1)%>%
+        pars = parms,
+        duration=nrow(ch1_adm_time_series-1), timestep=1) %>%
   filter(t != 0) %>%
-  cbind(ch1_adm_2123) %>%
-  ggplot(aes(x = adm_week,y = Inc))+
-  geom_line()+
-  geom_point(aes(y=n))
+  cbind(ch1_adm_time_series) %>%
+  mutate(N = S+E+I+R,
+         s_pro = S/N,
+         beta = parms$beta_0*(1 + parms$beta_1*cos(parms$omega*t))) %>%
+  ggplot(aes(x = adm_week))+
+  geom_line(aes(y = Inc))+
+  geom_line(aes(y = s_pro*4000),color = "blue")+
+  geom_line(aes(y = beta*6000),linetype = "dashed")+
+  geom_point(aes(y=n))+
+  scale_x_datetime(breaks = "1 year",date_labels = "%Y" )
 
+
+hfmd_1224 <- df1 %>%
+  group_by(adm_week) %>%
+  count() %>%
+  ungroup() %>%
+  mutate(time = 1:nrow(.))
+
+model$df %>%
+  mutate(time2 = sprintf("%04d-W%02d-1", year, week),
+         time2 = ISOweek2date(time2)) %>%
+  filter(year(time2) >= 2023) %>%
+  pull(fit) %>% mean()
+
+## term time
+
+sir_term <- odin2::odin({
+  N <- S + I + R
+  deriv(S) <- b*N - (beta_t*(I/N) + b)*S
+  deriv(I) <-beta_t*(I/N)*S - (b + gamma)*I
+  deriv(R) <- gamma*I - R*b
+
+  # seasonality forcing
+  beta_0 <- parameter(0.4)
+  beta_1 <- parameter(0)
+
+  school_open <- parameter()
+  school_time <- parameter()
+  school_data_dim <- parameter()
+  dim(school_time) <- school_data_dim
+  dim(school_open) <- school_data_dim
+
+  term <- interpolate(school_time, school_open, "constant")
+  beta_t <- beta_0*(1 + beta_1*term)
+
+  # initialize starting population
+  init_S <- parameter(9500)
+  init_I <- parameter(500)
+  gamma <- parameter(0.05)
+  b <- parameter(0.05)
+
+  initial(S) <- init_S
+  initial(I) <- init_I
+  initial(R) <- 0
+
+})
+
+format_schooldays <- function(school_time, school_open){
+  prev <- 0
+  school_days <- list()
+  holidays <- list()
+  sapply(1:length(school_time), \(i){
+    if(school_open[i] == -1 && school_time[i]>0){
+      school_days[[length(school_days) + 1]] <<- list(min = prev, max = school_time[i]-1)
+      prev <<- school_time[i]
+    }else if (school_open[i] == 1 && school_time[i]>0){
+      holidays[[length(holidays) + 1]] <<- list(min = prev, max = school_time[i]-1)
+      prev <<- school_time[i]
+    }
+  })
+
+  # handle cases when the end of school time is not the end of the year
+  if(prev < 365){
+    if(school_open[length(school_open)] == -1){
+      holidays[[length(holidays) + 1]] <- list(min = prev, max = 365)
+    }else{
+      school_days[[length(school_days) + 1]] <- list(min = prev, max = 365)
+    }
+  }
+
+  list(
+    school_days = school_days,
+    holidays = holidays
+  )
+}
+
+c("2014-05-31","2014-08-01","2015-05-31","2015-08-01","2016-05-27",
+  "2016-08-15","2017-05-31","2017-08-14","2018-05-31","2018-08-20",
+  "2019-05-25","2019-09-05","2020-07-31","2020-09-01","2021-05-31",
+  "2021-09-05","2022-06-30","2022-09-05","2023-05-26","2023-08-21")
+
+hfmd_1224
+
+school_time <- c(0, 7, 100, 116, 200, 252, 300,308,356)
+school_open <- c(-1, 1, -1, 1,   -1,   1,   -1, 1,-1)
+
+# format school data for generating annotation layer
+school_data <- format_schooldays(school_time, school_open)
+
+term_pars <- list(
+  school_time = school_time,
+  school_open = school_open,
+  school_data_dim = length(school_time),
+  beta_0 = 0.5,
+  beta_1 = 0.25,
+  gamma = 1/52,
+  b = 1/(80*52),
+  init_S = 20000,
+  init_I = 1
+)
+
+run_mod(sir_term, term_pars, duration = nrow(hfmd_1224-1), timestep = 1) %>%
+  filter(t != 0) %>%
+  cbind(hfmd_1224) %>%
+  ggplot(aes(x = adm_week)) +
+  geom_line(aes(y = I), color = "cornflowerblue") +
+  # get_annotate_layers(school_data$holiday, alpha = 0.3)+
+  geom_point(aes(y = n))

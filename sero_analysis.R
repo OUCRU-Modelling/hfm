@@ -317,3 +317,99 @@ constrained_age_profiles_cohort2 %>%
                      labels = scales::label_percent())+
   labs(x = "Age (years)")+
   theme_bw()
+
+
+### attack rate matrix
+
+
+age_pro5 <- age_profile_constrained_cohort2(hfmd,age_values = expected_age_cm$age)
+
+age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 512),
+                                            ci = .95, n = 100) {
+  dpy <- 365 # number of days per year
+
+  mean_collection_times <- data |>
+    group_by(collection) |>
+    summarise(mean_col_date = mean(col_date2)) |>
+    with(setNames(mean_col_date, collection))
+
+  cohorts <- cumsum(c(0, diff(mean_collection_times))) |>
+    divide_by(dpy * mean(diff(age_values))) |>
+    round() |>
+    map(shift_right, age_values)
+
+  age_time <- map2(mean_collection_times, cohorts,
+                   ~ tibble(collection_time = .x, cohort = .y))
+
+  age_time_inv <- age_time |>
+    map(~ cbind(.x, age = age_values)) |>
+    bind_rows() |>
+    na.exclude()
+
+  data |>
+    # Step 1:
+    group_by(collection) |>
+    group_modify(~ .x |>
+                   age_profile(age_values, ci) |>
+                   mutate(across(c(fit, lwr, upr), ~ map(.x, ~ rbinom(n, 1, .x))))) |>
+    group_split() |>
+    map2(age_time, bind_cols) |>
+    bind_rows() |>
+    unnest(c(fit, lwr, upr)) |>
+    pivot_longer(c(fit, lwr, upr), names_to = "line", values_to = "seropositvty") |>
+    # Step 2a:
+    filter(cohort < max(age) - diff(range(mean_collection_times)) / dpy) |>
+    group_by(cohort, line) |>
+    group_modify(~ .x %>%
+                   scam(seropositvty ~ s(collection_time, bs = "mpi"), binomial, .) |>
+                   predict2(list(collection_time = seq(19348.53,19700.28,le=26))) %>%
+                   tibble(collection_time = seq(19348.53,19700.28,le=26),
+                          seroprevalence  = .)) |>
+    ungroup() |>
+    # Step 2b:
+    # left_join(age_time_inv, c("cohort", "collection_time")) |>
+    # pivot_wider(names_from = line,values_from = seroprevalence) %>%
+    # ggplot(aes(x = cohort,y = fit))+
+    # geom_line()+
+    # geom_ribbon(aes(x = cohort,y = fit,ymin = lwr,ymax = upr),fill = "blue",alpha = .5)+
+    # facet_wrap(~collection_time)
+    group_by(collection_time, line) |>
+    group_modify(~ .x |>
+                   mutate(across(seroprevalence, ~ gam(.x ~ s(cohort), betar) |>
+                                   predict2()))) |>  ### modified
+    ungroup() |>
+    pivot_wider(names_from = line, values_from = seroprevalence) |>
+    group_by(collection_time) |>
+    group_split()
+}
+
+
+
+outttt <- age_profile_constrained_cohort2(hfmd)
+
+outttt %>%
+  bind_rows() %>%
+  ggplot(aes(x = cohort,y = fit))+
+  geom_line()+
+  geom_ribbon(aes(x = cohort,y = fit,ymin = lwr,ymax = upr),fill = "blue",alpha = .5)+
+  facet_wrap(~collection_time)
+
+map2(head(outttt, -1),
+     outttt[-1],
+     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
+       mutate(attack = (fit.y - fit.x) / (1 - fit.x),
+              date = as.Date(collection_time.y))) %>%
+  bind_rows() %>%
+  ggplot() +
+  geom_raster(aes(x=date, y=cohort,fill = attack),interpolate = TRUE)+
+  scale_fill_paletteer_c("grDevices::Inferno")+
+  theme_minimal()+
+  scale_y_reverse(name = "Age (years)",lim= rev(c(0,14)),breaks = seq(0,14))+
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b %Y")
+
+library(paletteer)
+
+
+
+
