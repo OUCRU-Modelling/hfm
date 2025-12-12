@@ -23,6 +23,7 @@ book:
     - tsir_r0.qmd
     - model.qmd
     - sero.qmd
+    - rf_ms.qmd
 
 format:
   html:
