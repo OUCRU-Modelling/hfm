@@ -636,37 +636,34 @@ N_ad <- census2019 |>
 
 ## probability of CH1 admission
 expected_catchment_CH1 <- left_join(ch1_outpatient,
-                                    N_ad,
-                                    by = join_by(district,age_gr == age)) %>% 
+          N_ad,
+          by = join_by(district,age_gr == age)) %>% 
   na.omit(n.y) |> 
   mutate(p_hos = n.x/n.y) %>%  
   arrange(age_gr) %>% 
   group_by(age_gr) %>% 
   mutate(weight = p_hos/sum(p_hos),
          expected_cm = n.y*weight) %>% 
-  ungroup() 
+  ungroup() |> 
+  group_by(period,age_gr) |> 
+  summarise(e_admission = sum(expected_cm),.groups = "drop")  
 
 ## age profile of expected CH1 catchment
-expected_age_cm <- expected_catchment_CH1  %>% 
-  group_by(age_gr) %>% 
-  summarise(e_admission = sum(expected_cm)) %>%
-  gam(e_admission~s(age_gr),method = "REML",data = .) %>% 
-  predict(list(age_gr = seq(0,15,le = 512)),type="response",se.fit = TRUE) %>%
-  as.tibble() %>% 
-  mutate(age = seq(0,15,le = 512),
-         lwr = fit - qt(0.95,nrow(.))*se.fit,
-         upr = fit + qt(0.95,nrow(.))*se.fit) %>% 
-  select(-se.fit)
+expected_age_cm <- expected_catchment_CH1 |> 
+  group_by(period) |> 
+  group_modify(~ gam(e_admission~s(age_gr),method = "REML",data = .) %>% 
+                 predict(list(age_gr = seq(0,15,le = 512)),type="response") %>%
+                 as.tibble() %>% 
+                 mutate(age = seq(0,15,le = 512)))
 
-expected_age_cm %>% 
-  ggplot(aes(x = age,y = fit))+
+expected_age_cm |> 
+  ggplot(aes(x = age,y = value))+
   geom_line()+
-  geom_ribbon(aes(ymin = lwr,ymax=upr),fill = "blue",alpha = .3)+
+  # geom_ribbon(aes(ymin = lwr,ymax=upr),fill = "blue",alpha = .3)+
   geom_point(aes(x = age_gr, y = e_admission),
-             data = expected_catchment_CH1  %>% 
-               group_by(age_gr) %>% 
-               summarise(e_admission = sum(expected_cm)))+
-  theme_minimal()+
+             data = expected_catchment_CH1)+
+  theme_bw()+
+  facet_wrap(~period)+
   labs(y = "Expected admission",x = "Age (years)")
 
 ```
@@ -821,18 +818,23 @@ for (i in 1:3){
 
 
 expected_incidence <- map2(head(outttt, -15),
-     tail(outttt,-15),
-     ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
-       mutate(attack = (fit.y - fit.x) / (1 - fit.x),
-              date = as.Date(collection_time.y))) |> 
+                           tail(outttt,-15),
+                           ~ left_join(na.exclude(.x), na.exclude(.y), "cohort")|>
+                             mutate(attack = (fit.y - fit.x) / (1 - fit.x),
+                                    date = as.Date(collection_time.y))) |> 
   bind_rows() |> 
   filter(date %in% as.Date(c("2023-04-11","2023-08-13","2023-12-31"))) |> 
-  group_by(date) |> 
+  mutate(period = case_when(
+    date <= as.Date("2023-04-30") ~ "12/2022 - 4/2023",
+    date > as.Date("2023-04-30") & date <= as.Date("2023-08-31") ~ "4/2023 - 8/2023",
+    date > as.Date("2023-08-31") ~ "8/2023 - 12/2023"
+  )) |> 
+  group_by(period) |> 
   group_split() |> 
-  map(~ left_join(.x,expected_age_cm, by = join_by(cohort == age))) %>% 
+  map(~ left_join(.x,expected_age_cm, by = join_by(cohort == age,period))) %>% 
   bind_rows(.id = "id") |> 
   mutate(sp_gap = fit.y-fit.x,
-         exp_inc = sp_gap*fit)
+         exp_inc = sp_gap*value)
 
 exp_in_ch1 <- expected_incidence |> 
   ggplot()+
@@ -1182,12 +1184,8 @@ recontructed_df |>
             .groups = "drop") |> 
   ggplot(aes(x = age, y = ev_a71_cases))+
   geom_col(alpha = 0.3)+
-  geom_line(data = expected_incidence|> 
-              mutate(period = case_when(
-                id == 1 ~ "12/2022 - 4/2023",
-                id == 2 ~ "4/2023 - 8/2023",
-                id == 3 ~ "8/2023 - 12/2023"
-              )),aes(x = cohort,y=exp_inc))+
+  geom_line(data = expected_incidence,
+            aes(x = cohort,y=exp_inc))+
   scale_x_continuous(limits = c(0,15))+
   facet_wrap(~period)+
   labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
@@ -1253,7 +1251,10 @@ df_cases_ch1_23 |>
   mutate(age3 = ceiling(age1)) |> 
   group_by(age3,district2) |> 
   count() |> 
-  left_join(ch1_outpatient,by = join_by(district2 == district,age3 == age_gr)) |> 
+  left_join(ch1_outpatient |> 
+              group_by(district,age_gr) |> 
+              summarise(n = sum(n)),
+            by = join_by(district2 == district,age3 == age_gr)) |> 
   ungroup() |> 
   set_colnames(c("age","district","hfmd_cases","outpatient")) |> 
   ggplot(aes(x = age))+
