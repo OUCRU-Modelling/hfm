@@ -88,9 +88,14 @@ CH1_out_cleaned <- rbind(CH1_outpatient_hcm_23a,CH1_outpatient_hcm_23b) %>%
     age_gr = cut(age,
                  breaks = seq(0,17),
                  right = FALSE,
-                 labels = seq(0,16)) %>% as.character() %>% as.numeric()
+                 labels = seq(0,16)) %>% as.character() %>% as.numeric(),
+    period = case_when(
+      adm <= as.Date("2023-04-30") ~ "12/2022 - 4/2023",
+      adm > as.Date("2023-04-30") & adm <= as.Date("2023-08-31") ~ "4/2023 - 8/2023",
+      adm > as.Date("2023-08-31") ~ "8/2023 - 12/2023"
+    )
   ) %>%
-  group_by(district,age_gr) %>%
+  group_by(district,age_gr,period) %>%
   count() %>%
   ungroup()
 
