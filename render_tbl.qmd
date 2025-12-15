@@ -1,4 +1,3 @@
-
 ```{r}
 library(readxl)
 library(tidyverse)
@@ -17,79 +16,108 @@ library(sf)
 library(stringi)
 invisible(Sys.setlocale("LC_TIME", "English"))
 
-df1 <- read_excel("D:/OUCRU/hfmd/data/TCM_full.xlsx",
-                  col_types = c("date", "numeric", "text",
-                                "text", "text", "date", "date", "date",
-                                "text", "text", "text"))
-colnames(df1) <- c("dob", "age", "gender", "commune", "district",
-                   "reported_date", "onset_date","adm_date",
-                   "medi_cen","inout","severity")
-df1$dob <- df1$dob %>% as_date()
-df1$adm_date <- df1$adm_date %>% as_date()
 
-df1$age1 <- interval(df1$dob, df1$adm_date) / years(1)
-df1$adm_week <- as.Date(floor_date(df1$adm_date, "week"))
-df1$district <- df1$district %>% str_replace_all(
-  c( "Quận Gò vấp"  = "Quận Gò Vấp"))
-df1$district <- df1$district %>%
-  str_remove("Quận|Huyện|Thành phố") %>%
-  trimws(which = "both")
+path2data <- paste0("D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/cleaned/")
 
-df23 <- df1 %>% filter(year(adm_date) == 2023) 
+# Name of cleaned HFMD data file
+cases_file <- "hfmd_full.rds"
+
+df_cases <- paste0(path2data, cases_file) |>
+  readRDS()
+
+df23 <- df_cases  |>  filter(year(adm_date) == 2023)
 df23 <- df23[!duplicated(df23), ]
 
-df23 <- df23 %>% 
+df23 <- df23 |>
   mutate(
     wave = case_when(
-      adm_date <= as.Date("2023-09-03") ~ "1st wave",
-      adm_date > as.Date("2023-09-03") ~ "2nd wave"
+      adm_date <= as.Date("2023-09-03") ~ "1st",
+      adm_date > as.Date("2023-09-03") ~ "2nd"
       ),
     severity2 = case_when(
       severity %in% c("1","1a") ~ "1",
       severity %in% c("3","4") ~ "3 or 4",
       severity %in% c("2") ~ "2a",
-      !severity %in% c("1","1a","3","4") ~ severity
-    ) %>% as.factor(),
-    inout2 = case_when(
-      inout == "Điều trị nội trú" ~ "Inpatients",
-      inout == "Điều trị ngoại trú" ~ "Outpatients",
-      !inout %in% c("Điều trị nội trú","Điều trị ngoại trú") ~ "Others"
-    ) %>% factor(levels = c("Inpatients","Outpatients","Others")),
-    gender2 = case_when(
-      gender %in% c("Nam","nam","NAM") ~ "Male",
-      gender %in% c("Nữ","nữ","NỮ") ~ "Female"
-    ) %>% as.factor()
-  ) 
+      is.na(severity) ~ "Undefined",
+      !severity %in% c("1","1a","3","4",NA) ~ severity
+    ) |> as.factor()
+  )
+
+
+library(cluster)
+library(factoextra)
+
+set.seed(123)
+
+df23 <- df23 |>
+  # select(age1,adm_date) |>
+  mutate(time = as.numeric(adm_date)) |>
+  filter(!is.na(age1))
+
+
+kmeans_result_1 <- kmeans(df23[,c("age1","time")], centers = 2, nstart = 25)
+
+df23$wave <- factor(kmeans_result_1$cluster,labels = c("1st","2nd"),levels = c(2,1))
+
+## show the time point that seperate two peaks
+
+time_cut_1st <- df23 |> 
+  filter(wave == "1st") |> 
+  pull(time) |> 
+  max()
+
+time_cut_2nd <- df23 |> 
+  filter(wave == "2nd") |> 
+  pull(time) |> 
+  min()
+
+time_cut <- mean(time_cut_1st,time_cut_2nd) |> as.numeric()
+time_cut
 
 library(gtsummary)
 
 
-# -----------------------------
-# 1. Age table
-# -----------------------------
-tab_age <-
-  df23 %>% 
-  tbl_summary(by = wave,
-              label = list(age ~ "Age (Years)",
-                           gender2 ~ "Gender"),
-              include = c(age,gender2)) %>%
-  remove_row_type(type = "missing") 
+### table1
 
-# -----------------------------
-# 2. Severity table
-# -----------------------------
+tab_age <-
+  df23 |>
+  tbl_summary(by = wave,
+              label = list(age1 ~ "Age (Years)",
+                           gender ~ "Gender"),
+              digits = list(all_continuous() ~ c(2,2),
+                            all_categorical() ~ c(0,2)),
+              include = c(age1,gender)) |>
+  remove_row_type(type = "missing") |>
+  add_p()
+
+
+calculate_prop_test <- function(data, variable, by, ...) {
+  # subset to non-missing
+  data <- tidyr::drop_na(data, dplyr::all_of(c(variable, by)))
+
+  prop.trend.test(
+    x = table(data[[variable]], data[[by]])[2, ], # get the second row (the positive row)
+    n = table(data[[by]])
+  ) |>
+    broom::tidy()
+}
+
 tab_sev <-
-  df23 %>% 
-  select(wave, severity2) %>% 
-  mutate(rn = row_number()) %>% 
-  tidyr::spread(severity2, severity2) %>% 
-  select(-`<NA>`) %>% 
-  mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) %>% 
-  select(-rn) %>% 
-  tbl_summary(by = wave) %>% 
-  add_p() %>%
+  df23 |> 
+  filter(severity2 != "Undefined") |> 
+  select(wave, severity2)  |> 
+  mutate(rn = row_number()) |> 
+  tidyr::spread(severity2, severity2) |> 
+  mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) |>
+  select(-rn) |>
+  tbl_summary(by = wave,
+              statistic = list(
+                all_categorical() ~ "{n} / {N} ({p}%)"
+              ),
+              digits = all_categorical() ~ c(0,0,2)) |>
+  add_p() |>
   modify_table_body(
-    ~ .x %>%
+    ~ .x |>
       mutate(row_type = "level",
              variable = "wave") %>%
       {bind_rows(
@@ -98,20 +126,22 @@ tab_sev <-
       )}
   )
 
-# -----------------------------
-# 3. In/out table
-# -----------------------------
 tab_inout <-
-  df23 %>% 
-  select(wave, inout2) %>% 
-  mutate(rn = row_number()) %>% 
-  tidyr::spread(inout2, inout2) %>% 
-  mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) %>% 
-  select(-rn) %>% 
-  tbl_summary(by = wave) %>% 
-  add_p() %>%
+  df23 |>
+  filter(inout %in% c("Inpatient","Outpatient")) |> 
+  select(wave, inout) |>
+  mutate(rn = row_number()) |>
+  tidyr::spread(inout, inout) |>
+  mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) |>
+  select(-rn) |>
+  tbl_summary(by = wave,
+              statistic = list(
+                all_categorical() ~ "{n} / {N} ({p}%)"
+              ),
+              digits = all_categorical() ~ c(0,0,2)) |>
+  add_p() |>
   modify_table_body(
-    ~ .x %>%
+    ~ .x |>
       mutate(row_type = "level",
              variable = "wave") %>%
       {bind_rows(
@@ -120,11 +150,7 @@ tab_inout <-
       )}
   )
 
-# -----------------------------
-# 4. Combine all three tables
-# -----------------------------
-final_table <-
-  tbl_stack(list(tab_age, tab_sev, tab_inout))
+final_table <- tbl_stack(list(tab_age, tab_sev, tab_inout),quiet = TRUE) 
 
 final_table
 ```

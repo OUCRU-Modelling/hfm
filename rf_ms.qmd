@@ -437,22 +437,22 @@ fit_gau_bs <- gam(n ~ s(age,bs = "bs") +
 
 new_data$pred_gau_bs <- predict(fit_gau_bs, newdata = new_data, type = "response")
 
-ggplot(new_data) +
+f1b_new <- ggplot(new_data) +
   geom_raster(aes(x = as.Date(time), y = age, fill = pred_gau_bs),interpolate = TRUE) +
   geom_line(
-    data = cohort_lines,
+    data = cohort_lines(),
     aes(x = date, y = age, group = cohort,color = trend),
     linewidth = 0.2,
     alpha = 0.2
   )+
-  labs(x = "Week", y = "Age", fill = "Smoothed cases")+
   scale_x_date(date_breaks = "1 month", date_labels = "%b") +
   scale_fill_viridis_c(option = "inferno", n.breaks = 10) +
   theme_minimal() +
   labs(
     x = "Admission date",
     y = "Age (years)",
-    fill = "Number of admissions"
+    fill = "Number of admissions",
+    tag = "B"
   )+
   theme_minimal()+
   scale_y_reverse(name = "Age (years)",lim= rev(c(-0.5,6.5)),breaks = seq(-1,7))+
@@ -468,6 +468,7 @@ ggplot(new_data) +
   guides(fill=guide_colourbar(barwidth=25),
          color = "none")
 
+f1b_new
 ```
 
 ```{r}
@@ -515,6 +516,71 @@ ggplot(new_data, aes(x = as.Date(time), y = age, z = pred_gau_bs)) +
          color = "none")
 ```
 
+In this plot, I fitted log normal distribution to age distribution of 2 wave, the histograms are the raw data and the lines are the fitted lognormal distribution
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+
+
+library(fitdistrplus)
+fit1 <- fitdist(df23 %>% filter(age1 >0 & wave == "1st") %>% pull(age1),"lnorm")
+fit2 <- fitdist(df23 %>% filter(age1 >0 & wave == "2nd") %>% pull(age1),"lnorm")
+
+x_vals <- seq(0, 7, le = 512)
+
+
+fit_1p <- data.frame(wave = "1st",age = x_vals, density = dlnorm(x_vals,
+                                                                 meanlog = fit1$estimate[1],
+                                                                 sdlog = fit1$estimate[2]))
+
+fit_2p <- data.frame(wave = "2nd",age = x_vals, density = dlnorm(x_vals,
+                                                                 meanlog = fit2$estimate[1],
+                                                                 sdlog = fit2$estimate[2]))
+
+f1c_new <- ggplot(data=df23) +
+  geom_histogram(aes(x=age1, group=wave),
+                 color = "white",
+                 fill = "black",
+                 alpha = .3) +
+  geom_line(data = rbind(fit_1p,fit_2p),aes(x = age,y = density*5000))+
+  facet_wrap(~wave)+
+  scale_x_reverse(limit = c(6,0),
+                  breaks = seq(0,6,by=1),
+                  minor_breaks = NULL)+
+  scale_y_continuous(minor_breaks = NULL,
+                     name = "Cases count",
+                     sec.axis = sec_axis( trans=~./5000, name="Density"))+
+  coord_flip()+
+  theme_bw()+
+  labs(x = "Age",
+       y = "Density",
+       tag = "C")+
+  theme(axis.title.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        # legend.position = "top",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        strip.text = element_text(size = 18),
+        legend.title = element_text(size = 18))
+
+
+((f1a|plot_spacer())/
+    (f1b_new|wrap_elements(full = f1c_new  + 
+                             theme(plot.margin = margin(-40,0,67,0)))))+
+  plot_layout(widths = c(1,1))
+
+ggsave("./fig_manuscript/fig1_new2.svg",
+       width = 15,height = 9,dpi = 500)
+
+```
+
+
+
 ## Figure 2
 
 ```{r}
@@ -535,7 +601,7 @@ age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 5
       mutate(lwr = link_inv(fit + qt(    p, df) * se.fit),
              upr = link_inv(fit + qt(1 - p, df) * se.fit),
              fit = link_inv(fit)) |>
-      select(- se.fit)
+      dplyr::select(- se.fit)
   }
   
   
@@ -968,7 +1034,7 @@ recon_epicurve_dt <- modelll %>%
          upr = link_inv(fit + 1.96*se.fit),
          fit = link_inv(fit)
          ) %>%
-  select(-se.fit) %>%
+  dplyr::select(-se.fit) %>%
   left_join(time_f,., by = join_by(adm_week == time)) %>%
   mutate(e_ev71 = fit*n,
          e_ev71_lwr = lwr*n,
@@ -1019,7 +1085,7 @@ per_serotype <- df_viro %>%
         axis.ticks.x = element_blank(),
         legend.position = "bottom",
         plot.tag = element_text(face = "bold", size = 18),
-        axis.text.x = element_text(size = 18),
+        axis.text.x = element_blank(),
         axis.text.y = element_text(size = 18),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 18))
@@ -1069,11 +1135,11 @@ fig3 <- (recon_epicurve+labs(tag="A"))/
   (per_serotype+labs(tag="B"))/
   (ev_a71_age_time_p+labs(tag="C"))
 
-ggsave("./fig_manuscript/fig3_new2.svg", plot = fig3,
+ggsave("./fig_manuscript/fig3_new.svg", plot = fig3,
        width = 13,height = 12,dpi = 500)
 ```
 
-![](./fig_manuscript/fig3_new2.svg)
+![](./fig_manuscript/fig3_new.svg)
 
 ## Try to model virology as a function of age and time
 
@@ -1105,7 +1171,7 @@ cases_fit <- fit_gau_bs_ch1 |>
       # c_upr = fit_gau_bs_ch1$family$linkinv(fit + 1.96 * se.fit),
       c_fit = fit_gau_bs_ch1$family$linkinv(fit)
            ) |> 
-    select(-c(se.fit,fit))
+    dplyr::select(-c(se.fit,fit))
     
 recontructed_df <- model_viro_age_time |>
   predict(newdata = df_cases_count_ch1_23 |> rename(age_adm = age), se.fit = TRUE) |>
@@ -1114,7 +1180,7 @@ recontructed_df <- model_viro_age_time |>
   mutate(v_lwr = model_viro_age_time$family$linkinv(fit - 1.96 * se.fit),
          v_upr = model_viro_age_time$family$linkinv(fit + 1.96 * se.fit),
          v_fit = model_viro_age_time$family$linkinv(fit)) |>
-  select(-c(se.fit,fit)) |>
+  dplyr::select(-c(se.fit,fit)) |>
   full_join(cases_fit, by = join_by(age, time,n)) |>
   mutate(ev71_c = c_fit*v_fit,
          ev71_u = c_fit*v_upr,
@@ -1131,7 +1197,7 @@ recontructed_cases_count_df <- recontructed_df |>
             ev71_cases_u = sum(ev71_u),
             ev71_cases_l = sum(ev71_l)) 
 
-recontructed_cases_count_df |> 
+f3a <- recontructed_cases_count_df |> 
   ggplot(aes(x = week))+
   geom_line(aes(y = cases),linetype = "dashed")+
   # geom_ribbon(aes(ymin = cases_u,ymax = cases_l),fill = "blue",alpha = .3)+
@@ -1148,7 +1214,7 @@ recontructed_cases_count_df |>
                date_labels = "%b",
                name = "Collection date",
                limits = c(as.Date("2023-01-01"),as.Date("2023-12-31"))) +
-  labs(x = "Admission day (2023)",y = "Total number of cases") +
+  labs(x = "Admission day (2023)",y = "Total number of cases",tag = "A") +
   theme_minimal()+
   theme(axis.title.y = element_text(size = 18),
         axis.title.x = element_text(size = 18),
@@ -1161,6 +1227,8 @@ recontructed_cases_count_df |>
         legend.title = element_text(size = 18))+
   guides(fill=guide_colourbar(barwidth=20),
          color = "none")
+
+f3a
 ```
 
 And compare with the expected infectious estimated from serological data
@@ -1170,7 +1238,7 @@ And compare with the expected infectious estimated from serological data
 #| fig-height: 8
 #| out-width: "100%"
 
-recontructed_df |> 
+compare_ev71 <- recontructed_df |> 
   mutate(day = as.Date(time),
          week = as.Date(floor_date(day, "week")),
          period = case_when(
@@ -1191,7 +1259,7 @@ recontructed_df |>
   labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
   theme_bw()+
   theme(
-    axis.text.x = element_text(size = 15),
+    axis.text.x = element_blank(),
     axis.text.y = element_text(size = 18),
     legend.text = element_text(size = 18),
     plot.tag = element_text(face = "bold", size = 18),
@@ -1200,7 +1268,24 @@ recontructed_df |>
     legend.title = element_text(size = 18),
     strip.text = element_text(size = 18),
     panel.grid.minor.x = element_blank())
+
+
+compare_ev71
 ```
+
+Combined all analysis in this section
+
+```{r}
+fig3_new <- (compare_ev71+labs(tag="A"))/
+  (f3a+labs(tag="B"))/
+  (per_serotype+labs(tag="C"))/
+  (ev_a71_age_time_p+labs(tag="D"))
+
+ggsave("./fig_manuscript/fig3_new2.svg", plot = fig3_new,
+       width = 13,height = 15,dpi = 500)
+```
+
+![](./fig_manuscript/fig3_new2.svg)
 
 
 ## Supplementary plot
