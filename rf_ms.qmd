@@ -771,35 +771,57 @@ ts_ch1 <- df_cases_ch1_23 %>%
          color = "none")
 
 ## fig 2D
-hm_ch1 <- df_cases_ch1_23 %>%
-  ggplot(aes(x = adm_week, y = age1)) +
-  stat_density_2d(
-    aes(fill = after_stat(count)),
-    geom = "raster",
-    contour = FALSE,
-    interpolate = TRUE
-  ) +
+
+df_cases_count_ch1_23 <- df_cases_ch1_23 |> 
+  group_by(age,time) |> 
+  count() |> 
+  ungroup()
+  
+fit_gau_bs_ch1 <- gam(n ~ s(age,bs = "bs") + 
+                    s(time,bs = "bs") + 
+                    ti(age, time, bs = c("bs", "bs")) , data = df_cases_count_ch1_23,
+                  family = gaussian(link = "log"),method = "REML")
+
+age_val <- seq(0,6,le = 365)
+
+collection_date_val <- seq(min(df23$adm_week),
+                           max(df23$adm_week), le = 365)
+
+new_data2 <- expand.grid(age = age_val,
+                        time = as.numeric(collection_date_val))
+
+new_data2$pred_gau_bs_ch1 <- predict(fit_gau_bs_ch1, newdata = new_data2, type = "response")
+
+hm_ch1 <- ggplot(new_data2) +
+  geom_raster(aes(x = as.Date(time), y = age, fill = pred_gau_bs_ch1),interpolate = TRUE) +
   geom_line(
     data = cohort_lines(),
     aes(x = date, y = age, group = cohort,color = trend),
-    linewidth = 0.25,
-    alpha = 0.3
-  ) +
-  scale_fill_viridis_c(option = "turbo",n.breaks = 10)+
-  scale_x_date(date_breaks = "1 month", date_labels = "%b",
-               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31"))) +
+    linewidth = 0.3,
+    alpha = 0.4
+  )+
+  scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+  scale_fill_viridis_c(option = "turbo", n.breaks = 10) +
+  theme_minimal() +
+  labs(
+    x = "Admission date",
+    y = "Age (years)",
+    fill = "Number of\nadmissions",
+    tag = "D"
+  )+
   theme_minimal()+
-  scale_y_reverse(name = "Age (years)",lim= rev(c(0,6)),breaks = seq(0,6))+
-  labs(fill = "Number of\nadmissions",tag = "B")+
+  scale_y_reverse(name = "Age (years)",lim= rev(c(-0.5,6.5)),breaks = seq(-1,7))+
   theme(axis.title.y = element_text(size = 18),
         axis.title.x = element_blank(),
         axis.ticks.x = element_blank(),
+        legend.position = "bottom",
         plot.tag = element_text(face = "bold", size = 18),
         axis.text.x = element_blank(),
         axis.text.y = element_text(size = 18),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 18))+
-  guides(color = "none")
+  guides(fill=guide_colourbar(barwidth=25),
+         color = "none")
 
 ## calculate atk rate as a function of time
 df_sero <- df_sero |>
@@ -858,6 +880,10 @@ age_profile_sp_cm <- outttt |>
   ggplot(aes(x = cohort,y = fit))+
   geom_line()+
   geom_ribbon(aes(ymin = lwr,ymax = upr),fill = "blue", alpha = .3)+
+  geom_point(data = df_sero |> 
+               mutate(col_lab = factor(col_time,levels = c("Dec 2022","Apr 2023",
+                                                          "Aug 2023","Dec 2023"))),
+             aes(x = age, y = pos),shape = "|")+
   facet_wrap(~ col_lab,nrow = 1)+
   labs(y = "Seroprevalence (%)",x = "Age (years)",tag="B")+
   scale_y_continuous(labels = scales::label_percent(scale = 100),limits = c(0,1))+
@@ -1152,15 +1178,15 @@ In this section, I used the GAM fitted as a function of age and time of CH1 repo
 #| out-width: "100%"
 #| fig-cap: The bar show the raw data of reported cases admitted to CH1 at each date. The dased line is the fitted GAM model. The solid line is the reconstructed EV-A71 cases. 
 
-df_cases_count_ch1_23 <- df_cases_ch1_23 |> 
-  group_by(age,time) |> 
-  count() |> 
-  ungroup()
-  
-fit_gau_bs_ch1 <- gam(n ~ s(age,bs = "bs") + 
-                    s(time,bs = "bs") + 
-                    ti(age, time, bs = c("bs", "bs")) , data = df_cases_count_ch1_23,
-                  family = gaussian(link = "log"),method = "REML")
+# df_cases_count_ch1_23 <- df_cases_ch1_23 |> 
+#   group_by(age,time) |> 
+#   count() |> 
+#   ungroup()
+#   
+# fit_gau_bs_ch1 <- gam(n ~ s(age,bs = "bs") + 
+#                     s(time,bs = "bs") + 
+#                     ti(age, time, bs = c("bs", "bs")) , data = df_cases_count_ch1_23,
+#                   family = gaussian(link = "log"),method = "REML")
 
 cases_fit <- fit_gau_bs_ch1 |>  
     predict(newdata = df_cases_count_ch1_23, se.fit = TRUE) |> 
@@ -1272,6 +1298,7 @@ compare_ev71 <- recontructed_df |>
 
 compare_ev71
 ```
+
 
 Combined all analysis in this section
 
