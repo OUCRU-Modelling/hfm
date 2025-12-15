@@ -442,16 +442,16 @@ f1b_new <- ggplot(new_data) +
   geom_line(
     data = cohort_lines(),
     aes(x = date, y = age, group = cohort,color = trend),
-    linewidth = 0.2,
-    alpha = 0.2
+    linewidth = 0.3,
+    alpha = 0.4
   )+
   scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-  scale_fill_viridis_c(option = "inferno", n.breaks = 10) +
+  scale_fill_viridis_c(option = "turbo", n.breaks = 10) +
   theme_minimal() +
   labs(
     x = "Admission date",
     y = "Age (years)",
-    fill = "Number of admissions",
+    fill = "Number of\nadmissions",
     tag = "B"
   )+
   theme_minimal()+
@@ -492,7 +492,7 @@ plot_ly(new_data, x = ~sort(unique(as.Date(time))),
 ggplot(new_data, aes(x = as.Date(time), y = age, z = pred_gau_bs)) +
   geom_raster(aes(fill = pred_gau_bs), interpolate = TRUE) +
   geom_contour(color = "white", alpha = 0.7) +
-  scale_fill_viridis_c(option = "inferno",n.breaks = 10) +  
+  scale_fill_viridis_c(option = "turbo",n.breaks = 10) +  
   labs(x = "Week", y = "Age", fill = "Smoothed cases")+
   scale_x_date(date_breaks = "1 month", date_labels = "%b") +
   labs(
@@ -785,7 +785,7 @@ hm_ch1 <- df_cases_ch1_23 %>%
     linewidth = 0.25,
     alpha = 0.3
   ) +
-  scale_fill_viridis_c(option = "inferno",n.breaks = 10)+
+  scale_fill_viridis_c(option = "turbo",n.breaks = 10)+
   scale_x_date(date_breaks = "1 month", date_labels = "%b",
                limits = c(as.Date("2023-01-01"),as.Date("2023-12-31"))) +
   theme_minimal()+
@@ -830,7 +830,7 @@ atk_sero <- map2(head(outttt, -15),
     linewidth = 0.25,
     alpha = 0.3
   )+
-  scale_fill_viridis_c(option = "inferno",name = "Attack rate")+
+  scale_fill_viridis_c(option = "turbo",name = "Attack rate")+
   theme_void()+
   scale_y_reverse(name = "Age (years)",lim= rev(c(0,14)),breaks = seq(0,14,by=2))+
   scale_x_date(date_breaks = "1 month",
@@ -940,7 +940,7 @@ fig2 <- exp_in_ch1/
   (atk_sero+labs(tag="E"))
 
 ggsave("./fig_manuscript/fig2_new.svg",plot = fig2, 
-       width = 13,height = 20,dpi = 500)
+       width = 15,height = 20,dpi = 500)
 ```
 
 ![](./fig_manuscript/fig2_new.svg)
@@ -1107,7 +1107,7 @@ new_data2$pred <- predict(model_viro_age_time, newdata = new_data2, type = "resp
 ev_a71_age_time_p <- ggplot() +
   geom_raster(data = new_data2, 
               aes(x = as.Date(time), y = age_adm, fill = pred), interpolate = TRUE) +
-  scale_fill_viridis_c(option = "inferno",n.breaks = 10) +
+  scale_fill_viridis_c(option = "turbo",n.breaks = 10) +
   geom_line(
     data = cohort_lines(viro = TRUE),
     aes(x = date, y = age, group = cohort,color = trend),
@@ -1221,7 +1221,7 @@ f3a <- recontructed_cases_count_df |>
         axis.ticks.x = element_blank(),
         legend.position = "bottom",
         plot.tag = element_text(face = "bold", size = 18),
-        axis.text.x = element_text(size = 18),
+        axis.text.x = element_blank(),
         axis.text.y = element_text(size = 18),
         legend.text = element_text(size = 15),
         legend.title = element_text(size = 18))+
