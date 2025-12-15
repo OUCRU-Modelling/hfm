@@ -162,6 +162,65 @@ ggplot(aes(x=age1, group=severity2, fill=severity2)) +
   # coord_flip()+
   theme_bw()
 
+## fig 1c
+
+library(fitdistrplus)
+fit1 <- fitdist(df23 %>% filter(age1 >0 & wave == "1st") %>% pull(age1),"lnorm")
+fit2 <- fitdist(df23 %>% filter(age1 >0 & wave == "2nd") %>% pull(age1),"lnorm")
+
+x_vals <- seq(0, 7, le = 512)
+
+
+fit_1p <- data.frame(wave = "1st",age = x_vals, density = dlnorm(x_vals,
+                                                                 meanlog = fit1$estimate[1],
+                                                                 sdlog = fit1$estimate[2]))
+
+fit_2p <- data.frame(wave = "2nd",age = x_vals, density = dlnorm(x_vals,
+                                                                 meanlog = fit2$estimate[1],
+                                                                 sdlog = fit2$estimate[2]))
+
+f1c_new <- ggplot(data=df23) +
+  geom_histogram(aes(x=age1, group=wave),
+                 color = "white",
+                 fill = "black",
+                 alpha = .3) +
+  geom_line(data = rbind(fit_1p,fit_2p),aes(x = age,y = density*5000))+
+  facet_wrap(~wave)+
+  scale_x_reverse(limit = c(6,0),
+                  breaks = seq(0,6,by=1),
+                  minor_breaks = NULL)+
+  scale_y_continuous(minor_breaks = NULL,
+                     name = "Cases count",
+                     sec.axis = sec_axis( trans=~./5000, name="Density"))+
+  coord_flip()+
+  theme_bw()+
+  labs(x = "Age",
+       y = "Density",
+       tag = "C")+
+  theme(axis.title.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        # legend.position = "top",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        strip.text = element_text(size = 18),
+        legend.title = element_text(size = 18))
+
+
+
+
+# ((f1a/f1b_new)|(plot_spacer()/
+#                   wrap_elements(full = f1c_new  +
+#                                   theme(plot.margin = margin(5,5, 5, 5)))))+
+#   plot_layout(widths = c(1,1))
+
+
+((f1a|plot_spacer())/(f1b_new|wrap_elements(full = f1c_new  +
+                                              theme(plot.margin = margin(-40,0,67,0)))))+
+  plot_layout(widths = c(1,1))
+
 
 ## attack rate of sero
 
@@ -220,7 +279,7 @@ hm_ch1 <- df_cases_ch1_23 %>%
     interpolate = TRUE
   ) +
   geom_line(
-    data = cohort_lines,
+    data = cohort_lines(),
     aes(x = date, y = age, group = cohort),
     color = "white",
     linewidth = 0.25,

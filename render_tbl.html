@@ -89,8 +89,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="cell-output cell-output-stderr">
 <pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
 ✔ dplyr     1.1.4     ✔ readr     2.1.5
-✔ forcats   1.0.0     ✔ stringr   1.5.1
-✔ ggplot2   4.0.0     ✔ tibble    3.3.0
+✔ forcats   1.0.1     ✔ stringr   1.5.1
+✔ ggplot2   4.0.1     ✔ tibble    3.3.0
 ✔ lubridate 1.9.4     ✔ tidyr     1.3.1
 ✔ purrr     1.1.0     
 ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
@@ -150,134 +150,165 @@ The following object is masked from 'package:tidyr':
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringi)</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">Sys.setlocale</span>(<span class="st">"LC_TIME"</span>, <span class="st">"English"</span>))</span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>df1 <span class="ot">&lt;-</span> <span class="fu">read_excel</span>(<span class="st">"D:/OUCRU/hfmd/data/TCM_full.xlsx"</span>,</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                  <span class="at">col_types =</span> <span class="fu">c</span>(<span class="st">"date"</span>, <span class="st">"numeric"</span>, <span class="st">"text"</span>,</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>                                <span class="st">"text"</span>, <span class="st">"text"</span>, <span class="st">"date"</span>, <span class="st">"date"</span>, <span class="st">"date"</span>,</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>                                <span class="st">"text"</span>, <span class="st">"text"</span>, <span class="st">"text"</span>))</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(df1) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"dob"</span>, <span class="st">"age"</span>, <span class="st">"gender"</span>, <span class="st">"commune"</span>, <span class="st">"district"</span>,</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"reported_date"</span>, <span class="st">"onset_date"</span>,<span class="st">"adm_date"</span>,</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"medi_cen"</span>,<span class="st">"inout"</span>,<span class="st">"severity"</span>)</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>df1<span class="sc">$</span>dob <span class="ot">&lt;-</span> df1<span class="sc">$</span>dob <span class="sc">%&gt;%</span> <span class="fu">as_date</span>()</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>df1<span class="sc">$</span>adm_date <span class="ot">&lt;-</span> df1<span class="sc">$</span>adm_date <span class="sc">%&gt;%</span> <span class="fu">as_date</span>()</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>df1<span class="sc">$</span>age1 <span class="ot">&lt;-</span> <span class="fu">interval</span>(df1<span class="sc">$</span>dob, df1<span class="sc">$</span>adm_date) <span class="sc">/</span> <span class="fu">years</span>(<span class="dv">1</span>)</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>df1<span class="sc">$</span>adm_week <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(<span class="fu">floor_date</span>(df1<span class="sc">$</span>adm_date, <span class="st">"week"</span>))</span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>df1<span class="sc">$</span>district <span class="ot">&lt;-</span> df1<span class="sc">$</span>district <span class="sc">%&gt;%</span> <span class="fu">str_replace_all</span>(</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>( <span class="st">"Quận Gò vấp"</span>  <span class="ot">=</span> <span class="st">"Quận Gò Vấp"</span>))</span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>df1<span class="sc">$</span>district <span class="ot">&lt;-</span> df1<span class="sc">$</span>district <span class="sc">%&gt;%</span></span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">str_remove</span>(<span class="st">"Quận|Huyện|Thành phố"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">trimws</span>(<span class="at">which =</span> <span class="st">"both"</span>)</span>
-<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df1 <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="fu">year</span>(adm_date) <span class="sc">==</span> <span class="dv">2023</span>) </span>
-<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df23[<span class="sc">!</span><span class="fu">duplicated</span>(df23), ]</span>
-<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df23 <span class="sc">%&gt;%</span> </span>
-<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">wave =</span> <span class="fu">case_when</span>(</span>
-<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>      adm_date <span class="sc">&lt;=</span> <span class="fu">as.Date</span>(<span class="st">"2023-09-03"</span>) <span class="sc">~</span> <span class="st">"1st wave"</span>,</span>
-<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>      adm_date <span class="sc">&gt;</span> <span class="fu">as.Date</span>(<span class="st">"2023-09-03"</span>) <span class="sc">~</span> <span class="st">"2nd wave"</span></span>
-<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a>      ),</span>
-<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">severity2 =</span> <span class="fu">case_when</span>(</span>
-<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>      severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"1"</span>,<span class="st">"1a"</span>) <span class="sc">~</span> <span class="st">"1"</span>,</span>
-<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a>      severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"3"</span>,<span class="st">"4"</span>) <span class="sc">~</span> <span class="st">"3 or 4"</span>,</span>
-<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>      severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"2"</span>) <span class="sc">~</span> <span class="st">"2a"</span>,</span>
-<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a>      <span class="sc">!</span>severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"1"</span>,<span class="st">"1a"</span>,<span class="st">"3"</span>,<span class="st">"4"</span>) <span class="sc">~</span> severity</span>
-<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> <span class="fu">as.factor</span>(),</span>
-<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>    <span class="at">inout2 =</span> <span class="fu">case_when</span>(</span>
-<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a>      inout <span class="sc">==</span> <span class="st">"Điều trị nội trú"</span> <span class="sc">~</span> <span class="st">"Inpatients"</span>,</span>
-<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>      inout <span class="sc">==</span> <span class="st">"Điều trị ngoại trú"</span> <span class="sc">~</span> <span class="st">"Outpatients"</span>,</span>
-<span id="cb13-40"><a href="#cb13-40" aria-hidden="true" tabindex="-1"></a>      <span class="sc">!</span>inout <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Điều trị nội trú"</span>,<span class="st">"Điều trị ngoại trú"</span>) <span class="sc">~</span> <span class="st">"Others"</span></span>
-<span id="cb13-41"><a href="#cb13-41" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> <span class="fu">factor</span>(<span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Inpatients"</span>,<span class="st">"Outpatients"</span>,<span class="st">"Others"</span>)),</span>
-<span id="cb13-42"><a href="#cb13-42" aria-hidden="true" tabindex="-1"></a>    <span class="at">gender2 =</span> <span class="fu">case_when</span>(</span>
-<span id="cb13-43"><a href="#cb13-43" aria-hidden="true" tabindex="-1"></a>      gender <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Nam"</span>,<span class="st">"nam"</span>,<span class="st">"NAM"</span>) <span class="sc">~</span> <span class="st">"Male"</span>,</span>
-<span id="cb13-44"><a href="#cb13-44" aria-hidden="true" tabindex="-1"></a>      gender <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Nữ"</span>,<span class="st">"nữ"</span>,<span class="st">"NỮ"</span>) <span class="sc">~</span> <span class="st">"Female"</span></span>
-<span id="cb13-45"><a href="#cb13-45" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> <span class="fu">as.factor</span>()</span>
-<span id="cb13-46"><a href="#cb13-46" aria-hidden="true" tabindex="-1"></a>  ) </span>
-<span id="cb13-47"><a href="#cb13-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-48"><a href="#cb13-48" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gtsummary)</span>
-<span id="cb13-49"><a href="#cb13-49" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-50"><a href="#cb13-50" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-51"><a href="#cb13-51" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-52"><a href="#cb13-52" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Age table</span></span>
-<span id="cb13-53"><a href="#cb13-53" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-54"><a href="#cb13-54" aria-hidden="true" tabindex="-1"></a>tab_age <span class="ot">&lt;-</span></span>
-<span id="cb13-55"><a href="#cb13-55" aria-hidden="true" tabindex="-1"></a>  df23 <span class="sc">%&gt;%</span> </span>
-<span id="cb13-56"><a href="#cb13-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> wave,</span>
-<span id="cb13-57"><a href="#cb13-57" aria-hidden="true" tabindex="-1"></a>              <span class="at">label =</span> <span class="fu">list</span>(age <span class="sc">~</span> <span class="st">"Age (Years)"</span>,</span>
-<span id="cb13-58"><a href="#cb13-58" aria-hidden="true" tabindex="-1"></a>                           gender2 <span class="sc">~</span> <span class="st">"Gender"</span>),</span>
-<span id="cb13-59"><a href="#cb13-59" aria-hidden="true" tabindex="-1"></a>              <span class="at">include =</span> <span class="fu">c</span>(age,gender2)) <span class="sc">%&gt;%</span></span>
-<span id="cb13-60"><a href="#cb13-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">remove_row_type</span>(<span class="at">type =</span> <span class="st">"missing"</span>) </span>
-<span id="cb13-61"><a href="#cb13-61" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-62"><a href="#cb13-62" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-63"><a href="#cb13-63" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Severity table</span></span>
-<span id="cb13-64"><a href="#cb13-64" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-65"><a href="#cb13-65" aria-hidden="true" tabindex="-1"></a>tab_sev <span class="ot">&lt;-</span></span>
-<span id="cb13-66"><a href="#cb13-66" aria-hidden="true" tabindex="-1"></a>  df23 <span class="sc">%&gt;%</span> </span>
-<span id="cb13-67"><a href="#cb13-67" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(wave, severity2) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-68"><a href="#cb13-68" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">rn =</span> <span class="fu">row_number</span>()) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-69"><a href="#cb13-69" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">spread</span>(severity2, severity2) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-70"><a href="#cb13-70" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="st">`</span><span class="at">&lt;NA&gt;</span><span class="st">`</span>) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-71"><a href="#cb13-71" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="sc">-</span><span class="fu">c</span>(wave, rn), <span class="sc">~</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(.), <span class="dv">0</span>, <span class="dv">1</span>))) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-72"><a href="#cb13-72" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>rn) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-73"><a href="#cb13-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> wave) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-74"><a href="#cb13-74" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_p</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb13-75"><a href="#cb13-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">modify_table_body</span>(</span>
-<span id="cb13-76"><a href="#cb13-76" aria-hidden="true" tabindex="-1"></a>    <span class="sc">~</span> .x <span class="sc">%&gt;%</span></span>
-<span id="cb13-77"><a href="#cb13-77" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">row_type =</span> <span class="st">"level"</span>,</span>
-<span id="cb13-78"><a href="#cb13-78" aria-hidden="true" tabindex="-1"></a>             <span class="at">variable =</span> <span class="st">"wave"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb13-79"><a href="#cb13-79" aria-hidden="true" tabindex="-1"></a>      {<span class="fu">bind_rows</span>(</span>
-<span id="cb13-80"><a href="#cb13-80" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tibble</span>(<span class="at">variable =</span> <span class="st">"wave"</span>, <span class="at">row_type =</span> <span class="st">"label"</span>, <span class="at">label =</span> <span class="st">"Severity"</span>),</span>
-<span id="cb13-81"><a href="#cb13-81" aria-hidden="true" tabindex="-1"></a>        .</span>
-<span id="cb13-82"><a href="#cb13-82" aria-hidden="true" tabindex="-1"></a>      )}</span>
-<span id="cb13-83"><a href="#cb13-83" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb13-84"><a href="#cb13-84" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-85"><a href="#cb13-85" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-86"><a href="#cb13-86" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. In/out table</span></span>
-<span id="cb13-87"><a href="#cb13-87" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-88"><a href="#cb13-88" aria-hidden="true" tabindex="-1"></a>tab_inout <span class="ot">&lt;-</span></span>
-<span id="cb13-89"><a href="#cb13-89" aria-hidden="true" tabindex="-1"></a>  df23 <span class="sc">%&gt;%</span> </span>
-<span id="cb13-90"><a href="#cb13-90" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(wave, inout2) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-91"><a href="#cb13-91" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">rn =</span> <span class="fu">row_number</span>()) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-92"><a href="#cb13-92" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">spread</span>(inout2, inout2) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-93"><a href="#cb13-93" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="sc">-</span><span class="fu">c</span>(wave, rn), <span class="sc">~</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(.), <span class="dv">0</span>, <span class="dv">1</span>))) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-94"><a href="#cb13-94" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>rn) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-95"><a href="#cb13-95" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> wave) <span class="sc">%&gt;%</span> </span>
-<span id="cb13-96"><a href="#cb13-96" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_p</span>() <span class="sc">%&gt;%</span></span>
-<span id="cb13-97"><a href="#cb13-97" aria-hidden="true" tabindex="-1"></a>  <span class="fu">modify_table_body</span>(</span>
-<span id="cb13-98"><a href="#cb13-98" aria-hidden="true" tabindex="-1"></a>    <span class="sc">~</span> .x <span class="sc">%&gt;%</span></span>
-<span id="cb13-99"><a href="#cb13-99" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">row_type =</span> <span class="st">"level"</span>,</span>
-<span id="cb13-100"><a href="#cb13-100" aria-hidden="true" tabindex="-1"></a>             <span class="at">variable =</span> <span class="st">"wave"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb13-101"><a href="#cb13-101" aria-hidden="true" tabindex="-1"></a>      {<span class="fu">bind_rows</span>(</span>
-<span id="cb13-102"><a href="#cb13-102" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tibble</span>(<span class="at">variable =</span> <span class="st">"wave"</span>, <span class="at">row_type =</span> <span class="st">"label"</span>, <span class="at">label =</span> <span class="st">"Treatment"</span>),</span>
-<span id="cb13-103"><a href="#cb13-103" aria-hidden="true" tabindex="-1"></a>        .</span>
-<span id="cb13-104"><a href="#cb13-104" aria-hidden="true" tabindex="-1"></a>      )}</span>
-<span id="cb13-105"><a href="#cb13-105" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb13-106"><a href="#cb13-106" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-107"><a href="#cb13-107" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-108"><a href="#cb13-108" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. Combine all three tables</span></span>
-<span id="cb13-109"><a href="#cb13-109" aria-hidden="true" tabindex="-1"></a><span class="co"># -----------------------------</span></span>
-<span id="cb13-110"><a href="#cb13-110" aria-hidden="true" tabindex="-1"></a>final_table <span class="ot">&lt;-</span></span>
-<span id="cb13-111"><a href="#cb13-111" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_stack</span>(<span class="fu">list</span>(tab_age, tab_sev, tab_inout))</span>
-<span id="cb13-112"><a href="#cb13-112" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-113"><a href="#cb13-113" aria-hidden="true" tabindex="-1"></a>final_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>path2data <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/cleaned/"</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Name of cleaned HFMD data file</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>cases_file <span class="ot">&lt;-</span> <span class="st">"hfmd_full.rds"</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>df_cases <span class="ot">&lt;-</span> <span class="fu">paste0</span>(path2data, cases_file) <span class="sc">|&gt;</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">readRDS</span>()</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df_cases  <span class="sc">|&gt;</span>  <span class="fu">filter</span>(<span class="fu">year</span>(adm_date) <span class="sc">==</span> <span class="dv">2023</span>)</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df23[<span class="sc">!</span><span class="fu">duplicated</span>(df23), ]</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df23 <span class="sc">|&gt;</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">wave =</span> <span class="fu">case_when</span>(</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>      adm_date <span class="sc">&lt;=</span> <span class="fu">as.Date</span>(<span class="st">"2023-09-03"</span>) <span class="sc">~</span> <span class="st">"1st"</span>,</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>      adm_date <span class="sc">&gt;</span> <span class="fu">as.Date</span>(<span class="st">"2023-09-03"</span>) <span class="sc">~</span> <span class="st">"2nd"</span></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a>      ),</span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">severity2 =</span> <span class="fu">case_when</span>(</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>      severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"1"</span>,<span class="st">"1a"</span>) <span class="sc">~</span> <span class="st">"1"</span>,</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a>      severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"3"</span>,<span class="st">"4"</span>) <span class="sc">~</span> <span class="st">"3 or 4"</span>,</span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a>      severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"2"</span>) <span class="sc">~</span> <span class="st">"2a"</span>,</span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>      <span class="fu">is.na</span>(severity) <span class="sc">~</span> <span class="st">"Undefined"</span>,</span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a>      <span class="sc">!</span>severity <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"1"</span>,<span class="st">"1a"</span>,<span class="st">"3"</span>,<span class="st">"4"</span>,<span class="cn">NA</span>) <span class="sc">~</span> severity</span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">|&gt;</span> <span class="fu">as.factor</span>()</span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(cluster)</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(factoextra)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>df23 <span class="ot">&lt;-</span> df23 <span class="sc">|&gt;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># select(age1,adm_date) |&gt;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">time =</span> <span class="fu">as.numeric</span>(adm_date)) <span class="sc">|&gt;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(age1))</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>kmeans_result_1 <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(df23[,<span class="fu">c</span>(<span class="st">"age1"</span>,<span class="st">"time"</span>)], <span class="at">centers =</span> <span class="dv">2</span>, <span class="at">nstart =</span> <span class="dv">25</span>)</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>df23<span class="sc">$</span>wave <span class="ot">&lt;-</span> <span class="fu">factor</span>(kmeans_result_1<span class="sc">$</span>cluster,<span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"1st"</span>,<span class="st">"2nd"</span>),<span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>))</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="do">## show the time point that seperate two peaks</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>time_cut_1st <span class="ot">&lt;-</span> df23 <span class="sc">|&gt;</span> </span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">"1st"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(time) <span class="sc">|&gt;</span> </span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">max</span>()</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>time_cut_2nd <span class="ot">&lt;-</span> df23 <span class="sc">|&gt;</span> </span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(wave <span class="sc">==</span> <span class="st">"2nd"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(time) <span class="sc">|&gt;</span> </span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">min</span>()</span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>time_cut <span class="ot">&lt;-</span> <span class="fu">mean</span>(time_cut_1st,time_cut_2nd) <span class="sc">|&gt;</span> <span class="fu">as.numeric</span>()</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>time_cut</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 19605</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gtsummary)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="do">### table1</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>tab_age <span class="ot">&lt;-</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  df23 <span class="sc">|&gt;</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> wave,</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>              <span class="at">label =</span> <span class="fu">list</span>(age1 <span class="sc">~</span> <span class="st">"Age (Years)"</span>,</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>                           gender <span class="sc">~</span> <span class="st">"Gender"</span>),</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>              <span class="at">digits =</span> <span class="fu">list</span>(<span class="fu">all_continuous</span>() <span class="sc">~</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>),</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>                            <span class="fu">all_categorical</span>() <span class="sc">~</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">2</span>)),</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>              <span class="at">include =</span> <span class="fu">c</span>(age1,gender)) <span class="sc">|&gt;</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">remove_row_type</span>(<span class="at">type =</span> <span class="st">"missing"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_p</span>()</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>calculate_prop_test <span class="ot">&lt;-</span> <span class="cf">function</span>(data, variable, by, ...) {</span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>  <span class="co"># subset to non-missing</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>  data <span class="ot">&lt;-</span> tidyr<span class="sc">::</span><span class="fu">drop_na</span>(data, dplyr<span class="sc">::</span><span class="fu">all_of</span>(<span class="fu">c</span>(variable, by)))</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">prop.trend.test</span>(</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="fu">table</span>(data[[variable]], data[[by]])[<span class="dv">2</span>, ], <span class="co"># get the second row (the positive row)</span></span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">table</span>(data[[by]])</span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>    broom<span class="sc">::</span><span class="fu">tidy</span>()</span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a>tab_sev <span class="ot">&lt;-</span></span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a>  df23 <span class="sc">|&gt;</span> </span>
+<span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(severity2 <span class="sc">!=</span> <span class="st">"Undefined"</span>) <span class="sc">|&gt;</span> </span>
+<span id="cb17-32"><a href="#cb17-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(wave, severity2)  <span class="sc">|&gt;</span> </span>
+<span id="cb17-33"><a href="#cb17-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">rn =</span> <span class="fu">row_number</span>()) <span class="sc">|&gt;</span> </span>
+<span id="cb17-34"><a href="#cb17-34" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">spread</span>(severity2, severity2) <span class="sc">|&gt;</span> </span>
+<span id="cb17-35"><a href="#cb17-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="sc">-</span><span class="fu">c</span>(wave, rn), <span class="sc">~</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(.), <span class="dv">0</span>, <span class="dv">1</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb17-36"><a href="#cb17-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>rn) <span class="sc">|&gt;</span></span>
+<span id="cb17-37"><a href="#cb17-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> wave,</span>
+<span id="cb17-38"><a href="#cb17-38" aria-hidden="true" tabindex="-1"></a>              <span class="at">statistic =</span> <span class="fu">list</span>(</span>
+<span id="cb17-39"><a href="#cb17-39" aria-hidden="true" tabindex="-1"></a>                <span class="fu">all_categorical</span>() <span class="sc">~</span> <span class="st">"{n} / {N} ({p}%)"</span></span>
+<span id="cb17-40"><a href="#cb17-40" aria-hidden="true" tabindex="-1"></a>              ),</span>
+<span id="cb17-41"><a href="#cb17-41" aria-hidden="true" tabindex="-1"></a>              <span class="at">digits =</span> <span class="fu">all_categorical</span>() <span class="sc">~</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb17-42"><a href="#cb17-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_p</span>() <span class="sc">|&gt;</span></span>
+<span id="cb17-43"><a href="#cb17-43" aria-hidden="true" tabindex="-1"></a>  <span class="fu">modify_table_body</span>(</span>
+<span id="cb17-44"><a href="#cb17-44" aria-hidden="true" tabindex="-1"></a>    <span class="sc">~</span> .x <span class="sc">|&gt;</span></span>
+<span id="cb17-45"><a href="#cb17-45" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">row_type =</span> <span class="st">"level"</span>,</span>
+<span id="cb17-46"><a href="#cb17-46" aria-hidden="true" tabindex="-1"></a>             <span class="at">variable =</span> <span class="st">"wave"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-47"><a href="#cb17-47" aria-hidden="true" tabindex="-1"></a>      {<span class="fu">bind_rows</span>(</span>
+<span id="cb17-48"><a href="#cb17-48" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tibble</span>(<span class="at">variable =</span> <span class="st">"wave"</span>, <span class="at">row_type =</span> <span class="st">"label"</span>, <span class="at">label =</span> <span class="st">"Severity"</span>),</span>
+<span id="cb17-49"><a href="#cb17-49" aria-hidden="true" tabindex="-1"></a>        .</span>
+<span id="cb17-50"><a href="#cb17-50" aria-hidden="true" tabindex="-1"></a>      )}</span>
+<span id="cb17-51"><a href="#cb17-51" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb17-52"><a href="#cb17-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-53"><a href="#cb17-53" aria-hidden="true" tabindex="-1"></a>tab_inout <span class="ot">&lt;-</span></span>
+<span id="cb17-54"><a href="#cb17-54" aria-hidden="true" tabindex="-1"></a>  df23 <span class="sc">|&gt;</span></span>
+<span id="cb17-55"><a href="#cb17-55" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(inout <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Inpatient"</span>,<span class="st">"Outpatient"</span>)) <span class="sc">|&gt;</span> </span>
+<span id="cb17-56"><a href="#cb17-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(wave, inout) <span class="sc">|&gt;</span></span>
+<span id="cb17-57"><a href="#cb17-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">rn =</span> <span class="fu">row_number</span>()) <span class="sc">|&gt;</span></span>
+<span id="cb17-58"><a href="#cb17-58" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">spread</span>(inout, inout) <span class="sc">|&gt;</span></span>
+<span id="cb17-59"><a href="#cb17-59" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="sc">-</span><span class="fu">c</span>(wave, rn), <span class="sc">~</span> <span class="fu">ifelse</span>(<span class="fu">is.na</span>(.), <span class="dv">0</span>, <span class="dv">1</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb17-60"><a href="#cb17-60" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>rn) <span class="sc">|&gt;</span></span>
+<span id="cb17-61"><a href="#cb17-61" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tbl_summary</span>(<span class="at">by =</span> wave,</span>
+<span id="cb17-62"><a href="#cb17-62" aria-hidden="true" tabindex="-1"></a>              <span class="at">statistic =</span> <span class="fu">list</span>(</span>
+<span id="cb17-63"><a href="#cb17-63" aria-hidden="true" tabindex="-1"></a>                <span class="fu">all_categorical</span>() <span class="sc">~</span> <span class="st">"{n} / {N} ({p}%)"</span></span>
+<span id="cb17-64"><a href="#cb17-64" aria-hidden="true" tabindex="-1"></a>              ),</span>
+<span id="cb17-65"><a href="#cb17-65" aria-hidden="true" tabindex="-1"></a>              <span class="at">digits =</span> <span class="fu">all_categorical</span>() <span class="sc">~</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb17-66"><a href="#cb17-66" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_p</span>() <span class="sc">|&gt;</span></span>
+<span id="cb17-67"><a href="#cb17-67" aria-hidden="true" tabindex="-1"></a>  <span class="fu">modify_table_body</span>(</span>
+<span id="cb17-68"><a href="#cb17-68" aria-hidden="true" tabindex="-1"></a>    <span class="sc">~</span> .x <span class="sc">|&gt;</span></span>
+<span id="cb17-69"><a href="#cb17-69" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mutate</span>(<span class="at">row_type =</span> <span class="st">"level"</span>,</span>
+<span id="cb17-70"><a href="#cb17-70" aria-hidden="true" tabindex="-1"></a>             <span class="at">variable =</span> <span class="st">"wave"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-71"><a href="#cb17-71" aria-hidden="true" tabindex="-1"></a>      {<span class="fu">bind_rows</span>(</span>
+<span id="cb17-72"><a href="#cb17-72" aria-hidden="true" tabindex="-1"></a>        <span class="fu">tibble</span>(<span class="at">variable =</span> <span class="st">"wave"</span>, <span class="at">row_type =</span> <span class="st">"label"</span>, <span class="at">label =</span> <span class="st">"Treatment"</span>),</span>
+<span id="cb17-73"><a href="#cb17-73" aria-hidden="true" tabindex="-1"></a>        .</span>
+<span id="cb17-74"><a href="#cb17-74" aria-hidden="true" tabindex="-1"></a>      )}</span>
+<span id="cb17-75"><a href="#cb17-75" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb17-76"><a href="#cb17-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-77"><a href="#cb17-77" aria-hidden="true" tabindex="-1"></a>final_table <span class="ot">&lt;-</span> <span class="fu">tbl_stack</span>(<span class="fu">list</span>(tab_age, tab_sev, tab_inout),<span class="at">quiet =</span> <span class="cn">TRUE</span>) </span>
+<span id="cb17-78"><a href="#cb17-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-79"><a href="#cb17-79" aria-hidden="true" tabindex="-1"></a>final_table</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
-<div id="tpqpkqkrzp" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#tpqpkqkrzp table {
+<div id="wzfngjefpx" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#wzfngjefpx table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#tpqpkqkrzp thead, #tpqpkqkrzp tbody, #tpqpkqkrzp tfoot, #tpqpkqkrzp tr, #tpqpkqkrzp td, #tpqpkqkrzp th {
+#wzfngjefpx thead, #wzfngjefpx tbody, #wzfngjefpx tfoot, #wzfngjefpx tr, #wzfngjefpx td, #wzfngjefpx th {
   border-style: none;
 }
 
-#tpqpkqkrzp p {
+#wzfngjefpx p {
   margin: 0;
   padding: 0;
 }
 
-#tpqpkqkrzp .gt_table {
+#wzfngjefpx .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -303,12 +334,12 @@ The following object is masked from 'package:tidyr':
   border-left-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_caption {
+#wzfngjefpx .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#tpqpkqkrzp .gt_title {
+#wzfngjefpx .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -320,7 +351,7 @@ The following object is masked from 'package:tidyr':
   border-bottom-width: 0;
 }
 
-#tpqpkqkrzp .gt_subtitle {
+#wzfngjefpx .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -332,7 +363,7 @@ The following object is masked from 'package:tidyr':
   border-top-width: 0;
 }
 
-#tpqpkqkrzp .gt_heading {
+#wzfngjefpx .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -344,13 +375,13 @@ The following object is masked from 'package:tidyr':
   border-right-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_bottom_border {
+#wzfngjefpx .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_col_headings {
+#wzfngjefpx .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -365,7 +396,7 @@ The following object is masked from 'package:tidyr':
   border-right-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_col_heading {
+#wzfngjefpx .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -385,7 +416,7 @@ The following object is masked from 'package:tidyr':
   overflow-x: hidden;
 }
 
-#tpqpkqkrzp .gt_column_spanner_outer {
+#wzfngjefpx .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -397,15 +428,15 @@ The following object is masked from 'package:tidyr':
   padding-right: 4px;
 }
 
-#tpqpkqkrzp .gt_column_spanner_outer:first-child {
+#wzfngjefpx .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#tpqpkqkrzp .gt_column_spanner_outer:last-child {
+#wzfngjefpx .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#tpqpkqkrzp .gt_column_spanner {
+#wzfngjefpx .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -417,11 +448,11 @@ The following object is masked from 'package:tidyr':
   width: 100%;
 }
 
-#tpqpkqkrzp .gt_spanner_row {
+#wzfngjefpx .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#tpqpkqkrzp .gt_group_heading {
+#wzfngjefpx .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -447,7 +478,7 @@ The following object is masked from 'package:tidyr':
   text-align: left;
 }
 
-#tpqpkqkrzp .gt_empty_group_heading {
+#wzfngjefpx .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -462,15 +493,15 @@ The following object is masked from 'package:tidyr':
   vertical-align: middle;
 }
 
-#tpqpkqkrzp .gt_from_md > :first-child {
+#wzfngjefpx .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#tpqpkqkrzp .gt_from_md > :last-child {
+#wzfngjefpx .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#tpqpkqkrzp .gt_row {
+#wzfngjefpx .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -489,7 +520,7 @@ The following object is masked from 'package:tidyr':
   overflow-x: hidden;
 }
 
-#tpqpkqkrzp .gt_stub {
+#wzfngjefpx .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -502,7 +533,7 @@ The following object is masked from 'package:tidyr':
   padding-right: 5px;
 }
 
-#tpqpkqkrzp .gt_stub_row_group {
+#wzfngjefpx .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -516,15 +547,15 @@ The following object is masked from 'package:tidyr':
   vertical-align: top;
 }
 
-#tpqpkqkrzp .gt_row_group_first td {
+#wzfngjefpx .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#tpqpkqkrzp .gt_row_group_first th {
+#wzfngjefpx .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#tpqpkqkrzp .gt_summary_row {
+#wzfngjefpx .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -534,16 +565,16 @@ The following object is masked from 'package:tidyr':
   padding-right: 5px;
 }
 
-#tpqpkqkrzp .gt_first_summary_row {
+#wzfngjefpx .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_first_summary_row.thick {
+#wzfngjefpx .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#tpqpkqkrzp .gt_last_summary_row {
+#wzfngjefpx .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -553,7 +584,7 @@ The following object is masked from 'package:tidyr':
   border-bottom-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_grand_summary_row {
+#wzfngjefpx .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -563,7 +594,7 @@ The following object is masked from 'package:tidyr':
   padding-right: 5px;
 }
 
-#tpqpkqkrzp .gt_first_grand_summary_row {
+#wzfngjefpx .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -573,7 +604,7 @@ The following object is masked from 'package:tidyr':
   border-top-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_last_grand_summary_row_top {
+#wzfngjefpx .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -583,11 +614,11 @@ The following object is masked from 'package:tidyr':
   border-bottom-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_striped {
+#wzfngjefpx .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#tpqpkqkrzp .gt_table_body {
+#wzfngjefpx .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -596,7 +627,7 @@ The following object is masked from 'package:tidyr':
   border-bottom-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_footnotes {
+#wzfngjefpx .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -610,7 +641,7 @@ The following object is masked from 'package:tidyr':
   border-right-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_footnote {
+#wzfngjefpx .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -619,7 +650,7 @@ The following object is masked from 'package:tidyr':
   padding-right: 5px;
 }
 
-#tpqpkqkrzp .gt_sourcenotes {
+#wzfngjefpx .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -633,7 +664,7 @@ The following object is masked from 'package:tidyr':
   border-right-color: #D3D3D3;
 }
 
-#tpqpkqkrzp .gt_sourcenote {
+#wzfngjefpx .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -641,72 +672,72 @@ The following object is masked from 'package:tidyr':
   padding-right: 5px;
 }
 
-#tpqpkqkrzp .gt_left {
+#wzfngjefpx .gt_left {
   text-align: left;
 }
 
-#tpqpkqkrzp .gt_center {
+#wzfngjefpx .gt_center {
   text-align: center;
 }
 
-#tpqpkqkrzp .gt_right {
+#wzfngjefpx .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#tpqpkqkrzp .gt_font_normal {
+#wzfngjefpx .gt_font_normal {
   font-weight: normal;
 }
 
-#tpqpkqkrzp .gt_font_bold {
+#wzfngjefpx .gt_font_bold {
   font-weight: bold;
 }
 
-#tpqpkqkrzp .gt_font_italic {
+#wzfngjefpx .gt_font_italic {
   font-style: italic;
 }
 
-#tpqpkqkrzp .gt_super {
+#wzfngjefpx .gt_super {
   font-size: 65%;
 }
 
-#tpqpkqkrzp .gt_footnote_marks {
+#wzfngjefpx .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#tpqpkqkrzp .gt_asterisk {
+#wzfngjefpx .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#tpqpkqkrzp .gt_indent_1 {
+#wzfngjefpx .gt_indent_1 {
   text-indent: 5px;
 }
 
-#tpqpkqkrzp .gt_indent_2 {
+#wzfngjefpx .gt_indent_2 {
   text-indent: 10px;
 }
 
-#tpqpkqkrzp .gt_indent_3 {
+#wzfngjefpx .gt_indent_3 {
   text-indent: 15px;
 }
 
-#tpqpkqkrzp .gt_indent_4 {
+#wzfngjefpx .gt_indent_4 {
   text-indent: 20px;
 }
 
-#tpqpkqkrzp .gt_indent_5 {
+#wzfngjefpx .gt_indent_5 {
   text-indent: 25px;
 }
 
-#tpqpkqkrzp .katex-display {
+#wzfngjefpx .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#tpqpkqkrzp div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#wzfngjefpx div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -721,20 +752,19 @@ The following object is masked from 'package:tidyr':
 <thead>
 <tr class="gt_col_headings header">
 <th id="label" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col"><strong>Characteristic</strong></th>
-<th id="stat_1" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>1st wave</strong><br>
-N = 22,980<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span></th>
-<th id="stat_2" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>2nd wave</strong><br>
-N = 20,324<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span></th>
+<th id="stat_1" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>1st</strong><br>
+N = 23,285<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span></th>
+<th id="stat_2" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>2nd</strong><br>
+N = 20,011<span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span></th>
 <th id="p.value" class="gt_col_heading gt_columns_bottom_border gt_center" data-quarto-table-cell-role="th" scope="col"><strong>p-value</strong><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>2</sup></span></th>
 </tr>
 </thead>
 <tbody class="gt_table_body">
 <tr class="odd">
 <td class="gt_row gt_left" headers="label">Age (Years)</td>
-<td class="gt_row gt_center" headers="stat_1">3.00 (2.00, 4.00)</td>
-<td class="gt_row gt_center" headers="stat_2">2.00 (1.00, 3.00)</td>
-<td class="gt_row gt_center" headers="p.value"><br>
-</td>
+<td class="gt_row gt_center" headers="stat_1">2.66 (1.78, 3.75)</td>
+<td class="gt_row gt_center" headers="stat_2">2.35 (1.51, 3.68)</td>
+<td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="label">Gender</td>
@@ -742,20 +772,19 @@ N = 20,324<span class="gt_footnote_marks" style="white-space:nowrap;font-style:i
 </td>
 <td class="gt_row gt_center" headers="stat_2"><br>
 </td>
-<td class="gt_row gt_center" headers="p.value"><br>
-</td>
+<td class="gt_row gt_center" headers="p.value">0.040</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Female</td>
-<td class="gt_row gt_center" headers="stat_1">9,889 (43%)</td>
-<td class="gt_row gt_center" headers="stat_2">8,542 (42%)</td>
+<td class="gt_row gt_center" headers="stat_1">10,016 (43.01%)</td>
+<td class="gt_row gt_center" headers="stat_2">8,412 (42.04%)</td>
 <td class="gt_row gt_center" headers="p.value"><br>
 </td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Male</td>
-<td class="gt_row gt_center" headers="stat_1">13,091 (57%)</td>
-<td class="gt_row gt_center" headers="stat_2">11,782 (58%)</td>
+<td class="gt_row gt_center" headers="stat_1">13,269 (56.99%)</td>
+<td class="gt_row gt_center" headers="stat_2">11,599 (57.96%)</td>
 <td class="gt_row gt_center" headers="p.value"><br>
 </td>
 </tr>
@@ -770,26 +799,26 @@ N = 20,324<span class="gt_footnote_marks" style="white-space:nowrap;font-style:i
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;1</td>
-<td class="gt_row gt_center" headers="stat_1">5,152 (22%)</td>
-<td class="gt_row gt_center" headers="stat_2">4,246 (21%)</td>
+<td class="gt_row gt_center" headers="stat_1">5,214 / 8,212 (63.49%)</td>
+<td class="gt_row gt_center" headers="stat_2">4,181 / 5,801 (72.07%)</td>
 <td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;2a</td>
-<td class="gt_row gt_center" headers="stat_1">2,427 (11%)</td>
-<td class="gt_row gt_center" headers="stat_2">1,479 (7.3%)</td>
+<td class="gt_row gt_center" headers="stat_1">2,451 / 8,212 (29.85%)</td>
+<td class="gt_row gt_center" headers="stat_2">1,455 / 5,801 (25.08%)</td>
 <td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;2b</td>
-<td class="gt_row gt_center" headers="stat_1">411 (1.8%)</td>
-<td class="gt_row gt_center" headers="stat_2">132 (0.6%)</td>
+<td class="gt_row gt_center" headers="stat_1">415 / 8,212 (5.05%)</td>
+<td class="gt_row gt_center" headers="stat_2">128 / 5,801 (2.21%)</td>
 <td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;3 or 4</td>
-<td class="gt_row gt_center" headers="stat_1">132 (0.6%)</td>
-<td class="gt_row gt_center" headers="stat_2">37 (0.2%)</td>
+<td class="gt_row gt_center" headers="stat_1">132 / 8,212 (1.61%)</td>
+<td class="gt_row gt_center" headers="stat_2">37 / 5,801 (0.64%)</td>
 <td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
 <tr class="even">
@@ -802,29 +831,23 @@ N = 20,324<span class="gt_footnote_marks" style="white-space:nowrap;font-style:i
 </td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Inpatients</td>
-<td class="gt_row gt_center" headers="stat_1">3,127 (14%)</td>
-<td class="gt_row gt_center" headers="stat_2">2,465 (12%)</td>
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Inpatient</td>
+<td class="gt_row gt_center" headers="stat_1">3,160 / 22,493 (14.05%)</td>
+<td class="gt_row gt_center" headers="stat_2">2,432 / 19,563 (12.43%)</td>
 <td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Outpatients</td>
-<td class="gt_row gt_center" headers="stat_1">19,067 (83%)</td>
-<td class="gt_row gt_center" headers="stat_2">17,404 (86%)</td>
+<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Outpatient</td>
+<td class="gt_row gt_center" headers="stat_1">19,333 / 22,493 (85.95%)</td>
+<td class="gt_row gt_center" headers="stat_2">17,131 / 19,563 (87.57%)</td>
 <td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
 </tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="label">&nbsp;&nbsp;&nbsp;&nbsp;Others</td>
-<td class="gt_row gt_center" headers="stat_1">786 (3.4%)</td>
-<td class="gt_row gt_center" headers="stat_2">455 (2.2%)</td>
-<td class="gt_row gt_center" headers="p.value">&lt;0.001</td>
-</tr>
-</tbody><tfoot class="gt_footnotes">
-<tr class="odd">
+</tbody><tfoot>
+<tr class="gt_footnotes odd">
 <td colspan="4" class="gt_footnote"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>1</sup></span> Median (Q1, Q3); n (%)</td>
 </tr>
-<tr class="even">
-<td colspan="4" class="gt_footnote"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>2</sup></span> Pearson’s Chi-squared test</td>
+<tr class="gt_footnotes even">
+<td colspan="4" class="gt_footnote"><span class="gt_footnote_marks" style="white-space:nowrap;font-style:italic;font-weight:normal;line-height:0;"><sup>2</sup></span> Wilcoxon rank sum test; Pearson’s Chi-squared test</td>
 </tr>
 </tfoot>
 
