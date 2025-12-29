@@ -62,13 +62,11 @@ df23 <- df23 |>
     wave = case_when(
       adm_date <= as.Date("2023-09-03") ~ "1st",
       adm_date > as.Date("2023-09-03") ~ "2nd"
-      ),
+    ),
     severity2 = case_when(
-      severity %in% c("1","1a") ~ "1",
-      severity %in% c("3","4") ~ "3 or 4",
-      severity %in% c("2") ~ "2a",
       is.na(severity) ~ "Undefined",
-      !severity %in% c("1","1a","3","4",NA) ~ severity
+      severity %in% c("3","4") ~ "3 or 4",
+      !severity %in% c("3","4",NA) ~ severity
     ) |> as.factor()
   )
 ```
@@ -540,10 +538,10 @@ fit_2p <- data.frame(wave = "2nd",age = x_vals, density = dlnorm(x_vals,
                                                                  sdlog = fit2$estimate[2]))
 
 f1c_new <- ggplot(data=df23) +
-  geom_histogram(aes(x=age1, group=wave),
+  geom_histogram(aes(x=age1, fill = wave),
                  color = "white",
-                 fill = "black",
-                 alpha = .3) +
+                 alpha = .5) +
+  scale_fill_manual(values = c("#582C83FF","#FFC72CFF"))+
   geom_line(data = rbind(fit_1p,fit_2p),aes(x = age,y = density*5000))+
   facet_wrap(~wave)+
   scale_x_reverse(limit = c(6,0),
@@ -999,6 +997,11 @@ But in the step 2b, instead of fitting 4 collection time points, I fitted 52 col
 
 ## Figure 3
 
+### Try to model virology as a function of age and time {.unnumbered}
+
+In this section, I used the GAM fitted as a function of age and time of CH1 reported cases (used to generate heatmap in section 9.5.1 but for CH1 cases only) (1), combined with GAM fitted as a function of age and time of virological data (used to generate figure 3C)(2). Then I multiplied $reported \ cases (1) \times EV-A71 \ percentage (2)$ at each age and time then I had number of ev-a71 of each age and time. Then I group by each time and sum ev-a71 cases at all age group to generate the plot below.
+
+
 ```{r}
 #| fig-width: 12
 #| fig-height: 13
@@ -1025,74 +1028,74 @@ df_viro <- df_viro %>%
     time = as.numeric(admission_date)
   )
 
-dt_vr <- df_viro %>%
-  group_by(adm_month) %>%
-  count(pos) %>%
-  ungroup() %>%
-  pivot_wider(names_from = pos,values_from = n,names_prefix = "pos") %>%
-  replace(is.na(.),0) %>%
-  mutate(total = posTRUE+posFALSE,
-         per = posTRUE/total,
-         time = adm_month %>% as.numeric()
-         )%>%
-  rowwise() %>%                          # needed for prop.test()
-  mutate(
-    lwr = prop.test(posTRUE, total)$conf.int[1],   # 95% CI lower bound
-    upr = prop.test(posTRUE, total)$conf.int[2]    # optional upper bound
-  )
+# dt_vr <- df_viro %>%
+#   group_by(adm_month) %>%
+#   count(pos) %>%
+#   ungroup() %>%
+#   pivot_wider(names_from = pos,values_from = n,names_prefix = "pos") %>%
+#   replace(is.na(.),0) %>%
+#   mutate(total = posTRUE+posFALSE,
+#          per = posTRUE/total,
+#          time = adm_month %>% as.numeric()
+#          )%>%
+#   rowwise() %>%                          # needed for prop.test()
+#   mutate(
+#     lwr = prop.test(posTRUE, total)$conf.int[1],   # 95% CI lower bound
+#     upr = prop.test(posTRUE, total)$conf.int[2]    # optional upper bound
+#   )
 
 
-modelll <- gam(pos~s(time),family = binomial,method = "REML",data = df_viro)
-
-link_inv <- modelll$family$linkinv
-
-recon_epicurve_dt <- modelll %>%
-  predict(list(time = time_f %>%
-                 filter(adm_week >= min(df_viro$admission_date)) %>%
-                 pull(adm_week) %>%
-                 as.numeric()
-  ),se.fit = TRUE) %>%
-  as_tibble() %>%
-  mutate(time = time_f %>%
-           filter(adm_week >= min(df_viro$admission_date)) %>%
-           pull(adm_week),
-         lwr = link_inv(fit - 1.96*se.fit),
-         upr = link_inv(fit + 1.96*se.fit),
-         fit = link_inv(fit)
-         ) %>%
-  dplyr::select(-se.fit) %>%
-  left_join(time_f,., by = join_by(adm_week == time)) %>%
-  mutate(e_ev71 = fit*n,
-         e_ev71_lwr = lwr*n,
-         e_ev71_upr = upr*n) %>%
-  replace(is.na(.),-1) 
-
-recon_epicurve <- recon_epicurve_dt %>%
-  ggplot(aes(x = adm_week))+
-  geom_line(aes(y = fit*1000),linetype = "dashed")+
-  geom_ribbon(aes(y = fit*1000,ymin = lwr*1000,ymax = upr*1000),fill = "blue",alpha = .3)+
-  geom_line(aes(y = e_ev71))+
-  geom_ribbon(aes(y = e_ev71_upr,ymin = e_ev71_lwr,ymax = e_ev71_upr),fill = "red",alpha = .5)+
-  scale_y_continuous(
-    name = "CH1 admission",
-    sec.axis = sec_axis(~ . /1000, name = "EV-A71 percentage"),
-    limits = c(0,1000)
-  ) +
-  geom_col(aes(y=n),alpha = 0.3)+
-  geom_point(data = df_viro, aes(x = admission_date, y = pos*1000),shape = "|")+
-  scale_x_date(date_breaks = "1 month",
-               date_labels = "%b",
-               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")))+
-  theme_minimal()+
-  theme(axis.title.y = element_text(size = 18),
-        axis.title.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        legend.position = "bottom",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 18))
+# modelll <- gam(pos~s(time),family = binomial,method = "REML",data = df_viro)
+# 
+# link_inv <- modelll$family$linkinv
+# 
+# recon_epicurve_dt <- modelll %>%
+#   predict(list(time = time_f %>%
+#                  filter(adm_week >= min(df_viro$admission_date)) %>%
+#                  pull(adm_week) %>%
+#                  as.numeric()
+#   ),se.fit = TRUE) %>%
+#   as_tibble() %>%
+#   mutate(time = time_f %>%
+#            filter(adm_week >= min(df_viro$admission_date)) %>%
+#            pull(adm_week),
+#          lwr = link_inv(fit - 1.96*se.fit),
+#          upr = link_inv(fit + 1.96*se.fit),
+#          fit = link_inv(fit)
+#          ) %>%
+#   dplyr::select(-se.fit) %>%
+#   left_join(time_f,., by = join_by(adm_week == time)) %>%
+#   mutate(e_ev71 = fit*n,
+#          e_ev71_lwr = lwr*n,
+#          e_ev71_upr = upr*n) %>%
+#   replace(is.na(.),-1) 
+# 
+# recon_epicurve <- recon_epicurve_dt %>%
+#   ggplot(aes(x = adm_week))+
+#   geom_line(aes(y = fit*1000),linetype = "dashed")+
+#   geom_ribbon(aes(y = fit*1000,ymin = lwr*1000,ymax = upr*1000),fill = "blue",alpha = .3)+
+#   geom_line(aes(y = e_ev71))+
+#   geom_ribbon(aes(y = e_ev71_upr,ymin = e_ev71_lwr,ymax = e_ev71_upr),fill = "red",alpha = .5)+
+#   scale_y_continuous(
+#     name = "CH1 admission",
+#     sec.axis = sec_axis(~ . /1000, name = "EV-A71 percentage"),
+#     limits = c(0,1000)
+#   ) +
+#   geom_col(aes(y=n),alpha = 0.3)+
+#   geom_point(data = df_viro, aes(x = admission_date, y = pos*1000),shape = "|")+
+#   scale_x_date(date_breaks = "1 month",
+#                date_labels = "%b",
+#                limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")))+
+#   theme_minimal()+
+#   theme(axis.title.y = element_text(size = 18),
+#         axis.title.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         legend.position = "bottom",
+#         plot.tag = element_text(face = "bold", size = 18),
+#         axis.text.x = element_blank(),
+#         axis.text.y = element_text(size = 18),
+#         legend.text = element_text(size = 15),
+#         legend.title = element_text(size = 18))
 
 per_serotype <- df_viro %>%
   group_by(adm_month) %>%
@@ -1157,19 +1160,13 @@ ev_a71_age_time_p <- ggplot() +
   guides(fill=guide_colourbar(barwidth=25),
          color = "none")
 
-fig3 <- (recon_epicurve+labs(tag="A"))/
-  (per_serotype+labs(tag="B"))/
-  (ev_a71_age_time_p+labs(tag="C"))
-
-ggsave("./fig_manuscript/fig3_new.svg", plot = fig3,
-       width = 13,height = 12,dpi = 500)
+# fig3 <- (recon_epicurve+labs(tag="A"))/
+#   (per_serotype+labs(tag="B"))/
+#   (ev_a71_age_time_p+labs(tag="C"))
+# 
+# ggsave("./fig_manuscript/fig3_new.svg", plot = fig3,
+#        width = 13,height = 12,dpi = 500)
 ```
-
-![](./fig_manuscript/fig3_new.svg)
-
-## Try to model virology as a function of age and time
-
-In this section, I used the GAM fitted as a function of age and time of CH1 reported cases (used to generate heatmap in section 9.5.1 but for CH1 cases only) (1), combined with GAM fitted as a function of age and time of virological data (used to generate figure 3C)(2). Then I multiplied $reported \ cases (1) \times EV-A71 \ percentage (2)$ at each age and time then I had number of ev-a71 of each age and time. Then I group by each time and sum ev-a71 cases at all age group to generate the plot below.
 
 
 ```{r}
