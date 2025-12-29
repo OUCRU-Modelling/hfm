@@ -1,0 +1,960 @@
+---
+title: "HFMD data description"
+toc: true
+toc-depth: 4
+message: false
+warning: false
+---
+
+# Library
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(magrittr)
+library(lubridate)
+library(janitor)
+library(ggplot2)
+```
+
+# Import data
+
+```{r}
+## file path of local computer
+
+path2data <- paste0("D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/raw/")
+
+## name file
+cases_file <- "TCM_full.xlsx"
+
+## read data
+df_cases <- paste0(path2data, cases_file) |>
+  read_excel(col_types = c("date", "numeric", "text", "text", 
+                           "text", "date", "date", "date", 
+                           "text", "text", "text"))
+
+head(df_cases,10)
+```
+
+# Column translation
+
+```{r}
+eng_cols <- c(
+  dob = "Ngày tháng năm sinh",
+  age = "Tuổi",
+  gender = "Giới tính",
+  commune = "Phường/xã cư trú",
+  district = "Quận/huyện cư trú",
+  reported_date = "Ngày báo cáo",
+  onset_date = "Ngày khởi phát triệu chứng",
+  admission_date = "Ngày đi khám hoặc ngày nhập viện",
+  medi_cen = "Tên bệnh viện (cơ sở y tế) đi khám",
+  inout = "Tình trạng hiện nay",
+  severity = "Phân độ lâm sàng"
+)
+
+df_cases %<>% rename(!!!eng_cols)
+
+head(df_cases,10)
+```
+
+# Remove duplicated observation
+
+## Spot duplicated observations
+
+```{r}
+df_cases |> 
+  get_dupes() |>
+  head()
+```
+
+## Count dupplicated observations
+
+```{r}
+df_cases |>
+  group_by(across(everything())) |>
+  summarise(dupes = n()) |>
+  filter(dupes > 1) |>
+  ungroup() |>
+  count(dupes)
+```
+- There are 649 records that have a duplicate and 3 record has 2 duplicates. Now we remove those duplicates.
+
+## Remove duplicated observations
+
+```{r}
+cat("Before duplication removal:", nrow(df_cases), "rows \n")
+```
+
+
+```{r}
+df_cases %<>% distinct()
+
+cat("After duplication removal:", nrow(df_cases), "rows \n")
+```
+
+# Date variables
+
+## Type conversion
+
+Convert date columns as same type
+
+```{r}
+## change date columns from <dttm> to <date>
+df_cases %<>%
+  mutate(
+    across(
+      c(
+        dob, reported_date, onset_date,admission_date
+      ),
+      .fns = as.Date
+    )
+  ) 
+```
+
+## Summary variables
+
+### Day
+
+```{r}
+## day 
+df_cases |>
+  mutate(
+    day_dob = day(dob),
+    day_reported = day(reported_date),
+    day_onset = day(onset_date),
+    day_admission = day(admission_date)
+  ) |> 
+  select(
+    day_dob,
+    day_reported,
+    day_onset,
+    day_admission
+  ) |>
+  summary()
+```
+
+### Month
+
+```{r}
+## month
+df_cases |>
+  mutate(
+    month_dob = month(dob),
+    month_reported = month(reported_date),
+    month_onset = month(onset_date),
+    month_admission = month(admission_date)
+  ) |> 
+  select(
+    month_dob,
+    month_reported,
+    month_onset,
+    month_admission
+  ) |>
+  summary()
+```
+
+### Year
+
+```{r}
+## year
+df_cases %<>%
+  mutate(
+    year_dob = year(dob),
+    year_reported = year(reported_date),
+    year_onset = year(onset_date),
+    year_admission = year(admission_date)
+  ) |> 
+  select(
+    year_dob,
+    year_reported,
+    year_onset,
+    year_admission
+  ) |>
+  summary()
+```
+
+::: {.callout-note}
+
+  - Day and month are within the normal range.
+
+  - Some observations are missing date of birth and onset date (32,282 missing DOB and 43,554 missing onset dates).
+
+  - From the data summary, we can see that most of the data (within the IQR) are correct; for example, the year of admission and reporting ranges from 2013 to 2024. However, there are some incorrect values at the minimum and maximum (e.g., year of birth and year of onset).
+  
+:::
+
+## Cleaning year data
+
+Let’s clean this data up. First, we will see how much of the data is out of the range. The ranges will be defined as:
+
+  - [2013, 2024] for year onset
+  
+  - [1924, 2024] for birth years (implying the maximum patient age we’re going to look at is 100 years old)
+
+### Spotting out of range observations
+
+```{r}
+df_cases |>
+  mutate(
+    is_in_range = case_when(
+      year_dob > 2024 | year_dob < 1924 | year_onset > 2024 | year_onset < 2013 ~ "out range",
+      .default = "in range"
+    )
+  ) |>
+  group_by(is_in_range) |>
+  summarise(total = n())
+```
+
+```{r}
+df_cases |>
+  mutate(
+    is_in_range = case_when(
+      year_dob > 2024 | year_dob < 1924 | year_onset > 2024 | year_onset < 2013  ~ "out range",
+      .default = "in range"
+    )
+  ) |>
+  filter(is_in_range == "out range") |> 
+  select(dob,age,onset_date,reported_date,admission_date) |> 
+  head(12)
+```
+
+::: {.callout-note}
+
+As we can see, two cases had incorrect dates of birth (row 9 and 12), other variables have the same reported year and admission year, but the onset year is incorrect, so in the next step the onset date information was filled in.
+
+:::
+
+### Remove and fill in information
+
+  - Removed two outlier cases with incorrect dates of birth (rows 9 and 12).
+
+  - I checked whether the onset month and admission month were the same (by `check_adm_onset` variable) and calculated the `delay` between admission and reporting.  If cases had `check_adm_onset` = TRUE and a `delay` within one month, I concluded that the onset year was entered incorrectly. I then used the reported year for the onset year.
+  
+This is the checking step
+  
+```{r}
+df_cases |> 
+  filter(!age %in% c(-2951,117) | is.na(dob)) |>  ## excluded cases related to dob error
+  mutate(
+    is_in_range = case_when(
+      year_dob > 2024 | year_dob < 1924 | year_onset > 2024 | year_onset < 2013  ~ "out range",
+      .default = "in range"
+    )
+  ) |>
+  filter(is_in_range == "out range") |> 
+  select(dob,age,onset_date,reported_date,admission_date,year_onset,year_dob) |> 
+  mutate(check_adm_onset = month(onset_date) == month(admission_date),   ## checking adm and onset month 
+         check_delay = reported_date - admission_date) |>  ## calculating delay variable
+  select(-c(dob,age,year_dob,year_onset)) 
+```
+
+And change information
+
+```{r}
+cat("Before removal:", nrow(df_cases), "rows \n")
+```
+
+```{r}
+df_cases <- df_cases |> 
+  filter(!age %in% c(-2951,117) | is.na(dob)) |>  ## excluded cases related to dob error
+  mutate(                                         ## change information   
+    onset_date = ifelse(
+      year_dob > 2024 | year_dob < 1924 | year_onset > 2024 | year_onset < 2013,
+      update(onset_date, year = year(admission_date)),
+      onset_date
+    ),
+    onset_date = as.Date(onset_date)
+  ) 
+```
+
+```{r}
+cat("After this step:", nrow(df_cases), "rows \n")
+```
+
+I want to check those "out range" cases again
+
+```{r}
+df_cases |>
+  filter(year_dob > 2024 | year_dob < 1924 | year_onset > 2024 | year_onset < 2013) |> 
+  select(onset_date,reported_date,admission_date) |> 
+  mutate(delay_adm = admission_date - onset_date) ## to check whether new onset date makes sense
+```
+
+
+::: {.callout-note}
+
+As you can see the onset_date column had been changed
+
+:::
+
+## Plotting date variables
+
+### Onset date
+
+Because the onset date have the NA value, so we exclude NA value when plotting
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+
+df_cases |> 
+  group_by(onset_date) |> 
+  count() |> 
+  na.omit() |>             ## exclude NA
+  ggplot(aes(x = onset_date, y = n))+
+  geom_col()+
+  theme_minimal()+
+  scale_x_date(limits = as.Date(c("2013-01-01","2025-01-01")))
+```
+
+### Admission date
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+
+df_cases |> 
+  group_by(admission_date) |> 
+  count() |> 
+  ggplot(aes(x = admission_date, y = n))+
+  geom_col()+
+  theme_minimal()+
+  scale_x_date(limits = as.Date(c("2013-01-01","2025-01-01")))
+```
+
+### Reported date
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+
+df_cases |> 
+  group_by(reported_date) |> 
+  count() |> 
+  ggplot(aes(x = reported_date, y = n))+
+  geom_col()+
+  theme_minimal()+
+  scale_x_date(limits = as.Date(c("2013-01-01","2025-01-01")))
+```
+
+The horizontal line show that, there was an error in reported day, now we summary to see whether any error
+
+```{r}
+df_cases |> 
+  group_by(reported_date) |> 
+  count() |> 
+  summary()
+```
+
+filter how many day have more than 1000 cases
+
+```{r}
+df_cases |> 
+  group_by(reported_date) |> 
+  count() |> 
+  filter(n > 1000)
+```
+
+::: {.callout-warning}
+
+30796 cases were merged to report in March 9th 2018!!!
+
+=> We need to discuss with HCDC about this 
+
+:::
+
+
+### Delay distribution
+
+```{r}
+df_cases |>
+  mutate(delay = reported_date - admission_date) |> 
+  ggplot(aes(delay))+
+  geom_histogram(bins = 30)
+```
+
+When we look at delay distribution, we can see the outliers are the cases have the delay > 50 days. I tried to excluded cases were reported in March 9th 2018
+
+```{r}
+df_cases |>
+  mutate(delay = reported_date - admission_date) |> 
+  filter(reported_date != as.Date("2018-03-09")) |> 
+  ggplot(aes(delay))+
+  geom_histogram(bins = 30)
+```
+
+::: {.callout-note}
+
+As we can see, the delay distribution is most affected by the cases reported in March 9th 2018
+
+:::
+
+### Cleaning cases were entered wrong year
+
+#### Wrong reported date
+
+In this step, I selected cases with delays greater than one year because I assumed that these cases had an incorrectly entered year, while the admission date and onset date were in the same year. I then changed the year of the reported date to the year of the admission date and created a new delay variable (delay2). If delay2 was less than 14 days (this threshold should be discussed with HCDC), it indicated that the cases were entered with the wrong year, and we used the corrected reported date. To verify the corrected reported date, I added a `check` variable to assess whether the onset year and admission year were similar.
+
+
+```{r}
+check_rp_date <- df_cases |>
+  mutate(delay = reported_date - admission_date) |>        ## add delay variable
+  filter(delay > 365) |>                                   ## filter cases had delay > 1 year  
+  mutate(                                              
+    reported_date2 = update(reported_date,year = year(admission_date)),  ## change reported year = admission year
+    delay2 = reported_date2 - admission_date               ## add delay2 variable to see new reported day
+  ) |>                                                     ## makes sense
+  select(reported_date,admission_date,onset_date,delay,reported_date2,delay2) |>
+  filter(delay2 <= 14) |>                                  ## filter the day with delay2 less than 2 weeks
+  mutate(check = year(admission_date) == year(onset_date)) ## to check those cases have the same
+                                                           ## admission and onset year  
+  
+
+check_rp_date |> 
+  group_by(check) |>                                          
+  count()
+```
+
+
+Now we filter cases has check = `TRUE`
+
+```{css, echo = FALSE}
+.output {
+max-height: 400px;
+overflow-y: scroll;
+}
+```
+
+
+```{r}
+#| class: output
+
+check_rp_date |> 
+  filter(check == TRUE) |>
+  select(-check) |>
+  as.data.frame()
+```
+
+::: {.callout-note}
+
+The reported date2 variable is new reported day using the year of admission date, the delay2 variable is calculated by reported date2 - admission date to check whether the new reported date makes sense. We can conclude that those cases were entered wrong year of reported date
+
+:::
+
+
+Now we filter cases has check = `FALSE`
+
+```{r}
+#| class: output
+
+check_rp_date |> 
+  filter(check == FALSE) |>
+  select(-check) |> 
+  as.data.frame()
+```
+
+::: {.callout-note}
+
+As you can see, the new delay2 variables < 14 days, but the year of onset_date and admission date were not in the same year, and we look at the year of onset_date and reported day, we can conclude that those cases were entered wrong admission date. And I will change it in the next step.
+
+:::
+
+
+Now we filter cases has check = `NA`
+
+```{r}
+#| class: output
+
+check_rp_date |> 
+  filter(is.na(check)) |>
+  select(-check) |> 
+  as.data.frame()
+```
+
+::: {.callout-note}
+
+For the cases has check = NA because of onset_date was NA, but when we look at it, we still see it make sense because those cases has the delay2 were less than 2 weeks. So I will change those cases and merge it to the data
+
+:::
+
+**Merge to raw data**
+
+So I applied those change of the reported date to the raw data follow the steps below:
+  
+  - Initial delay > 1 year
+  
+  - Change year of reported date to year of admission date
+  
+  - Add delay2 variable
+  
+  - Check delay2 variable $\in [0,14]$
+  
+  - Keep cases has check variable $\in \{TRUE,NA\}$ 
+
+Before merge those cases to raw data I filter those out to check one time again
+
+```{r}
+#| class: output
+
+df_check <- df_cases |> 
+  mutate(delay = reported_date - admission_date,                              
+         reported_date2 = update(reported_date, year = year(admission_date)),
+         delay2 = reported_date2 - admission_date,
+         check = year(admission_date) == year(onset_date))  |>
+  mutate(reported_date = case_when(    ## those case match criteria will be changed
+    delay > 365 & delay2 <= 14 & delay2 > 0 & check %in% c("TRUE",NA) ~ reported_date2, 
+    .default = reported_date
+  )) |> 
+  filter(delay > 365 & delay2 <= 14 & delay2 > 0 & check %in% c("TRUE",NA)) |> 
+  select(reported_date,admission_date,onset_date,delay,reported_date2,delay2) |> 
+  as.data.frame()
+
+df_check
+```
+
+
+```{r}
+cat("there were :", nrow(df_check),"cases" )
+```
+
+That similiar with summary table at section above with 419 cases had `check = TRUE`, 17 cases had `check = NA`
+
+Now we merge those cases to raw data
+
+```{r}
+df_cases <- df_cases |> 
+  mutate(delay = reported_date - admission_date,                              
+         reported_date2 = update(reported_date, year = year(admission_date)),
+         delay2 = reported_date2 - admission_date,
+         check = year(admission_date) == year(onset_date))  |>
+  mutate(reported_date = case_when(    ## those case match criteria will be changed
+    delay > 365 & delay2 <= 14 & delay2 > 0 & check %in% c("TRUE",NA) ~ reported_date2, 
+    .default = reported_date
+  )) |> 
+  select(-c(delay,reported_date2,delay2,check)) 
+```
+
+Now we check again among cases has delay > 1 year has check variable = `TRUE`
+
+
+```{r}
+df_cases |>
+  mutate(delay = reported_date - admission_date) |>
+  filter(delay > 365) |>
+  mutate(
+    reported_date2 = update(reported_date, year = year(admission_date)),
+    delay2 = reported_date2 - admission_date
+  ) |>
+  select(reported_date,admission_date,onset_date,delay,reported_date2,delay2) |>
+  mutate(check = year(admission_date) == year(onset_date)) |> 
+  filter(check == TRUE)
+```
+
+::: {.callout-note}
+
+As we can see, there are still variables with a raw delay > 1 year and the same admission and onset year, but those cases have delay2 > 14 days. Therefore, this is the point we need to discuss with HCDC to select a reasonable threshold to clean these cases, balancing the maximization of cleaned cases and the creation of a reasonable new delay variable.
+
+:::
+
+#### Wrong admission date
+
+As we can see, the cases with the check variable set to `FALSE` above have admission dates entered with the wrong year, while the onset and reported years are the same. However, in this step I used broader criteria to filter cases:
+
+  - The reported year and onset year are the same
+
+  - The admission year is different from the onset year
+  
+```{r}
+df_cases |> 
+  mutate(check = year(reported_date) == year(onset_date),
+         check2 = year(admission_date) != year(onset_date)) |> 
+  filter(check == TRUE & check2 == TRUE) |> 
+  select(reported_date,admission_date,onset_date)
+```
+
+Now we change the admission date and check
+
+```{r}
+df_cases |>
+  mutate(check = year(reported_date) == year(onset_date),
+         check2 = year(admission_date) != year(onset_date)) |> 
+  filter(check == TRUE & check2 == TRUE) |> 
+  mutate(
+    admission_date = case_when(
+      check == TRUE & check == TRUE ~ update(admission_date, year = year(onset_date)),
+      .default = admission_date)
+  ) |>
+  select(reported_date,admission_date,onset_date,check,check2) 
+```
+
+As you can see the admission year were updated
+
+Merge to raw data
+
+```{r}
+df_cases <- df_cases |>
+  mutate(check = year(reported_date) == year(onset_date),
+         check2 = year(admission_date) != year(onset_date)) |> 
+  mutate(
+    admission_date = case_when(
+      check == TRUE & check2 == TRUE ~ update(admission_date, year = year(onset_date)),
+      .default = admission_date)
+  ) |>
+  select(-c(check,check2))
+```
+
+#### Wrong onset date
+
+In this step, I assumed onset date were entered incorrectly, I used criteria to filter cases:
+
+  - The reported year and admission year are the same
+
+  - The admission year is different from the onset year
+  
+  - delay between onset and reported date > 1 year
+
+Filtering step
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(check = year(reported_date) == year(admission_date),
+         check2 = year(admission_date) != year(onset_date)) |> 
+  filter(check == TRUE & check2 == TRUE) |> 
+  mutate(delay = reported_date - onset_date) |> 
+  select(reported_date,admission_date,onset_date,check,check2,delay) |> 
+  filter(delay > 365) |>
+  as.data.frame()
+```
+
+::: {.callout-note}
+
+Checking step, in this step, I changed onset_date year by the admission year (you can scroll down and look at the onset_date column to see the different between 2 outputs). Then I added the new delay2 variable to check whether the new onset_date made sense.So, we only keep cases with the delay2 variable in $\in [0,14]$. As you can see, only cases with a delay2 value have updated onset dates (for example, rows 1–4 were not updated, while rows 5–10 were updated).
+
+:::
+
+
+```{r}
+#| class: output
+
+df_cases |>
+  mutate(check = year(reported_date) == year(admission_date),
+         check2 = year(admission_date) != year(onset_date),
+         delay = reported_date - onset_date,
+         onset_date2 = update(onset_date, year = year(admission_date)),
+         delay2 = reported_date - onset_date2) |>
+  mutate(
+    onset_date = case_when(
+      check == TRUE & check2 == TRUE & delay > 365 & delay2 > 0 & delay2 <= 14 & delay2 > 0 ~ onset_date2,
+      .default = onset_date),
+  ) |>
+  filter(check == TRUE & check2 == TRUE & delay > 365) |>
+  select(reported_date,admission_date,onset_date,check,check2,delay,delay2) |>
+  as.data.frame()
+```
+
+Merge to data
+
+```{r}
+df_cases <- df_cases |>
+  mutate(check = year(reported_date) == year(admission_date),
+         check2 = year(admission_date) != year(onset_date),
+         delay = reported_date - onset_date,
+         onset_date2 = update(onset_date, year = year(admission_date)),
+         delay2 = reported_date - onset_date2) |>
+  mutate(
+    onset_date = case_when(
+      check == TRUE & check2 == TRUE & delay > 365 & delay2 > 0 & delay2 <= 14 & delay2 > 0 ~ onset_date2,
+      .default = onset_date),
+  ) |>
+  select(-c(check,check2,delay,onset_date2,delay2)) 
+```
+
+
+### Cleaning cases enter wrong with day and month swapped
+
+#### Onset date
+
+For onset dates was after the reported date, I filtered cases in which the month of the onset date equaled the day of the reported date (because I assumed the dates were entered in the wrong format, with day and month swapped) and corrected them accordingly.
+
+Filtering step, the onset_date2 variable is the updated onset_date with swapped day and month, delay_adm2 variable was generated to check onset_date2 variable make sense
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(delay_adm = admission_date - onset_date) |> 
+  filter(onset_date > reported_date & day(onset_date) == month(reported_date)) |>
+  mutate(onset_date2 = ydm(onset_date),
+         delay_adm2 = admission_date - onset_date2) |> 
+  select(reported_date,admission_date,onset_date,delay_adm,onset_date2,delay_adm2) |> 
+  as.data.frame()
+
+```
+
+::: {.callout-note}
+
+Checking step, in this step I merge it to the raw column and check was there any error in my code. As you can see in the output below, only observations that had the delay_adm2 $\leq 0$ variable were not updated for the onset date (e.g., rows 71 and 72).
+
+:::
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(delay_adm = admission_date - onset_date,
+         onset_date2 = ydm(onset_date),
+         delay_adm2 = admission_date - onset_date2,
+         check = onset_date > reported_date & day(onset_date) == month(reported_date)) |>
+  mutate(
+    onset_date = case_when(
+      check = TRUE & delay_adm2 >= 0 ~ onset_date2,
+      .default = onset_date),
+  ) |> 
+  filter(check == TRUE) |>
+  select(reported_date,admission_date,onset_date,delay_adm,onset_date2,delay_adm2) |> 
+  as.data.frame()
+
+```
+
+Now we merge to raw data
+
+```{r}
+df_cases <- df_cases |> 
+  mutate(delay_adm = admission_date - onset_date,
+         onset_date2 = ydm(onset_date),
+         delay_adm2 = admission_date - onset_date2,
+         check = onset_date > reported_date & day(onset_date) == month(reported_date)) |>
+  mutate(
+    onset_date = case_when(
+      check = TRUE & delay_adm2 >= 0 ~ onset_date2,
+      .default = onset_date),
+  ) |> 
+  select(-c(delay_adm,onset_date2,delay_adm2,check)) 
+```
+
+#### Admission date
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(delay = reported_date - admission_date) |>
+  filter(admission_date > reported_date & day(admission_date) == month(reported_date)) |>
+  mutate(admission_date2 = ydm(admission_date),
+         delay2 = reported_date - admission_date2) |> 
+  select(reported_date,admission_date,onset_date,delay,admission_date2,delay2) |> 
+  as.data.frame()
+
+```
+
+Checking before merging
+
+```{r}
+df_cases |> 
+  mutate(delay = reported_date - admission_date,
+         admission_date2 = ydm(admission_date),
+         delay2 = reported_date - admission_date2,
+         check = admission_date > reported_date & day(admission_date) == month(reported_date)) |>
+  mutate(
+    admission_date = case_when(
+      check = TRUE & delay2 >= 0 ~ admission_date2,
+      .default = admission_date),
+  ) |> 
+  filter(check == TRUE) |>
+  select(reported_date,admission_date,onset_date,delay,admission_date2,delay2) |> 
+  as.data.frame()
+```
+
+::: {.callout-note}
+
+as you can see the admission was updated
+
+:::
+
+Merge
+
+```{r}
+
+
+df_cases <- df_cases |> 
+  mutate(delay = reported_date - admission_date,
+         admission_date2 = ydm(admission_date),
+         delay2 = reported_date - admission_date2,
+         check = admission_date > reported_date & day(admission_date) == month(reported_date)) |>
+  mutate(
+    admission_date = case_when(
+      check = TRUE & delay2 >= 0 ~ admission_date2,
+      .default = admission_date)
+  ) |> 
+  select(-c(delay,admission_date2,delay2,check)) 
+```
+
+#### Reported date
+
+In this step, I filtered cases with a delay between admission and reporting greater than 30 days, because I assumed that if the day and month of the reported date were swapped, the delay between admission and raw reporting would not be within one month.
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(delay = reported_date - admission_date) |>
+  filter(month(admission_date) == day(reported_date) & delay > 30) |>
+  mutate(reported_date2 = ydm(reported_date),
+         delay2 = reported_date2 - admission_date) |>
+  select(reported_date,admission_date,onset_date,delay,reported_date2,delay2) |> 
+  as.data.frame()
+```
+
+Then, I filtered cases with a delay2 value less than 14 days to check whether the new reported date made sense. I chose a threshold of 14 days because, if the corrected reported date is reasonable, cases should be reported within two weeks (this threshold should be discussed with HCDC).
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(delay = reported_date - admission_date) |>
+  filter(month(admission_date) == day(reported_date) & delay > 30) |>
+  mutate(reported_date2 = ydm(reported_date),
+         delay2 = reported_date2 - admission_date) |>
+  select(reported_date,admission_date,onset_date,delay,reported_date2,delay2) |> 
+  filter(delay2 < 30) |> 
+  as.data.frame()
+  
+```
+
+Checking before merging in this step my code show how I update new variable to the raw data, before merging I want to make sure no error. You can scroll down and compare the reported day between 2 outputs to see the updated date.
+
+
+```{r}
+#| class: output
+
+df_cases |> 
+  mutate(delay = reported_date - admission_date,
+         reported_date2 = ydm(reported_date),
+         delay2 = reported_date2 - admission_date,
+         check = month(admission_date) == day(reported_date) & delay > 30) |>
+  mutate(
+    reported_date = case_when(
+      check = TRUE & delay2 < 30 ~ reported_date2,
+      .default = reported_date)
+  ) |> 
+  filter(check == TRUE & delay2 < 30) |> 
+  select(reported_date,admission_date,onset_date,delay,reported_date2,delay2) |> 
+  as.data.frame()
+```
+
+Merging
+
+```{r}
+df_cases <- df_cases |> 
+  mutate(delay = reported_date - admission_date,
+         reported_date2 = ydm(reported_date),
+         delay2 = reported_date2 - admission_date,
+         check = month(admission_date) == day(reported_date) & delay > 30) |>
+  mutate(
+    reported_date = case_when(
+      check = TRUE & delay2 < 30 ~ reported_date2,
+      .default = reported_date)
+  ) |> 
+  select(-c(delay,reported_date2,delay2,check))
+```
+
+# String variable
+
+In this step, I cleaned severity, district, commune, inout variables
+
+## Severity
+
+```{r}
+df_cases |> 
+  pull(severity) |> 
+  unique()
+```
+
+```{r}
+library(stringi)
+
+df_cases %<>%
+  mutate(
+    severity = case_when(
+      severity %in% c("2a","2A","2","a","A","-2") ~ "2A",
+      severity %in% c("1","11","1a") ~ "1",
+      severity %in% c("2b","2B","2b nhom2","B","b") ~ "2B",
+      .default = severity)
+    )
+```
+
+## District and commune
+
+```{r}
+df_cases |> 
+  pull(district) |> 
+  unique()
+```
+
+```{r}
+#| class: output
+
+df_cases |> 
+  pull(commune) |> 
+  unique()
+```
+
+```{r}
+df_cases %<>% 
+  mutate(
+    district = district |> 
+      stri_trans_general("latin-ascii") |> 
+      tolower() |> 
+      str_remove_all("quan|huyen|thanh pho") |> 
+      trimws(which = "both"),
+    commune = commune |> 
+      stri_trans_general("latin-ascii") |> 
+      tolower()|> 
+      str_remove_all("phuong|xa|thi tran") |> 
+      trimws(which = "both")
+      ) 
+```
+
+## In and out situation
+
+```{r}
+df_cases |> 
+  pull(inout) |> 
+  unique()
+```
+
+
+```{r}
+df_cases %<>%
+  mutate(
+    inout = case_when(
+      inout == "Điều trị nội trú" ~ "Inpatient",
+      inout == "Điều trị ngoại trú" ~ "Outpatient",
+      inout == "Ra viện" ~ "Discharge",
+      inout == "Chuyển viện" ~ "Hospital transfer",
+      inout == "Tình trạng khác" ~ "Other",
+      inout == "Tử vong" ~ "Died")
+    )
+```
+
+# Summary
+
+  - Based on the description, we can see that the reported date is currently the most biased, with more than 30,000 cases reported on March 9, 2018. Therefore, we need to discuss the reported date with HCDC, and if necessary, we may exclude this variable from the model.
+
+   - For onset date and admission date, the admission date is more reliable than the onset date because the onset date is collected based on the patient’s memory.
+
+  - We should discuss with HCDC a reasonable threshold (e.g., 14 weeks) for the delay between admission/onset and the reported date.
+
+  - Are there any expected issues in the data that I have not considered in this analysis? We also need to discuss with HCDC what may happen during data entry into the surveillance system.
+
+```{r}
+saveRDS(df_cases,"D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/cleaned/hfmd_hcdc.rds")
+```
+
+

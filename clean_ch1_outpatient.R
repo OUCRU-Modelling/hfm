@@ -101,4 +101,3 @@ CH1_out_cleaned <- rbind(CH1_outpatient_hcm_23a,CH1_outpatient_hcm_23b) %>%
 
 saveRDS(CH1_out_cleaned,"D:/OUCRU/hfmd/data/CH1_out_cleaned.rds")
 
-
