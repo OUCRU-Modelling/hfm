@@ -7,7 +7,7 @@
 path2data <- paste0("D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/cleaned/")
 
 # Name of cleaned HFMD data file
-cases_file <- "hfmd_full.rds"
+cases_file <- "hfmd_hcdc.rds"
 
 # Name of cleaned sero file
 sero_file <- "sero_EV-A71_1222-1223.rds"
@@ -51,23 +51,76 @@ library(zoo)
 invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
+### Filtering 2023 cases and cleaning nessessary variables
+
 ```{r}
-## filter cases in 2023
+## import and check whether duplicated cases
 
-df23 <- df_cases  |>  filter(year(adm_date) == 2023)
-df23 <- df23[!duplicated(df23), ]
+df23 <- df_cases  |>  filter(year(admission_date) == 2023)
 
-df23 <- df23 |>
+df23 |> 
+  get_dupes()
+```
+
+```{r}
+df23 |> 
+  summary()
+```
+
+In this analysis, we only care about dob, admission date, district, inout, severity, medi_cen
+
+### NA in Dob
+
+```{r}
+df23 |> 
+  filter(is.na(dob)) 
+```
+To facilitate analysis, I excluded those cases had NA of dob
+
+```{r}
+df23 %<>% 
+  filter(!is.na(dob)) 
+```
+
+### Merge severity
+
+```{r}
+df23 %<>%
   mutate(
-    wave = case_when(
-      adm_date <= as.Date("2023-09-03") ~ "1st",
-      adm_date > as.Date("2023-09-03") ~ "2nd"
-    ),
     severity2 = case_when(
       is.na(severity) ~ "Undefined",
       severity %in% c("3","4") ~ "3 or 4",
-      !severity %in% c("3","4",NA) ~ severity
+      .default = severity
     ) |> as.factor()
+  ) 
+```
+
+### Change name of hospitals
+
+I only consider 4 hospital: Children's hospital 1, Children's hospital 2, City Children's hospital, Hospital of Tropical Diseases 
+
+```{r}
+df23  %<>%  
+  mutate(
+    medi_cen = case_when(
+      medi_cen %in% c("Bệnh viện Nhi đồng 1","Bênh viện Nhi Đồng 1","Bệnh viện Nhi Đồng 1") ~ "Children's hospital 1",
+      medi_cen == "Bênh viện Bệnh nhiệt đới TPHCM" ~ "Hospital of Tropical Diseases",
+      medi_cen %in% c("Bệnh viện Nhi đồng 2","Bệnh viện Nhi Đồng 2") ~ "Children's hospital 2",
+      medi_cen == "Bệnh viện Nhi đồng thành phố" ~ "City Children's hospital",
+      .default = medi_cen
+    )
+  )
+```
+
+### Adding additional variables
+
+```{r}
+df23  %<>%  
+  mutate(
+    age1 = interval(dob, admission_date) / years(1),
+    time = as.numeric(admission_date),
+    adm_week = as.Date(floor_date(admission_date, "week")),
+    age = round(age1)
   )
 ```
 
@@ -79,12 +132,6 @@ library(cluster)
 library(factoextra)
 
 set.seed(123)
-
-df23 <- df23 |>
-  # select(age1,adm_date) |>
-  mutate(time = as.numeric(adm_date)) |>
-  filter(!is.na(age1))
-
 
 kmeans_result_1 <- kmeans(df23[,c("age1","time")], centers = 2, nstart = 25)
 
@@ -115,13 +162,28 @@ So I selected time points at `r time_cut` to seperate two peaks
 
 df23 |> 
   filter(age1 <= 15) |> 
-  ggplot(aes(x = adm_date, y = age1, color = wave)) +
+  ggplot(aes(x = admission_date, y = age1, color = wave)) +
   geom_point(size = .5) + 
   scale_x_datetime(date_breaks = "1 month" , date_labels = "%b")+
   theme_minimal()+
   geom_vline(xintercept = as.Date(time_cut),linewidth = .2)+
-  labs(x = "Admission date", y = "Age (years)")+
-  theme(legend.position = "bottom")
+  labs(x = "Admission date (2023)", y = "Age (years)")+
+  guides(color=guide_legend(override.aes=list(size=8), title = "Wave"))+
+  theme(
+    axis.title.x = element_text(size = 18),
+    axis.text.x = element_text(size = 18),
+    axis.ticks.x = element_blank(),
+    legend.position = "bottom",
+    axis.title.y = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 18),
+    legend.title = element_text(size = 18)
+  )
+
+ggsave("./fig_manuscript/sup2_new.svg",
+       width = 15,height = 9,dpi = 500)
+ggsave("./fig_manuscript/sup2_new.png",
+       width = 15,height = 9,dpi = 500)
 ```
 
 
@@ -367,12 +429,12 @@ In this step, I just used the admission week and age (integer form), i.e I count
 
 df_smooth <- df23 |>
   mutate(age3 = floor(age1)) |>
-  group_by(adm_date, age3) |>
+  group_by(admission_date, age3) |>
   summarize(n = n(), .groups = "drop") |>
-  complete(age3, adm_date, fill = list(n = 0)) |>
+  complete(age3, admission_date, fill = list(n = 0)) |>
   mutate(
     age = as.numeric(age3),
-    time = as.numeric(adm_date)   # convert to numeric scale
+    time = as.numeric(admission_date)   # convert to numeric scale
   )
 
 df_smooth |>
@@ -677,45 +739,54 @@ First I show how I calculate the expected admission of CH1. I used outpatient ca
 ch1_outpatient <- paste0(path2data, "CH1_outpatient_HCM_cleaned.rds") |>
   readRDS()
 
-census2019 <- paste0(path2data, "census2019.rds") |>
-  readRDS() 
+# census2019 <- paste0(path2data, "census2019.rds") |>
+#   readRDS() 
 
 ## generate denominator
 
-N_ad <- census2019 |>
-  filter(province == "Thành phố Hồ Chí Minh") |>
-  mutate(district = district %>%
-           str_replace_all(
-             c("Quận 2" = "Thủ Đức",
-               "Quận 9" = "Thủ Đức")) %>%
-           str_remove("Quận|Huyện") %>%
-           trimws(which = "both") %>%
-           stri_trans_general("latin-ascii") %>%
-           tolower()) %>%
-  group_by(district,age) |>
-  summarise(n = sum(n),.groups = "drop") |>
-  mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
-  arrange(age) |>
-  filter(age < 17)
+# N_ad <- census2019 |>
+#   filter(province == "Thành phố Hồ Chí Minh") |>
+#   mutate(district = district %>%
+#            str_replace_all(
+#              c("Quận 2" = "Thủ Đức",
+#                "Quận 9" = "Thủ Đức")) %>%
+#            str_remove("Quận|Huyện") %>%
+#            trimws(which = "both") %>%
+#            stri_trans_general("latin-ascii") %>%
+#            tolower()) %>%
+#   group_by(district,age) |>
+#   summarise(n = sum(n),.groups = "drop") |>
+#   mutate(across(age, ~ stringr::str_remove(.x, " tuổi| \\+") |> as.integer())) |>
+#   arrange(age) |>
+#   filter(age < 17)
 
 ## probability of CH1 admission
-expected_catchment_CH1 <- left_join(ch1_outpatient,
-          N_ad,
-          by = join_by(district,age_gr == age)) %>% 
-  na.omit(n.y) |> 
-  mutate(p_hos = n.x/n.y) %>%  
-  arrange(age_gr) %>% 
-  group_by(age_gr) %>% 
-  mutate(weight = p_hos/sum(p_hos),
-         expected_cm = n.y*weight) %>% 
-  ungroup() |> 
-  group_by(period,age_gr) |> 
-  summarise(e_admission = sum(expected_cm),.groups = "drop")  
+# expected_catchment_CH1 <- left_join(ch1_outpatient,
+#           N_ad,
+#           by = join_by(district,age_gr == age)) %>% 
+#   na.omit(n.y) |> 
+#   mutate(p_hos = n.x/n.y) %>%  
+#   arrange(age_gr) %>% 
+#   group_by(age_gr) %>% 
+#   mutate(weight = p_hos/sum(p_hos),
+#          expected_cm = n.y*weight) %>% 
+#   ungroup() |> 
+#   group_by(period,age_gr) |> 
+#   summarise(e_admission = sum(expected_cm),.groups = "drop")  
 
 ## age profile of expected CH1 catchment
-expected_age_cm <- expected_catchment_CH1 |> 
+# expected_age_cm <- expected_catchment_CH1 |> 
+#   group_by(period) |> 
+#   group_modify(~ gam(e_admission~s(age_gr),method = "REML",data = .) %>% 
+#                  predict(list(age_gr = seq(0,15,le = 512)),type="response") %>%
+#                  as.tibble() %>% 
+#                  mutate(age = seq(0,15,le = 512)))
+
+expected_age_cm <- ch1_outpatient |> 
+  group_by(period,age_gr) |> 
+  summarise(total_adm = sum(n),.groups = "drop") |>  
   group_by(period) |> 
-  group_modify(~ gam(e_admission~s(age_gr),method = "REML",data = .) %>% 
+  group_modify(~ gam(total_adm~s(age_gr),method = "REML",data = .) %>% 
                  predict(list(age_gr = seq(0,15,le = 512)),type="response") %>%
                  as.tibble() %>% 
                  mutate(age = seq(0,15,le = 512)))
@@ -724,19 +795,31 @@ expected_age_cm |>
   ggplot(aes(x = age,y = value))+
   geom_line()+
   # geom_ribbon(aes(ymin = lwr,ymax=upr),fill = "blue",alpha = .3)+
-  geom_point(aes(x = age_gr, y = e_admission),
-             data = expected_catchment_CH1)+
+  geom_col(aes(x = age_gr, y = total_adm),alpha = .3,
+             data = ch1_outpatient |> 
+               group_by(period,age_gr) |> 
+               summarise(total_adm = sum(n),.groups = "drop"))+
   theme_bw()+
   facet_wrap(~period)+
-  labs(y = "Expected admission",x = "Age (years)")
+  labs(y = "Expected admission",x = "Age (years)")+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_text(size = 18),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18),
+        strip.text = element_text(size = 18))
+
+ggsave("./fig_manuscript/sup3_new.svg",
+       width = 12,height = 8,dpi = 500)
 
 ```
 
 ```{r}
 df_cases_ch1_23 <- df23 |> 
-  filter(medi_cen %in% c("Bệnh viện Nhi đồng 1",
-                         "Bênh viện Nhi Đồng 1",
-                         "Bệnh viện Nhi Đồng 1")) 
+  filter(medi_cen == "Children's hospital 1") 
 
 ## fig 2C
 ts_ch1 <- df_cases_ch1_23 %>%
@@ -851,15 +934,18 @@ atk_sero <- map2(head(outttt, -15),
     alpha = 0.3
   )+
   scale_fill_viridis_c(option = "turbo",name = "Attack rate")+
-  theme_void()+
-  scale_y_reverse(name = "Age (years)",lim= rev(c(0,14)),breaks = seq(0,14,by=2))+
+  theme_classic()+
+  scale_y_reverse(name = "Age (years)",
+                  lim= rev(c(0,14)),
+                  breaks = seq(0,14,by=2),
+                  minor_breaks = NULL)+
   scale_x_date(date_breaks = "1 month",
                date_labels = "%b",
                name = "Collection date in 2023",
-               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")))+
+               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")),
+               minor_breaks = NULL)+
   theme(axis.title.y = element_text(size = 18),
         axis.title.x = element_text(size = 18),
-        axis.ticks.x = element_blank(),
         plot.tag = element_text(face = "bold", size = 18),
         axis.text.x = element_text(size = 18),
         axis.text.y = element_text(size = 18),
@@ -895,15 +981,15 @@ age_profile_sp_cm <- outttt |>
         strip.text.x = element_text(size = 18))
 
 
-## fig 1A 
+## fig 2A 
 
 ouut <- list()
 dat <- list()
 
 for (i in 1:3){
   dat[[i]] <- df_cases_ch1_23 |> 
-    filter(adm_date >= as.Date(mean_collection_times[i]) &
-             adm_date <= as.Date(mean_collection_times[i+1]))
+    filter(admission_date >= as.Date(mean_collection_times[i]) &
+             admission_date <= as.Date(mean_collection_times[i+1]))
 }
 
 
@@ -929,14 +1015,18 @@ expected_incidence <- map2(head(outttt, -15),
 exp_in_ch1 <- expected_incidence |> 
   ggplot()+
   geom_line(aes(x = cohort,y = exp_inc))+
-  geom_histogram(data = dat %>% bind_rows(.id = "id") %>% filter(age1 >0),
-                 aes(age1),binwidth = 0.5,
+  geom_col(data = dat %>% 
+                   bind_rows(.id = "id") %>% 
+                   filter(age1 >0) |> 
+                   group_by(id,age) |> 
+                   count(),
+                 aes(x = age, y = n),
                  color = "white",fill = "black",alpha = 0.2)+
   facet_wrap(~factor(id,labels = c("12/2022 - 4/2023",
                                    "4/2023 - 8/2023",
                                    "8/2023 - 12/2023")))+
-  labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
-  coord_cartesian(ylim = c(0,1200))+
+  labs(y = "Expected infections",x = "Age (years)",tag = "A")+
+  # coord_cartesian(ylim = c(0,1200))+
   theme_bw()+
   theme(
     axis.text.x = element_text(size = 15),
@@ -1144,13 +1234,12 @@ ev_a71_age_time_p <- ggplot() +
     alpha = 0.3
   ) +
   labs(x = "Week", y = "Age", fill = "Smoothed EV-A71 percentage")+
-  scale_x_date(date_breaks = "1 month", date_labels = "%b",
+  scale_x_date(date_breaks = "1 month", date_labels = "%b", name = "Collection date in 2023",
                limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")))+
-  theme_void()+
+  theme_classic()+
   scale_y_reverse(name = "Age (years)",lim= rev(c(-0.5,6.5)),breaks = seq(-1,7))+
   theme(axis.title.y = element_text(size = 18),
-        axis.title.x = element_blank(),
-        axis.ticks.x = element_blank(),
+        axis.title.x = element_text(size = 18),
         legend.position = "bottom",
         plot.tag = element_text(face = "bold", size = 18),
         axis.text.x = element_text(size = 18),
@@ -1277,12 +1366,13 @@ compare_ev71 <- recontructed_df |>
   geom_col(alpha = 0.3)+
   geom_line(data = expected_incidence,
             aes(x = cohort,y=exp_inc))+
-  scale_x_continuous(limits = c(0,15))+
+  scale_x_continuous(limits = c(0,15),
+                     breaks = seq(0,15,by=5))+
   facet_wrap(~period)+
-  labs(y = "Expected incidence",x = "Age (years)",tag = "A")+
+  labs(y = "Expected infections",x = "Age (years)",tag = "A")+
   theme_bw()+
   theme(
-    axis.text.x = element_blank(),
+    axis.text.x = element_text(size = 18),
     axis.text.y = element_text(size = 18),
     legend.text = element_text(size = 18),
     plot.tag = element_text(face = "bold", size = 18),
@@ -1358,13 +1448,12 @@ ggsave("./fig_manuscript/sup1_new.svg",
 
 df_cases_ch1_23 |> 
   mutate(age3 = ceiling(age1)) |> 
-  group_by(age3,district2) |> 
+  group_by(age3,district) |> 
   count() |> 
   left_join(ch1_outpatient |> 
               group_by(district,age_gr) |> 
-              summarise(n = sum(n)),
-            by = join_by(district2 == district,age3 == age_gr)) |> 
-  ungroup() |> 
+              summarise(n = sum(n),.groups = "drop"),
+            by = join_by(district,age3 == age_gr)) |> 
   set_colnames(c("age","district","hfmd_cases","outpatient")) |> 
   ggplot(aes(x = age))+
   geom_line(aes(y = outpatient))+
