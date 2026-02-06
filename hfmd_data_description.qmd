@@ -78,14 +78,14 @@ df_cases |>
   ungroup() |>
   count(dupes)
 ```
-- There are 649 records that have a duplicate and 3 record has 2 duplicates. Now we remove those duplicates.
+
+-   There are 649 records that have a duplicate and 3 record has 2 duplicates. Now we remove those duplicates.
 
 ## Remove duplicated observations
 
 ```{r}
 cat("Before duplication removal:", nrow(df_cases), "rows \n")
 ```
-
 
 ```{r}
 df_cases %<>% distinct()
@@ -174,23 +174,21 @@ df_cases %<>%
   summary()
 ```
 
-::: {.callout-note}
+::: callout-note
+-   Day and month are within the normal range.
 
-  - Day and month are within the normal range.
+-   Some observations are missing date of birth and onset date (32,282 missing DOB and 43,554 missing onset dates).
 
-  - Some observations are missing date of birth and onset date (32,282 missing DOB and 43,554 missing onset dates).
-
-  - From the data summary, we can see that most of the data (within the IQR) are correct; for example, the year of admission and reporting ranges from 2013 to 2024. However, there are some incorrect values at the minimum and maximum (e.g., year of birth and year of onset).
-  
+-   From the data summary, we can see that most of the data (within the IQR) are correct; for example, the year of admission and reporting ranges from 2013 to 2024. However, there are some incorrect values at the minimum and maximum (e.g., year of birth and year of onset).
 :::
 
 ## Cleaning year data
 
 Let’s clean this data up. First, we will see how much of the data is out of the range. The ranges will be defined as:
 
-  - [2013, 2024] for year onset
-  
-  - [1924, 2024] for birth years (implying the maximum patient age we’re going to look at is 100 years old)
+-   \[2013, 2024\] for year onset
+
+-   \[1924, 2024\] for birth years (implying the maximum patient age we’re going to look at is 100 years old)
 
 ### Spotting out of range observations
 
@@ -219,20 +217,18 @@ df_cases |>
   head(12)
 ```
 
-::: {.callout-note}
-
+::: callout-note
 As we can see, two cases had incorrect dates of birth (row 9 and 12), other variables have the same reported year and admission year, but the onset year is incorrect, so in the next step the onset date information was filled in.
-
 :::
 
 ### Remove and fill in information
 
-  - Removed two outlier cases with incorrect dates of birth (rows 9 and 12).
+-   Removed two outlier cases with incorrect dates of birth (rows 9 and 12).
 
-  - I checked whether the onset month and admission month were the same (by `check_adm_onset` variable) and calculated the `delay` between admission and reporting.  If cases had `check_adm_onset` = TRUE and a `delay` within one month, I concluded that the onset year was entered incorrectly. I then used the reported year for the onset year.
-  
+-   I checked whether the onset month and admission month were the same (by `check_adm_onset` variable) and calculated the `delay` between admission and reporting. If cases had `check_adm_onset` = TRUE and a `delay` within one month, I concluded that the onset year was entered incorrectly. I then used the reported year for the onset year.
+
 This is the checking step
-  
+
 ```{r}
 df_cases |> 
   filter(!age %in% c(-2951,117) | is.na(dob)) |>  ## excluded cases related to dob error
@@ -281,11 +277,8 @@ df_cases |>
   mutate(delay_adm = admission_date - onset_date) ## to check whether new onset date makes sense
 ```
 
-
-::: {.callout-note}
-
+::: callout-note
 As you can see the onset_date column had been changed
-
 :::
 
 ## Plotting date variables
@@ -359,14 +352,11 @@ df_cases |>
   filter(n > 1000)
 ```
 
-::: {.callout-warning}
-
+::: callout-warning
 30796 cases were merged to report in March 9th 2018!!!
 
-=> We need to discuss with HCDC about this 
-
+=\> We need to discuss with HCDC about this
 :::
-
 
 ### Delay distribution
 
@@ -377,7 +367,7 @@ df_cases |>
   geom_histogram(bins = 30)
 ```
 
-When we look at delay distribution, we can see the outliers are the cases have the delay > 50 days. I tried to excluded cases were reported in March 9th 2018
+When we look at delay distribution, we can see the outliers are the cases have the delay \> 50 days. I tried to excluded cases were reported in March 9th 2018
 
 ```{r}
 df_cases |>
@@ -387,10 +377,8 @@ df_cases |>
   geom_histogram(bins = 30)
 ```
 
-::: {.callout-note}
-
+::: callout-note
 As we can see, the delay distribution is most affected by the cases reported in March 9th 2018
-
 :::
 
 ### Cleaning cases were entered wrong year
@@ -398,7 +386,6 @@ As we can see, the delay distribution is most affected by the cases reported in 
 #### Wrong reported date
 
 In this step, I selected cases with delays greater than one year because I assumed that these cases had an incorrectly entered year, while the admission date and onset date were in the same year. I then changed the year of the reported date to the year of the admission date and created a new delay variable (delay2). If delay2 was less than 14 days (this threshold should be discussed with HCDC), it indicated that the cases were entered with the wrong year, and we used the corrected reported date. To verify the corrected reported date, I added a `check` variable to assess whether the onset year and admission year were similar.
-
 
 ```{r}
 check_rp_date <- df_cases |>
@@ -419,7 +406,6 @@ check_rp_date |>
   count()
 ```
 
-
 Now we filter cases has check = `TRUE`
 
 ```{css, echo = FALSE}
@@ -428,7 +414,6 @@ max-height: 400px;
 overflow-y: scroll;
 }
 ```
-
 
 ```{r}
 #| class: output
@@ -439,12 +424,9 @@ check_rp_date |>
   as.data.frame()
 ```
 
-::: {.callout-note}
-
+::: callout-note
 The reported date2 variable is new reported day using the year of admission date, the delay2 variable is calculated by reported date2 - admission date to check whether the new reported date makes sense. We can conclude that those cases were entered wrong year of reported date
-
 :::
-
 
 Now we filter cases has check = `FALSE`
 
@@ -457,12 +439,9 @@ check_rp_date |>
   as.data.frame()
 ```
 
-::: {.callout-note}
-
-As you can see, the new delay2 variables < 14 days, but the year of onset_date and admission date were not in the same year, and we look at the year of onset_date and reported day, we can conclude that those cases were entered wrong admission date. And I will change it in the next step.
-
+::: callout-note
+As you can see, the new delay2 variables \< 14 days, but the year of onset_date and admission date were not in the same year, and we look at the year of onset_date and reported day, we can conclude that those cases were entered wrong admission date. And I will change it in the next step.
 :::
-
 
 Now we filter cases has check = `NA`
 
@@ -475,25 +454,23 @@ check_rp_date |>
   as.data.frame()
 ```
 
-::: {.callout-note}
-
+::: callout-note
 For the cases has check = NA because of onset_date was NA, but when we look at it, we still see it make sense because those cases has the delay2 were less than 2 weeks. So I will change those cases and merge it to the data
-
 :::
 
 **Merge to raw data**
 
 So I applied those change of the reported date to the raw data follow the steps below:
-  
-  - Initial delay > 1 year
-  
-  - Change year of reported date to year of admission date
-  
-  - Add delay2 variable
-  
-  - Check delay2 variable $\in [0,14]$
-  
-  - Keep cases has check variable $\in \{TRUE,NA\}$ 
+
+-   Initial delay \> 1 year
+
+-   Change year of reported date to year of admission date
+
+-   Add delay2 variable
+
+-   Check delay2 variable $\in [0,14]$
+
+-   Keep cases has check variable $\in \{TRUE,NA\}$
 
 Before merge those cases to raw data I filter those out to check one time again
 
@@ -516,7 +493,6 @@ df_check <- df_cases |>
 df_check
 ```
 
-
 ```{r}
 cat("there were :", nrow(df_check),"cases" )
 ```
@@ -538,8 +514,7 @@ df_cases <- df_cases |>
   select(-c(delay,reported_date2,delay2,check)) 
 ```
 
-Now we check again among cases has delay > 1 year has check variable = `TRUE`
-
+Now we check again among cases has delay \> 1 year has check variable = `TRUE`
 
 ```{r}
 df_cases |>
@@ -554,20 +529,18 @@ df_cases |>
   filter(check == TRUE)
 ```
 
-::: {.callout-note}
-
-As we can see, there are still variables with a raw delay > 1 year and the same admission and onset year, but those cases have delay2 > 14 days. Therefore, this is the point we need to discuss with HCDC to select a reasonable threshold to clean these cases, balancing the maximization of cleaned cases and the creation of a reasonable new delay variable.
-
+::: callout-note
+As we can see, there are still variables with a raw delay \> 1 year and the same admission and onset year, but those cases have delay2 \> 14 days. Therefore, this is the point we need to discuss with HCDC to select a reasonable threshold to clean these cases, balancing the maximization of cleaned cases and the creation of a reasonable new delay variable.
 :::
 
 #### Wrong admission date
 
 As we can see, the cases with the check variable set to `FALSE` above have admission dates entered with the wrong year, while the onset and reported years are the same. However, in this step I used broader criteria to filter cases:
 
-  - The reported year and onset year are the same
+-   The reported year and onset year are the same
 
-  - The admission year is different from the onset year
-  
+-   The admission year is different from the onset year
+
 ```{r}
 df_cases |> 
   mutate(check = year(reported_date) == year(onset_date),
@@ -611,11 +584,11 @@ df_cases <- df_cases |>
 
 In this step, I assumed onset date were entered incorrectly, I used criteria to filter cases:
 
-  - The reported year and admission year are the same
+-   The reported year and admission year are the same
 
-  - The admission year is different from the onset year
-  
-  - delay between onset and reported date > 1 year
+-   The admission year is different from the onset year
+
+-   delay between onset and reported date \> 1 year
 
 Filtering step
 
@@ -632,12 +605,9 @@ df_cases |>
   as.data.frame()
 ```
 
-::: {.callout-note}
-
+::: callout-note
 Checking step, in this step, I changed onset_date year by the admission year (you can scroll down and look at the onset_date column to see the different between 2 outputs). Then I added the new delay2 variable to check whether the new onset_date made sense.So, we only keep cases with the delay2 variable in $\in [0,14]$. As you can see, only cases with a delay2 value have updated onset dates (for example, rows 1–4 were not updated, while rows 5–10 were updated).
-
 :::
-
 
 ```{r}
 #| class: output
@@ -675,7 +645,6 @@ df_cases <- df_cases |>
   select(-c(check,check2,delay,onset_date2,delay2)) 
 ```
 
-
 ### Cleaning cases enter wrong with day and month swapped
 
 #### Onset date
@@ -697,10 +666,8 @@ df_cases |>
 
 ```
 
-::: {.callout-note}
-
+::: callout-note
 Checking step, in this step I merge it to the raw column and check was there any error in my code. As you can see in the output below, only observations that had the delay_adm2 $\leq 0$ variable were not updated for the onset date (e.g., rows 71 and 72).
-
 :::
 
 ```{r}
@@ -771,10 +738,8 @@ df_cases |>
   as.data.frame()
 ```
 
-::: {.callout-note}
-
+::: callout-note
 as you can see the admission was updated
-
 :::
 
 Merge
@@ -828,7 +793,6 @@ df_cases |>
 ```
 
 Checking before merging in this step my code show how I update new variable to the raw data, before merging I want to make sure no error. You can scroll down and compare the reported day between 2 outputs to see the updated date.
-
 
 ```{r}
 #| class: output
@@ -929,7 +893,6 @@ df_cases |>
   unique()
 ```
 
-
 ```{r}
 df_cases %<>%
   mutate(
@@ -945,16 +908,14 @@ df_cases %<>%
 
 # Summary
 
-  - Based on the description, we can see that the reported date is currently the most biased, with more than 30,000 cases reported on March 9, 2018. Therefore, we need to discuss the reported date with HCDC, and if necessary, we may exclude this variable from the model.
+-   Based on the description, we can see that the reported date is currently the most biased, with more than 30,000 cases reported on March 9, 2018. Therefore, we need to discuss the reported date with HCDC, and if necessary, we may exclude this variable from the model.
 
-   - For onset date and admission date, the admission date is more reliable than the onset date because the onset date is collected based on the patient’s memory.
+-   For onset date and admission date, the admission date is more reliable than the onset date because the onset date is collected based on the patient’s memory.
 
-  - We should discuss with HCDC a reasonable threshold (e.g., 14 weeks) for the delay between admission/onset and the reported date.
+-   We should discuss with HCDC a reasonable threshold (e.g., 14 weeks) for the delay between admission/onset and the reported date.
 
-  - Are there any expected issues in the data that I have not considered in this analysis? We also need to discuss with HCDC what may happen during data entry into the surveillance system.
+-   Are there any expected issues in the data that I have not considered in this analysis? We also need to discuss with HCDC what may happen during data entry into the surveillance system.
 
 ```{r}
 saveRDS(df_cases,"D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/cleaned/hfmd_hcdc.rds")
 ```
-
-

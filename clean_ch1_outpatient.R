@@ -28,7 +28,7 @@ new_dup_dis <- px_qh_change %>%
 
 px_qh_pair <- px_qh_change %>%
   filter(!commune %in% new_dup_dis) %>%
-  select(district,commune) %>% unique()
+  dplyr::select(district,commune) %>% unique()
 
 
 ##
@@ -48,9 +48,9 @@ CH1_outpatient_hcm_23 <- rbind(CH1_outpatient_010623,CH1_outpatient_071223) %>%
          commune2 = commune %>%
            stri_trans_general("latin-ascii") %>%
            tolower() %>% trimws(which = "both"),) %>%
-  filter(city %in% c(" TP.Hồ Chí Minh"," Thành phố Hồ Chí Minh")) %>%
+  filter(city %in% c(" TP.Hồ Chí Minh"," Thành phố Hồ Chí Minh"),
+         !grepl('a|A|B|b', MaICDChinh)) %>%
   distinct(mahoso,dob,PHAI, .keep_all = TRUE)
-
 
 CH1_outpatient_hcm_23a <- CH1_outpatient_hcm_23 %>%
   filter(district != "Không xác định" &
@@ -61,13 +61,13 @@ CH1_outpatient_hcm_23a <- CH1_outpatient_hcm_23 %>%
            tolower() %>% trimws(which = "both")) %>%
   left_join(.,px_qh_pair,by = join_by(commune2 == commune)) %>%
   na.omit(district.y) %>%
-  select(dob,adm,district.y,commune2) %>%
+  dplyr::select(dob,adm,district.y,commune2) %>%
   set_colnames(c("dob","adm","district","commune"))
 
 
 CH1_outpatient_hcm_23b <- CH1_outpatient_hcm_23 %>%
   filter(!district %in% c("Không xác định","")) %>%
-  select(dob,adm,district2,commune2) %>%
+  dplyr::select(dob,adm,district2,commune2) %>%
   set_colnames(c("dob","adm","district","commune"))
 
 CH1_out_cleaned <- rbind(CH1_outpatient_hcm_23a,CH1_outpatient_hcm_23b) %>%

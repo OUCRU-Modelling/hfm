@@ -18,11 +18,6 @@ book:
     - index.qmd
     - sero_description.qmd
     - viro_des.qmd
-    - fig_manu2.qmd
-    - analysis_N.qmd
-    - tsir_r0.qmd
-    - model.qmd
-    - sero.qmd
     - rf_ms.qmd
 
 format:
