@@ -1,11 +1,28 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 # Reframe ms figure
 
 ## Import data
 
-```{r}
-## file path
-path2data <- paste0("D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Research Unit/Data/HFMD/cleaned/")
+Path to data:
 
+```{r}
+if (Sys.getenv("USER") == "MarcChoisy") {
+  path2data <- paste0("~/Library/CloudStorage/OneDrive-SharedLibraries-OxfordUniversi",
+                      "tyClinicalResearchUnit/OUCRU Modelling - Documents/HFMD HCMC 2",
+                      "023/data/cleaned/")
+} else {
+  path2data <- paste0("D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Resear",
+                      "ch Unit/Data/HFMD/cleaned/")
+}
+```
+
+Files names:
+
+```{r}
 # Name of cleaned HFMD data file
 cases_file <- "hfmd_hcdc.rds"
 
@@ -13,22 +30,10 @@ cases_file <- "hfmd_hcdc.rds"
 sero_file <- "sero_EV-A71_1222-1223.rds"
 
 # Name of cleaned viro file
-
 viro_file <- "virology_cleaned.rds"
-
-## import data
-
-df_cases <- paste0(path2data, cases_file) |>
-  readRDS()
-
-df_sero <- paste0(path2data, sero_file) |>
-  readRDS()
-
-df_viro <- paste0(path2data, viro_file) |>
-  readRDS()
 ```
 
-## Library
+## Packages
 
 ```{r}
 library(readxl)
@@ -48,110 +53,131 @@ library(sf)
 library(stringi)
 library(gtsummary)
 library(zoo)
+library(cluster)
+library(factoextra)
 invisible(Sys.setlocale("LC_TIME", "English"))
 ```
 
-### Filtering 2023 cases and cleaning nessessary variables
+## Functions
+
+A tuning of `readRDS()`:
 
 ```{r}
-## import and check whether duplicated cases
-
-df23 <- df_cases  |>  filter(year(admission_date) == 2023)
-
-df23 |> 
-  get_dupes()
-```
-
-```{r}
-df23 |> 
-  summary()
-```
-
-In this analysis, we only care about dob, admission date, district, inout, severity, medi_cen
-
-### NA in Dob
-
-```{r}
-df23 |> 
-  filter(is.na(dob)) 
-```
-To facilitate analysis, I excluded those cases had NA of dob
-
-```{r}
-df23 %<>% 
-  filter(!is.na(dob)) 
-```
-
-### Merge severity
-
-```{r}
-df23 %<>%
-  mutate(
-    severity2 = case_when(
-      is.na(severity) ~ "Undefined",
-      severity %in% c("3","4") ~ "3 or 4",
-      .default = severity
-    ) |> as.factor()
-  ) 
-```
-
-### Change name of hospitals
-
-I only consider 4 hospital: Children's hospital 1, Children's hospital 2, City Children's hospital, Hospital of Tropical Diseases 
-
-```{r}
-df23  %<>%  
-  mutate(
-    medi_cen = case_when(
-      medi_cen %in% c("Bệnh viện Nhi đồng 1","Bênh viện Nhi Đồng 1","Bệnh viện Nhi Đồng 1") ~ "Children's hospital 1",
-      medi_cen == "Bênh viện Bệnh nhiệt đới TPHCM" ~ "Hospital of Tropical Diseases",
-      medi_cen %in% c("Bệnh viện Nhi đồng 2","Bệnh viện Nhi Đồng 2") ~ "Children's hospital 2",
-      medi_cen == "Bệnh viện Nhi đồng thành phố" ~ "City Children's hospital",
-      .default = medi_cen
-    )
-  )
-```
-
-### Adding additional variables
-
-```{r}
-df23  %<>%  
-  mutate(
-    age1 = interval(dob, admission_date) / years(1),
-    time = as.numeric(admission_date),
-    adm_week = as.Date(floor_date(admission_date, "week")),
-    age = round(age1)
-  )
+readRDS2 <- function(x) readRDS(paste0(path2data, x))
 ```
 
 
-## Using k-means to find the time point that separate two peaks
+## Data
+
+Import data:
 
 ```{r}
-library(cluster)
-library(factoextra)
+df_sero <- readRDS2(sero_file)
+```
 
+```{r}
+df_viro <- readRDS2(viro_file)
+```
+
+```{r}
+df23 <- cases_file |>
+  readRDS2() |> 
+  select(dob, admission_date, district, inout, severity, medi_cen) |> 
+  filter(year(admission_date) == 2023) |> 
+  filter_out(is.na(dob)) |> 
+  unique() |> 
+  mutate(across(severity, ~ case_when(is.na(.x) ~ "Undefined",
+                                      severity %in% c("3", "4") ~ "3 or 4",
+                                      .default = severity) |> as.factor()),
+         across(medi_cen, ~ tolower(stringi::stri_trans_general(.x, "Latin-ASCII"))),
+         across(medi_cen,
+                ~ case_when(.x == "benh vien nhi dong 1" ~ "Children's hospital 1",
+                            .x == "benh vien benh nhiet doi tphcm" ~
+                              "Hospital of Tropical Diseases",
+                            .x == "benh vien nhi dong 2" ~ "Children's hospital 2",
+                            .x == "benh vien nhi dong thanh pho" ~
+                              "City Children's hospital", .default = .x)),
+         age1     = interval(dob, admission_date) / years(1),
+         time     = as.numeric(admission_date),
+         adm_week = as.Date(floor_date(admission_date, "week")),
+         age      = round(age1))
+```
+
+
+## Using k-means to find the time point that separates two peaks
+
+```{r}
 set.seed(123)
 
-kmeans_result_1 <- kmeans(df23[,c("age1","time")], centers = 2, nstart = 25)
-
-df23$wave <- factor(kmeans_result_1$cluster,labels = c("1st","2nd"),levels = c(2,1))
-
-## show the time point that seperate two peaks
-
-time_cut_1st <- df23 |> 
-  filter(wave == "1st") |> 
-  pull(time) |> 
-  max()
-
-time_cut_2nd <- df23 |> 
-  filter(wave == "2nd") |> 
-  pull(time) |> 
-  min()
-
-time_cut <- mean(time_cut_1st,time_cut_2nd) |> as.numeric()
-time_cut
+df23 %<>% mutate(wave = data.frame(age1, time) |> 
+                   kmeans(centers = 2, nstart = 25) |> 
+                   extract2("cluster"))
 ```
+
+```{r}
+with(df23, plot(admission_date, age1, col = adjustcolor(wave + 1, .1), ylim = c(0, 10),
+                xlab = NA, ylab = "age (years)"))
+```
+
+```{r}
+plot_dens <- function(...) plot(..., main = NA, xlab = NA, ylab = "density")
+```
+
+```{r}
+with(df23, plot_dens(density(time)))
+abline(v = 19485)
+```
+
+```{r}
+with(df23, plot_dens(density(age1), xlim = c(0, 10)))
+```
+
+```{r}
+library(mclust)
+
+a <- df23 |> 
+  select(age1, time) |> 
+  Mclust()
+
+summary(a)
+
+df23$mclust <- a$classification
+```
+
+```{r}
+with(df23, plot(admission_date, age1, col = adjustcolor(mclust, .1), ylim = c(0, 10),
+                xlab = NA, ylab = "age (years)"))
+```
+
+```{r}
+mclust_out <- df23 |>
+  filter(time > 19490) |> 
+  select(time) |> 
+  Mclust(2) |> 
+  extract2("parameters")
+
+pnorm1 <- function(q) pnorm(q, mclust_out$mean[1], sqrt(mclust_out$variance$sigmasq[1]), FALSE)
+pnorm2 <- function(q) pnorm(q, mclust_out$mean[2], sqrt(mclust_out$variance$sigmasq[2]))
+
+xs <- sort(df23$time)
+plot(xs, pnorm1(xs), type = "l")
+lines(xs, pnorm2(xs))
+
+df23 |>
+  with(density(time)) |> 
+  extract(c("x", "y")) |> 
+  as.data.frame() |>
+  mutate(peak1 = pnorm1(x),
+         peak2 = pnorm2(x),
+         total = peak1 + peak2,
+         peak1 = y * peak1 / total,
+         peak2 = y * peak2 / total) |>
+  with({
+    plot(x, peak1, type = "l")
+    lines(x, peak2)
+  })
+```
+
 
 So I selected time points at `r time_cut` to seperate two peaks
 
@@ -185,7 +211,6 @@ ggsave("./fig_manuscript/sup2_new.svg",
 ggsave("./fig_manuscript/sup2_new.png",
        width = 15,height = 9,dpi = 500)
 ```
-
 
 ## Table 1
 
@@ -416,7 +441,7 @@ I just used the admission week and age (float form), and use `geom_density_2d` f
 
 :::
 
-### Trying to using gam to smooth the raw data 
+### Trying to using gam to smooth the raw data
 
 In this step, I just used the admission week and age (integer form), i.e I counted the number of admission at each age in each week and plot it by heatmap below.
 
@@ -482,7 +507,6 @@ collection_date_val <- seq(min(df23$adm_week),
 new_data <- expand.grid(age = age_val,
                         time = as.numeric(collection_date_val))
 ```
-
 
 ```{r}
 #| fig-width: 15
@@ -639,8 +663,6 @@ ggsave("./fig_manuscript/fig1_new2.svg",
 
 ```
 
-
-
 ## Figure 2
 
 ```{r}
@@ -727,7 +749,6 @@ age_profile_constrained_cohort2 <- function(data, age_values = seq(0, 15, le = 5
     group_split()
 }
 ```
-
 
 First I show how I calculate the expected admission of CH1. I used outpatient cases from CH1: group number of outpatient admitted to CH1 by age and district. I used the 2019 census as the denominator, also group number of populatiion by age and district. Then the probability of CH1 admission is calculated by divided $\frac{CH1 \ outpatients_{[a,d]}}{HCMC \ population \ in \ 2019_{[a,d]}}$. After that at each age group, I weighted the probability of CH1 admission, then multiply it again to hcmc population at age and district d to get the expected CH1 admission.
 
@@ -1059,29 +1080,24 @@ ggsave("./fig_manuscript/fig2_new.svg",plot = fig2,
 
 ![](./fig_manuscript/fig2_new.svg)
 
-Explain how I generated figure 2E. I used constrainted algorithm. I mentioned the algorithm overhere: Using GAMs to model seroprevalence as a function of both age and time using a 2-step algorithm. 
-  
-  -* **Step 1 (age profile):** for each time point (*i.e.* samples collection):
-  
-  + fit an **unconstrained binomial GAM** to seropositivity as a function of age
+Explain how I generated figure 2E. I used constrainted algorithm. I mentioned the algorithm overhere: Using GAMs to model seroprevalence as a function of both age and time using a 2-step algorithm.
 
-  + **convert population seroprevalence into individual seropositivity realizations**:
-  for each value of a large vector of age values:
-  
-    - generate the prediction + confidence interval
+-\* **Step 1 (age profile):** for each time point (*i.e.* samples collection):
 
-    - from each of the rate values of the prediction and confidence interaval lower and
-    upper bounds, generate random realizations of a Bernoulli process to convert
-    population seroprevalence into individual seropositivity
-    
-* **Step 2a (epidemiological time):** for each value of age:
-  + fit a **monotonically increasing binomial GAM** to the Bernoulli realizations as a
-  function of time
-  + for each time point: generate the prediction + confidence interval
-    
-* **Step 2b (smoothing out the stochasticity introduced by the seroprevalence to 
-seropositivity conversion):** for each time point fit an **unconstrained beta GAMs** to
-the predictions and confidence interval bounds of step 2a as a function of age
+-   fit an **unconstrained binomial GAM** to seropositivity as a function of age
+
+-   **convert population seroprevalence into individual seropositivity realizations**: for each value of a large vector of age values:
+
+    -   generate the prediction + confidence interval
+
+    -   from each of the rate values of the prediction and confidence interaval lower and upper bounds, generate random realizations of a Bernoulli process to convert population seroprevalence into individual seropositivity
+
+-   **Step 2a (epidemiological time):** for each value of age:
+
+    -   fit a **monotonically increasing binomial GAM** to the Bernoulli realizations as a function of time
+    -   for each time point: generate the prediction + confidence interval
+
+-   **Step 2b (smoothing out the stochasticity introduced by the seroprevalence to seropositivity conversion):** for each time point fit an **unconstrained beta GAMs** to the predictions and confidence interval bounds of step 2a as a function of age
 
 But in the step 2b, instead of fitting 4 collection time points, I fitted 52 colection time point as 52 week, then I exclude the age profile of seroprevalence before April 2023. And I calculated attack rate followed $attack \ racte = \frac{seroprevalence_{a,t}-seroprevalence_{a,t-1}}{1 - seroprevalence_{a,t-1}}$. And plot it by `ggplot`
 
@@ -1090,7 +1106,6 @@ But in the step 2b, instead of fitting 4 collection time points, I fitted 52 col
 ### Try to model virology as a function of age and time {.unnumbered}
 
 In this section, I used the GAM fitted as a function of age and time of CH1 reported cases (used to generate heatmap in section 9.5.1 but for CH1 cases only) (1), combined with GAM fitted as a function of age and time of virological data (used to generate figure 3C)(2). Then I multiplied $reported \ cases (1) \times EV-A71 \ percentage (2)$ at each age and time then I had number of ev-a71 of each age and time. Then I group by each time and sum ev-a71 cases at all age group to generate the plot below.
-
 
 ```{r}
 #| fig-width: 12
@@ -1257,7 +1272,6 @@ ev_a71_age_time_p <- ggplot() +
 #        width = 13,height = 12,dpi = 500)
 ```
 
-
 ```{r}
 #| fig-width: 12
 #| fig-height: 8
@@ -1386,7 +1400,6 @@ compare_ev71 <- recontructed_df |>
 compare_ev71
 ```
 
-
 Combined all analysis in this section
 
 ```{r}
@@ -1400,7 +1413,6 @@ ggsave("./fig_manuscript/fig3_new2.svg", plot = fig3_new,
 ```
 
 ![](./fig_manuscript/fig3_new2.svg)
-
 
 ## Supplementary plot
 
@@ -1467,6 +1479,3 @@ df_cases_ch1_23 |>
   )+
   facet_wrap(~district)
 ```
-
-
-
