@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>2&nbsp; Cleaning data – HFMD 2023</title>
+<title>3&nbsp; Cleaning data – HFMD 2023</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -65,7 +65,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./index.html" rel="prev">
+<link href="./viro_des.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/axe/axe-check.js" type="module"></script>
@@ -117,7 +117,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./raw_data_cleaning.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Cleaning data</span></a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./raw_data_cleaning.html"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Cleaning data</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
       <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
@@ -147,13 +147,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./index.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Index</span></span></a>
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Manuscript figure</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./viro_des.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Virology data description</span></span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./raw_data_cleaning.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Cleaning data</span></span></a>
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Cleaning data</span></span></a>
   </div>
 </li>
     </ul>
@@ -166,14 +172,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#constants" id="toc-constants" class="nav-link active" data-scroll-target="#constants"><span class="header-section-number">2.1</span> Constants</a></li>
-  <li><a href="#packages" id="toc-packages" class="nav-link" data-scroll-target="#packages"><span class="header-section-number">2.2</span> Packages</a></li>
-  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions"><span class="header-section-number">2.3</span> Functions</a></li>
-  <li><a href="#data-import" id="toc-data-import" class="nav-link" data-scroll-target="#data-import"><span class="header-section-number">2.4</span> Data import</a></li>
-  <li><a href="#hcdc-data" id="toc-hcdc-data" class="nav-link" data-scroll-target="#hcdc-data"><span class="header-section-number">2.5</span> HCDC data</a></li>
-  <li><a href="#ch1-serology-data" id="toc-ch1-serology-data" class="nav-link" data-scroll-target="#ch1-serology-data"><span class="header-section-number">2.6</span> CH1 Serology data</a></li>
-  <li><a href="#ch1-virology-data" id="toc-ch1-virology-data" class="nav-link" data-scroll-target="#ch1-virology-data"><span class="header-section-number">2.7</span> CH1 Virology data</a></li>
-  <li><a href="#ch1-outpatient-data" id="toc-ch1-outpatient-data" class="nav-link" data-scroll-target="#ch1-outpatient-data"><span class="header-section-number">2.8</span> CH1 outpatient data</a></li>
+  <li><a href="#constants" id="toc-constants" class="nav-link active" data-scroll-target="#constants"><span class="header-section-number">3.1</span> Constants</a></li>
+  <li><a href="#packages" id="toc-packages" class="nav-link" data-scroll-target="#packages"><span class="header-section-number">3.2</span> Packages</a></li>
+  <li><a href="#functions" id="toc-functions" class="nav-link" data-scroll-target="#functions"><span class="header-section-number">3.3</span> Functions</a></li>
+  <li><a href="#data-import" id="toc-data-import" class="nav-link" data-scroll-target="#data-import"><span class="header-section-number">3.4</span> Data import</a></li>
+  <li><a href="#hcdc-data" id="toc-hcdc-data" class="nav-link" data-scroll-target="#hcdc-data"><span class="header-section-number">3.5</span> HCDC data</a></li>
+  <li><a href="#ch1-serology-data" id="toc-ch1-serology-data" class="nav-link" data-scroll-target="#ch1-serology-data"><span class="header-section-number">3.6</span> CH1 Serology data</a></li>
+  <li><a href="#ch1-virology-data" id="toc-ch1-virology-data" class="nav-link" data-scroll-target="#ch1-virology-data"><span class="header-section-number">3.7</span> CH1 Virology data</a></li>
+  <li><a href="#ch1-outpatient-data" id="toc-ch1-outpatient-data" class="nav-link" data-scroll-target="#ch1-outpatient-data"><span class="header-section-number">3.8</span> CH1 outpatient data</a></li>
   </ul>
 </nav>
     </div>
@@ -182,7 +188,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Cleaning data</span></h1>
+<h1 class="title"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Cleaning data</span></h1>
 </div>
 
 
@@ -199,8 +205,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="constants" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="constants"><span class="header-section-number">2.1</span> Constants</h2>
+<section id="constants" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="constants"><span class="header-section-number">3.1</span> Constants</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>user <span class="ot">&lt;-</span> <span class="fu">Sys.getenv</span>(<span class="st">"USER"</span>)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -244,8 +250,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>hcm_address <span class="ot">&lt;-</span> <span class="st">"AP Transform Loc.xlsx"</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="packages" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="packages"><span class="header-section-number">2.2</span> Packages</h2>
+<section id="packages" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="packages"><span class="header-section-number">3.2</span> Packages</h2>
 <p>Required packages:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>required <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"readxl"</span>, <span class="st">"magrittr"</span>, <span class="st">"lubridate"</span>, <span class="st">"janitor"</span>, <span class="st">"tidyverse"</span>,<span class="st">"stringi"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -261,11 +267,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">sapply</span>(required, library, <span class="at">character.only =</span> <span class="cn">TRUE</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="functions" class="level2" data-number="2.3">
-<h2 data-number="2.3" class="anchored" data-anchor-id="functions"><span class="header-section-number">2.3</span> Functions</h2>
+<section id="functions" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="functions"><span class="header-section-number">3.3</span> Functions</h2>
 </section>
-<section id="data-import" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="data-import"><span class="header-section-number">2.4</span> Data import</h2>
+<section id="data-import" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="data-import"><span class="header-section-number">3.4</span> Data import</h2>
 <p>HCDC data</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>df_cases <span class="ot">&lt;-</span> <span class="fu">paste0</span>(path_raw, cases_file) <span class="sc">|&gt;</span></span>
@@ -307,8 +313,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>px_qh_change <span class="ot">&lt;-</span> <span class="fu">paste0</span>(path_raw, hcm_address) <span class="sc">|&gt;</span> <span class="fu">read_excel</span>(<span class="at">sheet =</span> <span class="st">"Mapping"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="hcdc-data" class="level2" data-number="2.5">
-<h2 data-number="2.5" class="anchored" data-anchor-id="hcdc-data"><span class="header-section-number">2.5</span> HCDC data</h2>
+<section id="hcdc-data" class="level2" data-number="3.5">
+<h2 data-number="3.5" class="anchored" data-anchor-id="hcdc-data"><span class="header-section-number">3.5</span> HCDC data</h2>
 <p>Columns translation</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>eng_cols <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
@@ -362,8 +368,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">onset_date =</span> <span class="fu">as.Date</span>(onset_date)</span>
 <span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  ) </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-<section id="cleaning-cases-were-entered-wrong-year" class="level4" data-number="2.5.0.1">
-<h4 data-number="2.5.0.1" class="anchored" data-anchor-id="cleaning-cases-were-entered-wrong-year"><span class="header-section-number">2.5.0.1</span> Cleaning cases were entered wrong year</h4>
+<section id="cleaning-cases-were-entered-wrong-year" class="level4" data-number="3.5.0.1">
+<h4 data-number="3.5.0.1" class="anchored" data-anchor-id="cleaning-cases-were-entered-wrong-year"><span class="header-section-number">3.5.0.1</span> Cleaning cases were entered wrong year</h4>
 <p>Wrong reported data</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>df_cases <span class="sc">%&lt;&gt;%</span></span>
@@ -419,8 +425,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(check, check2, delay, onset_date2, delay2))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="cleaning-cases-enter-wrong-with-day-and-month-swapped" class="level4" data-number="2.5.0.2">
-<h4 data-number="2.5.0.2" class="anchored" data-anchor-id="cleaning-cases-enter-wrong-with-day-and-month-swapped"><span class="header-section-number">2.5.0.2</span> Cleaning cases enter wrong with day and month swapped</h4>
+<section id="cleaning-cases-enter-wrong-with-day-and-month-swapped" class="level4" data-number="3.5.0.2">
+<h4 data-number="3.5.0.2" class="anchored" data-anchor-id="cleaning-cases-enter-wrong-with-day-and-month-swapped"><span class="header-section-number">3.5.0.2</span> Cleaning cases enter wrong with day and month swapped</h4>
 <p>Onset date</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>df_cases <span class="sc">%&lt;&gt;%</span></span>
@@ -518,8 +524,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </section>
 </section>
-<section id="ch1-serology-data" class="level2" data-number="2.6">
-<h2 data-number="2.6" class="anchored" data-anchor-id="ch1-serology-data"><span class="header-section-number">2.6</span> CH1 Serology data</h2>
+<section id="ch1-serology-data" class="level2" data-number="3.6">
+<h2 data-number="3.6" class="anchored" data-anchor-id="ch1-serology-data"><span class="header-section-number">3.6</span> CH1 Serology data</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>t423 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(df_apr2023[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="fu">c</span>(<span class="dv">6</span>, <span class="dv">8</span>, <span class="dv">10</span><span class="sc">:</span><span class="dv">14</span>)])</span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>t423<span class="sc">$</span>pos <span class="ot">&lt;-</span> <span class="fu">replace</span>(t423<span class="sc">$</span>...<span class="dv">14</span>, <span class="fu">is.na</span>(t423<span class="sc">$</span>...<span class="dv">14</span>), <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
@@ -600,8 +606,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># saveRDS(data_pt,paste0(path_clean,"sero_EV-A71_1222-1223.rds"))</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="ch1-virology-data" class="level2" data-number="2.7">
-<h2 data-number="2.7" class="anchored" data-anchor-id="ch1-virology-data"><span class="header-section-number">2.7</span> CH1 Virology data</h2>
+<section id="ch1-virology-data" class="level2" data-number="3.7">
+<h2 data-number="3.7" class="anchored" data-anchor-id="ch1-virology-data"><span class="header-section-number">3.7</span> CH1 Virology data</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>viro_df <span class="sc">%&lt;&gt;%</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
@@ -649,8 +655,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># saveRDS(data_pt,paste0(path_clean,"virology_cleaned.rds"))</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="ch1-outpatient-data" class="level2" data-number="2.8">
-<h2 data-number="2.8" class="anchored" data-anchor-id="ch1-outpatient-data"><span class="header-section-number">2.8</span> CH1 outpatient data</h2>
+<section id="ch1-outpatient-data" class="level2" data-number="3.8">
+<h2 data-number="3.8" class="anchored" data-anchor-id="ch1-outpatient-data"><span class="header-section-number">3.8</span> CH1 outpatient data</h2>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>px_qh_change <span class="sc">%&lt;&gt;%</span></span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(tinhThanh_cu <span class="sc">==</span> <span class="st">"TP.Hồ Chí Minh"</span>) <span class="sc">%&gt;%</span></span>
@@ -1151,8 +1157,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./index.html" class="pagination-link" aria-label="Index">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Index</span></span>
+      <a href="./viro_des.html" class="pagination-link" aria-label="Virology data description">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Virology data description</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
