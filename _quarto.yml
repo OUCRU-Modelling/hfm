@@ -16,16 +16,16 @@ book:
   title: "HFMD 2023"
   chapters:
     - index.qmd
-    - sero_description.qmd
+    # - sero_description.qmd
     - viro_des.qmd
-    - rf_ms.qmd
+    - raw_data_cleaning.qmd
 
 format:
   html:
     theme: cosmo
-    code-fold: true
+    # code-fold: true
     code-copy: true
-    fig-format: svg
+    fig-format: png
 
 editor: visual
 

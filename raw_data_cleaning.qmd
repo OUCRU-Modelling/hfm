@@ -1,0 +1,597 @@
+# Cleaning data
+
+## Constants
+
+```{r}
+user <- Sys.getenv("USER")
+
+if (user == "nguyenpnt") {
+  path2data <- paste0(
+    "/Users/nguyenpnt/Library/CloudStorage/OneDrive-OxfordUniversityClinicalResearchUnit/OUCRU Modelling - HFMD HCMC 2023/data/"
+  )
+} else {
+  path2data <- paste0(
+    "D:/OUCRU-Onedrive/OneDrive - Oxford University Clinical Resear",
+    "ch Unit/Data/HFMD/cleaned/"
+  )
+}
+
+path_raw   <- file.path(path2data, "raw/")
+path_clean <- file.path(path2data, "cleaned/")
+```
+
+Raw files name:
+
+```{r}
+## cases data
+cases_file <- "TCM_full.xlsx"
+
+## sero
+apr_2023 <- "4_2023.xlsx"
+aug_2023 <- "08_2023.xlsx"
+dec_2022 <- "12_2022.xls"
+dec_2023 <- "12_2023.xlsx"
+
+## sero address
+sero_add <- "cleaned_address_sero.csv"
+
+## virology data 
+viro <- "03EI Data 2023 shared.xlsx"
+
+## CH1 outpatient data
+
+outpatient_ch1 <- "CH1_outpatient.xlsx"
+
+## HCM new address
+
+hcm_address <- "AP Transform Loc.xlsx"
+
+```
+
+
+## Packages
+
+Required packages:
+
+```{r}
+required <- c("readxl", "magrittr", "lubridate", "janitor", "tidyverse","stringi")
+```
+
+Installing those that are not installed yet:
+
+```{r}
+to_install <- required[!required %in% installed.packages()[, "Package"]]
+if (length(to_install))
+  install.packages(to_install)
+```
+
+Loading the packages for interactive use:
+
+```{r}
+invisible(sapply(required, library, character.only = TRUE))
+```
+
+## Functions
+
+```{r}
+
+```
+
+
+## Data import
+
+HCDC data
+
+```{r}
+df_cases <- paste0(path_raw, cases_file) |>
+  read_excel(
+    col_types = c(
+      "date",
+      "numeric",
+      "text",
+      "text",
+      "text",
+      "date",
+      "date",
+      "date",
+      "text",
+      "text",
+      "text"
+    )
+  )
+```
+
+CH1 serology data
+
+```{r}
+df_apr2023 <- paste0(path_raw, apr_2023) |> read_excel()
+df_aug2023 <- paste0(path_raw, aug_2023) |> read_excel()
+df_dec2022 <- paste0(path_raw, dec_2022) |> read_excel()
+df_dec2023 <- paste0(path_raw, dec_2023) |> read_excel()
+
+df_sero_add <- paste0(path_raw, sero_add) |> read_csv()
+```
+
+CH1 virology data
+
+```{r}
+viro_df <- paste0(path_raw, viro) |> read_excel()
+```
+
+CH1 outpatient data
+
+```{r}
+CH1_outpatient_010623 <- paste0(path_raw, outpatient_ch1) |> read_excel(sheet = "0106 2023")
+
+CH1_outpatient_071223 <- paste0(path_raw, outpatient_ch1) |> read_excel(sheet = "0712 2023")
+
+px_qh_change <- paste0(path_raw, hcm_address) |> read_excel(sheet = "Mapping")
+```
+
+
+## HCDC data
+
+Columns translation
+
+```{r}
+eng_cols <- c(
+  dob = "Ngày tháng năm sinh",
+  age = "Tuổi",
+  gender = "Giới tính",
+  commune = "Phường/xã cư trú",
+  district = "Quận/huyện cư trú",
+  reported_date = "Ngày báo cáo",
+  onset_date = "Ngày khởi phát triệu chứng",
+  admission_date = "Ngày đi khám hoặc ngày nhập viện",
+  medi_cen = "Tên bệnh viện (cơ sở y tế) đi khám",
+  inout = "Tình trạng hiện nay",
+  severity = "Phân độ lâm sàng"
+)
+
+df_cases %<>%
+  rename(!!!eng_cols)  
+```
+
+Remove duplication
+
+```{r}
+df_cases %<>% distinct()
+```
+
+Convert date columns as same type and adding some variables
+
+```{r}
+## change date columns from <dttm> to <date>
+df_cases %<>%
+  mutate(
+    across(c(
+      dob, reported_date, onset_date, admission_date
+    ), .fns = as.Date),
+    year_dob = year(dob),
+    year_reported = year(reported_date),
+    year_onset = year(onset_date),
+    year_admission = year(admission_date)
+  ) 
+```
+
+Remove out of age range observation
+
+```{r}
+df_cases %<>%
+  filter(!age %in% c(-2951, 117) |
+           is.na(dob)) %>%  ## excluded cases related to dob error
+  mutate(
+    ## change information
+    onset_date = ifelse(
+      year_dob > 2024 |
+        year_dob < 1924 | year_onset > 2024 | year_onset < 2013,
+      update(onset_date, year = year(admission_date)),
+      onset_date
+    ),
+    onset_date = as.Date(onset_date)
+  ) 
+```
+
+#### Cleaning cases were entered wrong year
+
+Wrong reported data
+
+```{r}
+df_cases %<>%
+  mutate(
+    delay = reported_date - admission_date,
+    reported_date2 = update(reported_date, year = year(admission_date)),
+    delay2 = reported_date2 - admission_date,
+    check = year(admission_date) == year(onset_date)
+  )  %>%
+  mutate(
+    reported_date = case_when(
+      ## those case match criteria will be changed
+      delay > 365 &
+        delay2 <= 14 &
+        delay2 > 0 & check %in% c("TRUE", NA) ~ reported_date2,
+      .default = reported_date
+    )
+  ) %>%
+  select(-c(delay, reported_date2, delay2, check)) 
+```
+
+Wrong admission date
+
+```{r}
+df_cases %<>%
+  mutate(
+    check = year(reported_date) == year(onset_date),
+    check2 = year(admission_date) != year(onset_date)
+  ) %>%
+  mutate(admission_date = case_when(
+    check == TRUE &
+      check2 == TRUE ~ update(admission_date, year = year(onset_date)),
+    .default = admission_date
+  )) %>%
+  select(-c(check, check2))
+```
+
+Wrong onset date
+
+```{r}
+df_cases %<>%
+  mutate(
+    check = year(reported_date) == year(admission_date),
+    check2 = year(admission_date) != year(onset_date),
+    delay = reported_date - onset_date,
+    onset_date2 = update(onset_date, year = year(admission_date)),
+    delay2 = reported_date - onset_date2
+  ) %>%
+  mutate(
+    onset_date = case_when(
+      check == TRUE &
+        check2 == TRUE &
+        delay > 365 & delay2 > 0 & delay2 <= 14 & delay2 > 0 ~ onset_date2,
+      .default = onset_date
+    ),
+  ) %>%
+  select(-c(check, check2, delay, onset_date2, delay2))
+```
+
+#### Cleaning cases enter wrong with day and month swapped
+
+Onset date
+
+```{r}
+df_cases %<>%
+  mutate(
+    delay_adm = admission_date - onset_date,
+    onset_date2 = ydm(onset_date),
+    delay_adm2 = admission_date - onset_date2,
+    check = onset_date > reported_date &
+      day(onset_date) == month(reported_date)
+  ) %>%
+  mutate(onset_date = case_when(check == TRUE &
+                                  delay_adm2 >= 0 ~ onset_date2, .default = onset_date),) %>%
+  select(-c(delay_adm, onset_date2, delay_adm2, check)) 
+```
+
+Admission date
+
+```{r}
+df_cases %<>%
+  mutate(
+    delay = reported_date - admission_date,
+    admission_date2 = ydm(admission_date),
+    delay2 = reported_date - admission_date2,
+    check = admission_date > reported_date &
+      day(admission_date) == month(reported_date)
+  ) %>%
+  mutate(admission_date = case_when(check == TRUE &
+                                      delay2 >= 0 ~ admission_date2, .default = admission_date)) %>%
+  select(-c(delay, admission_date2, delay2, check)) 
+```
+
+Reported date
+
+```{r}
+df_cases %<>%
+  mutate(
+    delay = reported_date - admission_date,
+    reported_date2 = ydm(reported_date),
+    delay2 = reported_date2 - admission_date,
+    check = month(admission_date) == day(reported_date) &
+      delay > 30
+  ) %>%
+  mutate(reported_date = case_when(check == TRUE &
+                                     delay2 < 30 ~ reported_date2, .default = reported_date)) %>%
+  select(-c(delay, reported_date2, delay2, check))
+```
+
+String variable
+
+```{r}
+# Define lookup vectors once, outside the mutate
+severity_map <- c(
+  "2a" = "2A",
+  "2A" = "2A",
+  "2" = "2A",
+  "a" = "2A",
+  "A" = "2A",
+  "-2" = "2A",
+  "1"  = "1",
+  "11" = "1",
+  "1a" = "1",
+  "2b" = "2B",
+  "2B" = "2B",
+  "2b nhom2" = "2B",
+  "B" = "2B",
+  "b" = "2B"
+)
+
+inout_map <- c(
+  "Điều trị nội trú"  = "Inpatient",
+  "Điều trị ngoại trú" = "Outpatient",
+  "Ra viện"           = "Discharge",
+  "Chuyển viện"       = "Hospital transfer",
+  "Tình trạng khác"   = "Other",
+  "Tử vong"           = "Died"
+)
+
+# Reusable function for district/commune normalization
+clean_admin <- function(x, remove_pattern) {
+  x |>
+    stri_trans_general("latin-ascii") |>
+    tolower() |>
+    str_remove_all(remove_pattern) |>
+    trimws()
+}
+
+df_cases %<>%
+  mutate(
+    severity = coalesce(severity_map[severity], severity),
+    district = clean_admin(district, "quan|huyen|thanh pho"),
+    commune  = clean_admin(commune, "phuong|xa|thi tran"),
+    inout    = inout_map[inout],
+    gender   = if_else(tolower(
+      stri_trans_general(gender, "latin-ascii")
+    ) == "nu", "Female", "Male")
+  )
+```
+
+Save
+
+```{r}
+# saveRDS(df_cases,paste0(path_clean,"hfmd_hcdc.rds"))
+```
+
+## CH1 Serology data
+
+```{r}
+t423 <- data.frame(df_apr2023[-c(1, 2), c(6, 8, 10:14)])
+t423$pos <- replace(t423$...14, is.na(t423$...14), 0) %>%
+  str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t423) <- c("id",
+                    "age_gr",
+                    "age",
+                    "col_day",
+                    "col_month",
+                    "col_year",
+                    "neutralization",
+                    "pos")
+t423$age <- as.numeric(t423$age)
+t423$col_time <- rep("Apr 2023", nrow(t423))
+
+t823 <- data.frame(df_aug2023[-c(1, 2), c(6, 8, 9, 14:17)])
+t823$pos <- str_detect(t823$...17, regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t823) <- c("id",
+                    "age_gr",
+                    "age",
+                    "col_day",
+                    "col_month",
+                    "col_year",
+                    "neutralization",
+                    "pos")
+t823$age <- as.numeric(t823$age)
+t823$col_time <- rep("Aug 2023", nrow(t823))
+
+t1222 <- data.frame(df_dec2022[-c(1, 2), c(6, 8, 10:14)])
+t1222$pos <- replace(t1222$...14, is.na(t1222$...14), 0) %>%
+  str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t1222) <- c("id",
+                     "age_gr",
+                     "age",
+                     "col_day",
+                     "col_month",
+                     "col_year",
+                     "neutralization",
+                     "pos")
+t1222$age <- as.numeric(t1222$age)
+t1222$col_time <- rep("Dec 2022", nrow(t1222))
+
+
+t1223 <- data.frame(df_dec2023[-c(1, 2), c(6, 8, 9, 14:17)])
+t1223$pos <- replace(t1223$...17, is.na(t1223$...17), 0) %>%
+  str_detect(regex(paste(2^(4:10), collapse = "|"))) %>%
+  as.integer(as.logical())
+colnames(t1223) <- c("id",
+                     "age_gr",
+                     "age",
+                     "col_day",
+                     "col_month",
+                     "col_year",
+                     "neutralization",
+                     "pos")
+t1223$age <- as.numeric(t1223$age)
+t1223$col_time <- rep("Dec 2023", nrow(t1223))
+
+sero <- rbind(t1222, t1223, t423, t823)
+
+data_pt <- full_join(df_sero_add, sero, by =  c("id" = "id"))
+
+data_pt %<>% filter(!is.na(age) & !is.na(qhchuan)) %>%
+  select(-c(add_mod)) %>%
+  as.data.frame() %>%
+  rename(district = qhchuan, commune = pxchuan) %>%
+  mutate(col_date = make_datetime(
+    year  = as.integer(col_year),
+    month = as.integer(col_month),
+    day   = as.integer(col_day)
+  ))
+```
+
+Save
+
+```{r}
+# saveRDS(data_pt,paste0(path_clean,"sero_EV-A71_1222-1223.rds"))
+```
+
+## CH1 Virology data
+
+```{r}
+viro_df %<>%
+  mutate(
+    city = City %>%
+      trimws() %>%
+      stri_trans_general("latin-ascii") %>%
+      tolower(),
+    sero_gr = if_else(SeroGroup1 == "ENT", "EV", SeroGroup1),
+    admission_date = as.Date(DateAdmission),
+    age_adm    = interval(DateBirth, admission_date) / years(1),
+    adm_month  = month(admission_date, label = TRUE),
+    adm_month2 = as.character(as.Date(floor_date(
+      admission_date, "month"
+    ))),
+    age_bin = cut(
+      age_adm,
+      breaks = seq(0, max(age_adm, na.rm = TRUE) + 0.5, by = 0.5),
+      right = FALSE
+    ),
+    across(
+      Dist,
+      ~ .x %>% stri_trans_general("latin-ascii") %>% tolower() %>% str_remove("^q")
+    ),
+    across(
+      Ward,
+      ~ .x %>% stri_trans_general("latin-ascii") %>% tolower() %>% str_remove("^p")
+    )
+  ) %>% rename(district = Dist, commune = Ward) %>%
+  filter(city == "tp hcm") %>%
+  select(
+    city,
+    sero_gr,
+    admission_date,
+    adm_month,
+    adm_month2,
+    age_adm,
+    age_bin,
+    DateBirth,
+    district,
+    commune
+  )
+```
+
+Save
+
+```{r}
+# saveRDS(data_pt,paste0(path_clean,"virology_cleaned.rds"))
+```
+
+
+## CH1 outpatient data
+
+```{r}
+px_qh_change %<>%
+  filter(tinhThanh_cu == "TP.Hồ Chí Minh") %>%
+  mutate(
+    district = quanHuyen_cu %>%
+      stri_trans_general("latin-ascii") %>%
+      tolower() %>% trimws(which = "both"),
+    commune = tenXa_moi %>%
+      stri_trans_general("latin-ascii") %>%
+      tolower() %>% trimws(which = "both")
+  )
+
+new_dup_dis <- px_qh_change %>%
+  group_by(commune) %>%
+  summarise(n_district = n_distinct(district),
+            districts = paste(unique(district), collapse = ", ")) %>%
+  filter(n_district > 1) %>%
+  pull(commune)
+
+px_qh_pair <- px_qh_change %>%
+  filter(!commune %in% new_dup_dis) %>%
+  dplyr::select(district,commune) %>% unique()
+
+CH1_outpatient_hcm_23 <- rbind(CH1_outpatient_010623,CH1_outpatient_071223) %>%
+  mutate(dob = as.Date(ngaysinh),
+         adm = as.Date(ngaykham)) %>%
+  mutate(city = str_split_i(string = diaphuong,
+                          pattern = ",",i=-1),
+         district = str_split_i(string = diaphuong,
+                                pattern = ",",i=-2) %>% trimws(which = "both"),
+         district2 = district %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower() %>% trimws(which = "both"),
+         commune = str_split_i(string = diaphuong,
+                               pattern = ",",i=-3) %>% trimws(which = "both"),
+         commune2 = commune %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower() %>% trimws(which = "both"),) %>%
+  filter(city %in% c(" TP.Hồ Chí Minh"," Thành phố Hồ Chí Minh"),
+         !grepl('a|A|B|b', MaICDChinh)) %>%
+  distinct(mahoso,dob,PHAI, .keep_all = TRUE)
+
+CH1_outpatient_hcm_23a <- CH1_outpatient_hcm_23 %>%
+  filter(district != "Không xác định" &
+           !commune2 %in% new_dup_dis &
+           district == "") %>%
+  mutate(commune2 = commune %>%
+           stri_trans_general("latin-ascii") %>%
+           tolower() %>% trimws(which = "both")) %>%
+  left_join(.,px_qh_pair,by = join_by(commune2 == commune)) %>%
+  na.omit(district.y) %>%
+  dplyr::select(dob,adm,district.y,commune2) %>%
+  set_colnames(c("dob","adm","district","commune"))
+
+
+CH1_outpatient_hcm_23b <- CH1_outpatient_hcm_23 %>%
+  filter(!district %in% c("Không xác định","")) %>%
+  dplyr::select(dob,adm,district2,commune2) %>%
+  set_colnames(c("dob","adm","district","commune"))
+
+CH1_out_cleaned <- rbind(CH1_outpatient_hcm_23a,CH1_outpatient_hcm_23b) %>%
+  mutate(
+    district = district %>%
+      str_remove_all("quan|huyen|thanh pho") %>%
+      trimws(which = "both"),
+    district = case_when(
+      district %in% c(2,9) ~ "thu duc",
+      !district %in% c(2,9) ~ district),
+    commune = commune %>%
+      str_remove_all("phuong|xa") %>%
+      trimws(which = "both"),
+    age = interval(dob,adm) / years(1),
+  ) |>
+  filter(age < 17 & age >= 0) %>%
+  mutate(
+    age_gr = cut(age,
+                 breaks = seq(0,17),
+                 right = FALSE,
+                 labels = seq(0,16)) %>% as.character() %>% as.numeric(),
+    period = case_when(
+      adm <= as.Date("2023-04-30") ~ "12/2022 - 4/2023",
+      adm > as.Date("2023-04-30") & adm <= as.Date("2023-08-31") ~ "4/2023 - 8/2023",
+      adm > as.Date("2023-08-31") ~ "8/2023 - 12/2023"
+    )
+  ) %>%
+  group_by(district,age_gr,period) %>%
+  count() %>%
+  ungroup()
+```
+
+Save
+
+```{r}
+# saveRDS(data_pt,paste0(path_clean,"CH1_out_cleaned.rds"))
+```
+
