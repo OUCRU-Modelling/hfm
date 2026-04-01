@@ -219,4 +219,3 @@ viro2 %>%
   labs(x = "Age (years)", y = "Number of EV-A71 samples") +
   theme_minimal()
 ```
-

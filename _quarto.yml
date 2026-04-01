@@ -17,8 +17,10 @@ book:
   chapters:
     - index.qmd
     # - sero_description.qmd
+    - fig_manu.qmd
     - viro_des.qmd
     - raw_data_cleaning.qmd
+    - reframe_ms.qmd
 
 format:
   html:
