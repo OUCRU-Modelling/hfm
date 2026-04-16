@@ -20,7 +20,8 @@ book:
     - fig_manu.qmd
     - viro_des.qmd
     - raw_data_cleaning.qmd
-    - reframe_ms.qmd
+    - forecast_models.qmd
+    # - reframe_ms.qmd
 
 format:
   html:

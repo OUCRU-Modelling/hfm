@@ -36,9 +36,7 @@ Loading the packages for interactive use:
 
 ```{r}
 invisible(sapply(required, library, character.only = TRUE))
-
 ```
-
 
 ## Constant
 
@@ -721,8 +719,6 @@ expected_age_cm <- ch1_outpatient |>
                  mutate(age = seq(0,15,le = 512)))
 ```
 
-
-
 ### Serological data from CH1
 
 ```{r}
@@ -817,7 +813,7 @@ expected_incidence <- map2(
 
 exp_in_ch1 <- expected_incidence |>
   ggplot() +
-  geom_line(aes(x = cohort, y = exp_inc)) +
+  geom_line(aes(x = cohort, y = exp_inc),linewidth = 2) +
   geom_col(
     data = dat %>%
       bind_rows(.id = "id") %>%
@@ -896,7 +892,7 @@ hm_ch1 <- ggplot(new_data2) +
                   breaks = seq(-1, 7)) +
   theme(
     axis.title.y = element_text(size = 18),
-    axis.title.x = element_blank(),
+    axis.title.x = element_text(size = 18),
     axis.ticks.x = element_blank(),
     legend.position = "bottom",
     plot.tag = element_text(face = "bold", size = 18),
@@ -1103,7 +1099,6 @@ compare_ev71 <- recontructed_df |>
   )
 ```
 
-
 ```{r}
 fig3_new <- (compare_ev71+labs(tag="A"))/
   (f3a+labs(tag="B"))/
@@ -1114,3 +1109,68 @@ ggsave("./fig_manuscript/fig3_new2.svg", plot = fig3_new,
 ```
 
 ![](./fig_manuscript/fig3_new2.svg)
+
+
+## Confidence interval of expected EV-A71 infections
+
+First I estimate the standard error of difference in seroprevalence between 2 successive collection time points by the following formula:
+
+$$
+SE_{diff} = \sqrt{SE_1^2 + SE_2^2 - 2\rho . SE_1 . SE_2}
+$$
+
+$\rho$ is the assumed correlation of seroprevalence between two successive collection times points. Because we applied the constraint algorithm, I think we assumed two collection time points are dependence. So I choose $\rho = 1$
+
+```{r}
+rho = 1
+```
+
+Then estimate the point estimate and se of seroprevalence different between two successive collection time points. Then estimate the expected EV-A71 infections
+
+```{r}
+expected_incidence <- expected_incidence |>
+  mutate(
+    se1 = (upr.x - lwr.x) / (2 * 1.96),
+    se2 = (upr.y - lwr.y) / (2 * 1.96),
+    se.diff = sqrt(se1^2 + se2^2 - 2 * rho * se1 * se2),
+    lo_diff = sp_gap - 1.96 * se.diff,
+    hi_diff = sp_gap + 1.96 * se.diff,
+    hi_exp_inc = hi_diff * value,
+    lo_exp_inc = lo_diff * value
+  ) 
+```
+
+Then plot it
+
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+#| out-width: "100%"
+
+expected_incidence |>
+  ggplot(aes(x = cohort)) +
+  geom_line(aes(y = exp_inc)) +
+  geom_ribbon(
+    aes(y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
+  geom_col(
+    data = dat %>%
+      bind_rows(.id = "id") %>%
+      filter(age1 > 0) |>
+      group_by(id, age) |>
+      count(),
+    aes(x = age, y = n),
+    color = "white",
+    fill = "black",
+    alpha = 0.2
+  ) +
+  facet_wrap(~ factor(
+    id,
+    labels = c("12/2022 - 4/2023", "4/2023 - 8/2023", "8/2023 - 12/2023")
+  )) +
+  theme_bw()
+```
+
