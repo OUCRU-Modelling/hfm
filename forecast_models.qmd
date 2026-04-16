@@ -73,6 +73,7 @@ model_plot_w <- function(data) {
     ) +
     scale_x_date(name = "Admission week") +
     scale_y_continuous(name = "Total cases") +
+    labs(title = "Prediction for 3 weeks ahead")+
     theme_bw() +
     facet_wrap(~ week_run, ncol = 6)
 }
@@ -84,51 +85,51 @@ function to run bart model to forecast 2023 data
 
 cores <- detectCores() - 1
 
-run_bart_month <- function(w, hfmd_data,y) {
-
-  # hfmd_data <- hfmd_1324
-  # y = 2023
-  # w = 39
-
-  train_data <- hfmd_data |>
-    filter(year < y | (year == y & week == w)) |>
-    data.frame() |>
-    na.omit()
-
-  test_data <- hfmd_data |>
-    filter(year == y & week %in% c(w+1,w+2,w+3)) |>
-    data.frame()
-
-  if (nrow(test_data) == 0)
-    return(NULL)
-
-  model <- wbart(
-    x.train = train_data[, c("adm_week", "lag_t.1","lag_t.2","lag_t.3")],
-    y.train = train_data$y_transformed,
-    # x.test = test_data[, c("adm_week", "lag_t.1", "lag_t.2")],
-    ntree   = 1000,
-    ndpost  = 10000,
-    nskip   = 1000,
-    a       = 0.95,
-    b       = 2
-  )
-
-  pred_draws <- predict(model,test_data[, c("adm_week", "lag_t.1", "lag_t.2", "lag_t.3")])
-  pred_ori <- (pred_draws * lambda + 1)^(1 / lambda)
-
-  result <- test_data |>
-    mutate(
-      pred_t = colMeans(pred_ori),
-      y_lower95  = apply(pred_ori, 2, quantile, 0.025),
-      y_upper95  = apply(pred_ori, 2, quantile, 0.975),
-      y_lower80  = apply(pred_ori, 2, quantile, 0.10),
-      y_upper80  = apply(pred_ori, 2, quantile, 0.90),
-      week_run = w,
-      year_run = y
-    )
-
-  return(result)
-}
+# run_bart_month <- function(w, hfmd_data,y,lambda) {
+# 
+#   # hfmd_data <- hfmd_1324
+#   # y = 2023
+#   # w = 39
+# 
+#   train_data <- hfmd_data |>
+#     filter(year < y | (year == y & week == w)) |>
+#     data.frame() |>
+#     na.omit()
+# 
+#   test_data <- hfmd_data |>
+#     filter(year == y & week %in% c(w+1,w+2,w+3)) |>
+#     data.frame()
+# 
+#   if (nrow(test_data) == 0)
+#     return(NULL)
+# 
+#   model <- wbart(
+#     x.train = train_data[, c("adm_week", "lag_t.1","lag_t.2","lag_t.3")],
+#     y.train = train_data$y_transformed,
+#     # x.test = test_data[, c("adm_week", "lag_t.1", "lag_t.2")],
+#     ntree   = 1000,
+#     ndpost  = 10000,
+#     nskip   = 1000,
+#     a       = 0.95,
+#     b       = 2
+#   )
+# 
+#   pred_draws <- predict(model,test_data[, c("adm_week", "lag_t.1", "lag_t.2", "lag_t.3")])
+#   pred_ori <- InvBoxCox(pred_draws,lambda)
+# 
+#   result <- test_data |>
+#     mutate(
+#       pred_t = colMeans(pred_ori),
+#       y_lower95  = apply(pred_ori, 2, quantile, 0.025),
+#       y_upper95  = apply(pred_ori, 2, quantile, 0.975),
+#       y_lower80  = apply(pred_ori, 2, quantile, 0.10),
+#       y_upper80  = apply(pred_ori, 2, quantile, 0.90),
+#       week_run = w,
+#       year_run = y
+#     )
+# 
+#   return(result)
+# }
 ```
 
 Function to run ARIMA model
@@ -186,7 +187,6 @@ run_arima_week <- function(w, y, hfmd_data, lambda) {
   return(result)
 }
 ```
-
 
 ## Analysis
 
@@ -260,13 +260,13 @@ First, I used data from 2013 to 2022 for training and using 2023 for testing. Th
 #   mc.cores = cores
 # )
 
-# pred_3w <- bind_rows(results_list,.id = "id")
+# pred_3w <- bind_rows(results_list)
 # save(pred_3w,file = "pred_3w.RData")
 
-load("pred_3w.RData")
+load("./data/pred_3w.RData")
 ```
 
-week 1-26
+week 1-26, 2023
 
 ```{r}
 #| fig-width: 17
@@ -277,7 +277,7 @@ pred_3w |>
   model_plot_w()
 ```
 
-week 27-52
+week 27-52, 2023
 
 ```{r}
 #| fig-width: 17
@@ -287,6 +287,41 @@ pred_3w |>
   filter(week_run > 26) |> 
   model_plot_w()
 ```
+
+week 1-24, 2024
+
+```{r}
+# year_week_grid <- expand.grid(y = 2024, w = 1:26)
+# 
+# results_list <- mclapply(
+#   X        = 1:nrow(year_week_grid),
+#   FUN      = function(i) {
+#     run_bart_month(
+#       w         = year_week_grid$w[i],
+#       y         = year_week_grid$y[i],
+#       hfmd_data = hfmd_1324,
+#       lambda = lambda
+#     )
+#   },
+#   mc.cores = cores
+# )
+# pred_3w_24 <- bind_rows(results_list)
+# save(pred_3w_24, file = "pred_3w_24.RData")
+```
+
+
+```{r}
+#| fig-width: 17
+#| fig-height: 12
+#| out-width: "100%"
+
+load("./data/pred_3w_24.RData")
+
+pred_3w_24 |>
+  filter(week_run <= 24) |> 
+  model_plot_w()
+```
+
 
 ## ARIMA model
 
@@ -301,11 +336,11 @@ train_data <- hfmd_1324 |>
     na.omit()
 ```
 
-First I used number of admission for stationary testing. There are 2 test for stationary testing 
+First I used number of admission for stationary testing. There are 2 test for stationary testing
 
-  - adf test, null hypothesis: The time series has a unit root, meaning it is non-stationary.
-  
-  - kpss test, null hypothesis: The series is stationary
+-   adf test, null hypothesis: The time series has a unit root, meaning it is non-stationary.
+
+-   kpss test, null hypothesis: The series is stationary
 
 Create a time-series
 
@@ -319,13 +354,13 @@ adf test
 adf.test(ts_train) ## can reject the null hypothesis
 ```
 
-kpss test 
+kpss test
 
 ```{r}
 kpss.test(ts_train) ## can reject the null hypothesis
 ```
 
-Usually, there should be a contrast between those 2 test for stationary. If a data is stationary when p-value of adf test < 0.05 and kpss test > 0.05. So the results above state the non-stationary, then I applied the box-cox transformation for the time-series data and retest.
+Usually, there should be a contrast between those 2 test for stationary. If a data is stationary when p-value of adf test \< 0.05 and kpss test \> 0.05. So the results above state the non-stationary, then I applied the box-cox transformation for the time-series data and retest.
 
 ```{r}
 ts_train_t <- ts(train_data$y_transformed, frequency = 52)
@@ -372,11 +407,11 @@ So I used the box-cox transformation for model
 # results_arima <- bind_rows(sarima_results_list)
 # save(results_arima,file = "results_arima.RData")
 
-load("results_arima.RData")
+load("./data/results_arima.RData")
 
 ```
 
-Week 1-26
+Week 1-26, 2023
 
 ```{r}
 #| fig-width: 17
@@ -388,7 +423,7 @@ results_arima |>
   model_plot_w()
 ```
 
-Week 27-52
+Week 27-52, 2023
 
 ```{r}
 #| fig-width: 17
@@ -399,3 +434,22 @@ results_arima |>
   filter(week_run > 26) |>
   model_plot_w()
 ```
+
+Week 1-24, 2024
+
+```{r}
+#| fig-width: 17
+#| fig-height: 12
+#| out-width: "100%"
+
+# results_arima_24 <- bind_rows(sarima_results_list)
+# 
+# save(results_arima_24,file = "results_arima_24.RData")
+
+load("./data/results_arima_24.RData")
+
+results_arima_24 |> 
+  filter(week_run <= 24) |> 
+  model_plot_w()
+```
+
