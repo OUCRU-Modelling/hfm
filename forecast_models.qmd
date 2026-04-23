@@ -26,7 +26,10 @@ required <- c("BART",
               "magrittr",
               "parallel",
               "lubridate",
-              "tseries")
+              "tseries",
+              "EpiEstim",
+              "tseries",
+              "janitor")
 ```
 
 Installing those that are not installed yet:
@@ -43,20 +46,108 @@ Loading the packages for interactive use:
 invisible(sapply(required, library, character.only = TRUE))
 ```
 
-## Function
+## Constant
 
-plot bart function
+```{r setup, include=FALSE}
+knitr::opts_template$set(
+  bigplot = list(
+    fig.width  = 15,
+    fig.height = 10,
+    out.width  = "100%"
+  ),
+  smallplot = list(
+    fig.width  = 12,
+    fig.height = 8,
+    out.width  = "100%"
+  )
+)
+
+```
+
+Core for parralel analysis:
 
 ```{r}
-model_plot_w <- function(data) {
-  data |>
+cores <- detectCores() - 1
+```
+
+## Functions
+
+Function to run bart model for 1-4 weeks ahead
+
+```{r}
+#| code-fold: true
+
+test_bart_1t4w <- function(w, hfmd_data,y,lambda,week_ahead){
+  # hfmd_data <- hfmd_1324
+  # y = 2023
+  # w = 39
+  # week_ahead = 4
+  
+  train_data <- hfmd_data |>
+    filter(year < y | (year == y & week <= w)) |>
+    data.frame() |>
+    na.omit()
+  
+  test_data <- hfmd_data |>
+    filter(year == y & week %in% (w + 1):(w + week_ahead)) |>
+    data.frame()
+  
+  lag_cols <- paste0("lag_t.", 1:week_ahead)
+  
+  model <- wbart(
+    x.train = train_data[, c("adm_week", lag_cols)],
+    y.train = train_data$y_transformed,
+    # x.test = test_data[, c("adm_week", "lag_t.1", "lag_t.2")],
+    ntree   = 1000,
+    ndpost  = 10000,
+    nskip   = 1000,
+    a       = 0.95,
+    b       = 2
+  )
+  
+  pred_draws <- predict(model,test_data[, c("adm_week",lag_cols)])
+  pred_ori <- InvBoxCox(pred_draws,lambda)
+  
+  result <- test_data |>
+    mutate(
+      pred_t = colMeans(pred_ori),
+      y_lower95  = apply(pred_ori, 2, quantile, 0.025),
+      y_upper95  = apply(pred_ori, 2, quantile, 0.975),
+      y_lower80  = apply(pred_ori, 2, quantile, 0.10),
+      y_upper80  = apply(pred_ori, 2, quantile, 0.90),
+      week_run = w,
+      year_run = y,
+      week_ahead = week_ahead
+    )
+  result
+}
+```
+
+Plot BART for 1 to 4 weeks function
+
+```{r}
+#| code-fold: true
+
+bart_1t4w_p <- function(data,w_a,week_interval){
+  
+  # data = bart_1t4w
+  # w_a = 1
+  # week_interval = c(14,26)
+  
+  df_p <- data |>
+    filter(week_ahead == as.integer(w_a) &
+             week_run %in% c(week_interval[1]:week_interval[2])) 
+  
+  df_r <- data |> 
+    dplyr::select(adm_week, n) |> 
+    unique()
+  
+  df_l <- df_p |>
+    group_by(year_run,week_run) |>
+    slice(1)
+  
+  df_p |>
     ggplot(aes(x = adm_week)) +
-    geom_point(
-      data = data |> dplyr::select(-week_run),
-      aes(y = n),
-      alpha = 0.4,
-      size = .2
-    ) +
     geom_line(aes(y = pred_t)) +
     geom_ribbon(
       aes(ymin = y_lower95, ymax = y_upper95),
@@ -64,98 +155,204 @@ model_plot_w <- function(data) {
       alpha = 0.15,
       na.rm = TRUE
     ) +
-    # Shaded 80% credible interval
     geom_ribbon(
       aes(ymin = y_lower80, ymax = y_upper80),
       fill = "#4A90D9",
       alpha = 0.25,
       na.rm = TRUE
     ) +
-    scale_x_date(name = "Admission week") +
-    scale_y_continuous(name = "Total cases") +
-    labs(title = "Prediction for 3 weeks ahead")+
+    geom_point(data = df_r,
+               aes(x = adm_week, y = n),
+               alpha = 0.5,
+               size = 0.3) +
+    geom_vline(
+      data = df_l,
+      aes(xintercept = adm_week),
+      linetype = 3
+    )+
     theme_bw() +
-    facet_wrap(~ week_run, ncol = 6)
+    labs(y = "Number of cases", x = "Admission week")+
+    facet_wrap( ~ week_run, ncol = 4)
+}  
+```
+
+Function for run BART-4week and R(t)
+
+```{r}
+#| code-fold: true
+
+bart_4w <- function(w, hfmd_data,y,lambda,week_ahead){
+  
+  # hfmd_data <- hfmd_1324
+  # y = 2023
+  # w = 39
+  # week_ahead = 4
+  
+  train_data <- hfmd_data |>
+    filter(year < y | (year == y & week <= w)) |>
+    data.frame() |>
+    na.omit()
+  
+  test_data <- hfmd_data |>
+    filter(year == y & week %in% (w + 1):(w + week_ahead)) |>
+    data.frame()
+  
+  lag_cols <- paste0("lag_t.", 1:week_ahead)
+  
+  model <- wbart(
+    x.train = train_data[, c("adm_week", lag_cols)],
+    y.train = train_data$y_transformed,
+    # x.test = test_data[, c("adm_week", "lag_t.1", "lag_t.2")],
+    ntree   = 1000,
+    ndpost  = 10000,
+    nskip   = 1000,
+    a       = 0.95,
+    b       = 2
+  )
+  
+  pred_draws <- predict(model,test_data[, c("adm_week",lag_cols)])
+  pred_ori <- InvBoxCox(pred_draws,lambda)
+  
+  future <- test_data |>
+    mutate(
+      pred_t = colMeans(pred_ori),
+      y_lower95  = apply(pred_ori, 2, quantile, 0.025),
+      y_upper95  = apply(pred_ori, 2, quantile, 0.975),
+      y_lower80  = apply(pred_ori, 2, quantile, 0.10),
+      y_upper80  = apply(pred_ori, 2, quantile, 0.90),
+      week_run = w,
+      year_run = y,
+      week_ahead = week_ahead
+    )
+  
+  ## r(t) estimation
+  r.t <- estimate_R(
+    incid = train_data$n,
+    # dt = 7,
+    # recon_opt = "match",
+    method = "parametric_si",
+    config = make_config(list(mean_si = 3.7,
+                              std_si = 2.6))
+  )
+  
+  past <- train_data %>%
+    mutate(r_t.time = 1:nrow(.),
+           train = InvBoxCox(model$yhat.train.mean,lambda),
+           week_run = w,     # add these
+           year_run = y) %>%
+    left_join(clean_names(r.t$R), by = join_by(r_t.time == t_end)) |>
+    filter(year >= 2022)
+  
+  result <- list()
+  result$past <- past
+  result$future <- future
+  
+  return(result)
 }
 ```
 
-function to run bart model to forecast 2023 data
+
+Function for plotting BART-4week and R(t)
 
 ```{r}
+#| code-fold: true
 
-cores <- detectCores() - 1
+plot_bart4w <- function(data, week_interval){
+  
+  # data = bart_4w_rt
+  # week_interval = c(14,26)
+  
+  results_past   <- data |> lapply(\(x) x$past)   |> bind_rows(.id = "id")
+  results_future <- data |> lapply(\(x) x$future) |> bind_rows()
 
-# run_bart_month <- function(w, hfmd_data,y,lambda) {
-# 
-#   # hfmd_data <- hfmd_1324
-#   # y = 2023
-#   # w = 39
-# 
-#   train_data <- hfmd_data |>
-#     filter(year < y | (year == y & week == w)) |>
-#     data.frame() |>
-#     na.omit()
-# 
-#   test_data <- hfmd_data |>
-#     filter(year == y & week %in% c(w+1,w+2,w+3)) |>
-#     data.frame()
-# 
-#   if (nrow(test_data) == 0)
-#     return(NULL)
-# 
-#   model <- wbart(
-#     x.train = train_data[, c("adm_week", "lag_t.1","lag_t.2","lag_t.3")],
-#     y.train = train_data$y_transformed,
-#     # x.test = test_data[, c("adm_week", "lag_t.1", "lag_t.2")],
-#     ntree   = 1000,
-#     ndpost  = 10000,
-#     nskip   = 1000,
-#     a       = 0.95,
-#     b       = 2
-#   )
-# 
-#   pred_draws <- predict(model,test_data[, c("adm_week", "lag_t.1", "lag_t.2", "lag_t.3")])
-#   pred_ori <- InvBoxCox(pred_draws,lambda)
-# 
-#   result <- test_data |>
-#     mutate(
-#       pred_t = colMeans(pred_ori),
-#       y_lower95  = apply(pred_ori, 2, quantile, 0.025),
-#       y_upper95  = apply(pred_ori, 2, quantile, 0.975),
-#       y_lower80  = apply(pred_ori, 2, quantile, 0.10),
-#       y_upper80  = apply(pred_ori, 2, quantile, 0.90),
-#       week_run = w,
-#       year_run = y
-#     )
-# 
-#   return(result)
-# }
+  scale_rt <- 1000
+  
+  results_future_p <- results_future |>
+    filter(week_run %in% c(week_interval[1]:week_interval[2])) 
+  
+  results_past_p  <- results_past |>
+    filter(
+      week_run %in% c(week_interval[1]:week_interval[2]) &
+        year_run %in% range(results_past$year)
+    ) 
+  
+  results_past_p |>
+    ggplot(aes(x = adm_week)) +
+    ## rt
+    geom_col(aes(y = n), alpha = .2) +
+    geom_line(aes(y = mean_r * scale_rt)) +
+    geom_ribbon(aes(y = mean_r * scale_rt,
+                    ymin = quantile_0_025_r  * scale_rt,
+                    ymax = quantile_0_975_r * scale_rt),
+                fill = "red", alpha = 0.2) +
+    scale_y_continuous(
+      name      = "Number of cases",
+      sec.axis  = sec_axis(trans = ~ . / scale_rt, name = "R(t)")
+    ) +
+    scale_x_date(
+      limits = c(max(results_future_p$adm_week) - weeks(26),
+                 max(results_future_p$adm_week)),
+      date_labels = "%b %Y",
+      date_breaks = "2 months"
+    ) +
+    ## future predictions
+    geom_point(
+      data = results_future_p ,
+      aes(x = adm_week, y = n)
+    ) +
+    geom_line(
+      data = results_future_p,
+      aes(x = adm_week, y = pred_t)
+    ) +
+    geom_ribbon(
+      data = results_future_p,
+      aes(ymin = y_lower95, ymax = y_upper95),
+      fill = "#4A90D9", alpha = 0.15, na.rm = TRUE
+    ) +
+    geom_ribbon(
+      data = results_future_p,
+      aes(ymin = y_lower80, ymax = y_upper80),
+      fill = "#4A90D9", alpha = 0.25, na.rm = TRUE
+    ) +
+    ## vertical line at forecast start per facet
+    geom_vline(
+      data = results_future_p |>
+        group_by(year_run, week_run) |>
+        slice(1),                          
+      aes(xintercept = adm_week),
+      linetype = 3
+    ) +
+    coord_cartesian(ylim = c(0,4000))+
+    geom_hline(yintercept = 1000, linetype = "dashed") +
+    labs(x = "Admission week") +
+    theme_bw() +
+    facet_wrap(~ week_run, ncol = 4)
+}
 ```
 
-Function to run ARIMA model
+Model to run SARIMA
 
 ```{r}
-run_arima_week <- function(w, y, hfmd_data, lambda) {
+#| code-fold: true
+
+run_arima_week <- function(w, y, hfmd_data, lambda, week_ahead) {
   
-  # i        = 1
+  # i        = 27
   # w         = year_week_grid$w[i]
   # y         = year_week_grid$y[i]
   # hfmd_data = hfmd_1324
   # lambda    = lambda
-  
+  # week_ahead = 4
   
   # Expanding window training data
   train_data <- hfmd_data |>
-    dplyr::filter(year < y | (year == y & week < w)) |>
+    dplyr::filter(year < y | (year == y & week <= w)) |>
     data.frame() |>
     na.omit()
   
-  # Test = 3 weeks ahead from week w
   test_data <- hfmd_data |>
-    dplyr::filter(year == y & week >= w & week <= w + 2) |>
+    dplyr::filter(year == y & week %in% (w + 1):(w + week_ahead)) |>
     data.frame()
-  
-  if (nrow(test_data) == 0 | nrow(train_data) < 10) return(NULL)
   
   # Convert training to time series object
   ts_train <- ts(train_data$y_transformed, frequency = 52)
@@ -163,30 +360,54 @@ run_arima_week <- function(w, y, hfmd_data, lambda) {
   # Fit auto ARIMA with tryCatch
   model <- auto.arima(ts_train)
   
-  
-  if (is.null(model)) return(NULL)
-  
   # Fix 1: forecast exactly nrow(test_data) steps, not always 3
   h  <- nrow(test_data)
   fc <- forecast(model, h = h, level = c(80, 95))
   
   # Fix 2: safely back-transform with InvBoxCox instead of manual formula
   # handles edge cases like lambda = 0 (log transform)
-  result <- test_data |>
+  future <- test_data |>
     mutate(
       pred_t    = as.numeric(InvBoxCox(fc$mean,          lambda)),
       y_lower95 = as.numeric(InvBoxCox(fc$lower[, "95%"], lambda)),
       y_upper95 = as.numeric(InvBoxCox(fc$upper[, "95%"], lambda)),
       y_lower80 = as.numeric(InvBoxCox(fc$lower[, "80%"], lambda)),
       y_upper80 = as.numeric(InvBoxCox(fc$upper[, "80%"], lambda)),
-      horizon   = row_number(),
       week_run  = w,
       year_run  = y
     )
   
+  r.t <- estimate_R(
+    incid = train_data$n,
+    # dt = 7,
+    # recon_opt = "match",
+    method = "parametric_si",
+    config = make_config(list(mean_si = 3.7,
+                              std_si = 2.6))
+  )
+  
+  past <- train_data %>%
+    mutate(r_t.time = 1:nrow(.),
+           week_run = w,     
+           year_run = y) %>%
+    left_join(clean_names(r.t$R), by = join_by(r_t.time == t_end)) |>
+    filter(year >= 2022)
+  
+  result <- list()
+  result$past <- past
+  result$future <- future
+  
   return(result)
 }
 ```
+
+## Background
+
+I aim to apply the model for HFMD forecasting in Ho Chi Minh City. Based on a paper on HFMD forecasting in China [Link](https://www.nature.com/articles/s41598-025-98954-5){target="_blank"}, I tried to do similar work with our data.
+
+We can say with HCDC, after reviewing forecasting models, there are various approaches, including mechanistic, statistical, and machine learning models. However, for policymakers, they need estimates of uncertainty in forecasting accuracy, so there are three models that can provide this: ARIMA (SARIMA), Prophet, and Bayesian additive regression tree (BART).
+
+In this document, I have tried two models, BART and SARIMA. For the detail of model please read the paper.
 
 ## Analysis
 
@@ -203,7 +424,6 @@ hfmd_1324 <- df_cases %>%
     year = year(adm_week)
   ) %>%
   rename(time = x)
-
 ```
 
 I applied Box-cox transformation to normalize the count data
@@ -213,7 +433,7 @@ bc <- boxcox(n ~ adm_week,data = hfmd_1324)
 lambda <- bc$x[which.max(bc$y)]
 ```
 
-Add transformed cases and lag 1-week term
+Add transformed cases and lag terms from 1-4 weeks
 
 ```{r}
 hfmd_1324 %<>%
@@ -221,7 +441,8 @@ hfmd_1324 %<>%
     y_transformed = ((n^lambda - 1) / lambda),
     lag_t.1 = lag(y_transformed,1),
     lag_t.2 = lag(y_transformed,2),
-    lag_t.3 = lag(y_transformed,3)
+    lag_t.3 = lag(y_transformed,3),
+    lag_t.4 = lag(y_transformed,4)
   )
 ```
 
@@ -243,84 +464,302 @@ hfmd_1324 |>
 
 ## BART model
 
-First, I used data from 2013 to 2022 for training and using 2023 for testing. Then I combined 2013-2022 data with each lag of 3 weeks in 2023 to see the prediction 3 weeks ahead
+First I ran BART model from 1 - 4 weeks forecasting ahead. 
+
+I used the data from 2013 - 2022 for training, and data from 2023 for testing. 
+
+I used the data from 2013 - 2023 for training, and data from first 6 months of 2024 for testing 
+
+For BART model with 1 week prediction ahead had 2 predictors: admission week, lag 1 week.
+
+For BART model with 2 week prediction ahead had 3 predictors: admission week, lag 1 week, lag 2 week.
+
+For BART model with 3 week prediction ahead had 4 predictors: admission week, lag 1 week, lag 2 week, lag 3 week
+
+For BART model with 4 week prediction ahead had 5 predictors: admission week, lag 1 week, lag 2 week, lag 3 week, lag 4 week
+
 
 ```{r}
-# year_week_grid <- expand.grid(y = c(2023), w = 1:52)
+# run_grid <- expand.grid(y = 2023, w = 1:52,week_ahead = 1:4)
 # 
-# results_list <- mclapply(
-#   X        = 1:nrow(year_week_grid),
+# results_bart_1t4w <- mclapply(
+#   X        = 1:nrow(run_grid),
 #   FUN      = function(i) {
-#     run_bart_month(
-#       w         = year_week_grid$w[i],
-#       y         = year_week_grid$y[i],
-#       hfmd_data = hfmd_1324
-#     )
-#   },
-#   mc.cores = cores
-# )
-
-# pred_3w <- bind_rows(results_list)
-# save(pred_3w,file = "pred_3w.RData")
-
-load("./data/pred_3w.RData")
-```
-
-week 1-26, 2023
-
-```{r}
-#| fig-width: 17
-#| fig-height: 12
-#| out-width: "100%"
-pred_3w |>
-  filter(week_run <= 26) |> 
-  model_plot_w()
-```
-
-week 27-52, 2023
-
-```{r}
-#| fig-width: 17
-#| fig-height: 12
-#| out-width: "100%"
-pred_3w |>
-  filter(week_run > 26) |> 
-  model_plot_w()
-```
-
-week 1-24, 2024
-
-```{r}
-# year_week_grid <- expand.grid(y = 2024, w = 1:26)
-# 
-# results_list <- mclapply(
-#   X        = 1:nrow(year_week_grid),
-#   FUN      = function(i) {
-#     run_bart_month(
-#       w         = year_week_grid$w[i],
-#       y         = year_week_grid$y[i],
+#     test_bart_1t4w(
+#       w         = run_grid$w[i],
+#       y         = run_grid$y[i],
+#       week_ahead = run_grid$week_ahead[i],
 #       hfmd_data = hfmd_1324,
 #       lambda = lambda
 #     )
 #   },
 #   mc.cores = cores
 # )
-# pred_3w_24 <- bind_rows(results_list)
-# save(pred_3w_24, file = "pred_3w_24.RData")
+# 
+# bart_1t4w <- bind_rows(results_bart_1t4w)
+# save(bart_1t4w,file = "./data/bart_1t4w.RData")
+
+load("./data/bart_1t4w.RData")
 ```
+
+The performance of each week interval ahead, from 1-4. I used some criteria followed the paper:
+
+$$
+\begin{aligned}
+RMSE &= \sqrt{\frac{1}{n}\sum_{i=1}^{n}\left(y_{i} - y_{i}^{*}\right)^{2}} \\
+MAPE &= \frac{100\%}{n}\sum_{i=1}^{n}\left|\frac{y_{i}^{*} - y_{i}}{y_{i}}\right| \\
+\end{aligned}
+$$
+
+For interval forecasting
+
+$$
+\begin{aligned}
+PICP &= \frac{1}{|\varepsilon|} \sum_{t \in \varepsilon} I\left(\zeta_{t} \leq y_{t} \leq \mu_{t}\right) \\
+PINAW &= \frac{1}{|\varepsilon|\, R} \sum_{t \in \varepsilon}\left(\mu_{t} - \zeta_{t}\right) \\
+CWC &= PINAW \left\{
+    1 + I\left(PICP < \alpha\right)
+    \exp\left[-\lambda\left(PICP - \alpha\right)\right]
+\right\}
+\end{aligned}
+$$
+
 
 
 ```{r}
-#| fig-width: 17
-#| fig-height: 12
-#| out-width: "100%"
+#| opts.label = "smallplot"
 
-load("./data/pred_3w_24.RData")
-
-pred_3w_24 |>
-  filter(week_run <= 24) |> 
-  model_plot_w()
+performance <- bart_1t4w |>
+  mutate(
+    cover = case_when(n <= y_upper95 & n >= y_lower95 ~ T, .default = F)
+  ) |> 
+  group_by(week_run,week_ahead) |> 
+  summarise(
+    rmse = sqrt(mean((n - pred_t)^2, na.rm = TRUE)),
+    mae  = mean(abs(n - pred_t), na.rm = TRUE),
+    mape = mean(abs((n - pred_t) / n), na.rm = TRUE) * 100,
+    picp = mean(cover),
+    pinaw = mean(y_upper95 - y_lower95) /(max(n) - min(n)),
+    penalty = ifelse(picp < .95,
+                      exp(-1 * (picp - .95)),
+                      1),
+    cwc = pinaw * penalty,
+    .groups = "drop"
+  ) |> 
+  dplyr::select(-c(penalty,picp)) |> 
+  pivot_longer(cols = - c(week_run,week_ahead))
 ```
+
+```{r}
+#| opts.label = "smallplot"
+
+performance |>
+  ggplot(aes(
+    x = week_run,
+    y = value,
+    group = week_ahead,
+    color = factor(week_ahead)
+  )) +
+  geom_line() +
+  facet_wrap(~factor(name,levels = c("rmse","mae","mape","cwc","pinaw")),scale = "free_y")+
+  theme_bw() +
+  labs(x = "Week forecasting")+
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| opts.label = "smallplot"
+
+performance |> 
+  ggplot(aes(x = week_ahead, y = value,group = week_ahead))+
+  geom_boxplot()+
+  facet_wrap(~factor(name,levels = c("rmse","mae","mape","cwc","pinaw")),scale = "free_y")+
+  theme_bw()+
+  labs(x = "Week ahead")+
+  theme(legend.position = "bottom")
+```
+
+
+
+::: {.callout-note}
+
+As we can see the model with 4-week prediction ahead have best performance with low error and high coverage (low cwc and pinaw) during the peak of the outbreak. Because It used the 4 lags of predictors. So I prefer prediction for 4 weeks ahead
+
+:::
+
+Prediction of 4 week head for 2023
+
+::: {.panel-tabset .nav-pills}
+
+### Week 1-13
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_1t4w |>
+  bart_1t4w_p(w_a = 4, week_interval = c(1, 13))
+```
+
+### Week 14-26
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_1t4w |>
+  bart_1t4w_p(w_a = 4, week_interval = c(14, 26))
+```
+
+### Week 27-40
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_1t4w |>
+  bart_1t4w_p(w_a = 4, week_interval = c(27, 40))
+```
+
+### Week 41-52
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_1t4w |>
+  bart_1t4w_p(w_a = 4, week_interval = c(41, 52))
+```
+
+:::
+
+Then I try to combine the forecasting model with the R(t) for surveillance. For R(t), I used `EpiEstim` package, with SI assumed followed Gamma distribution with mean = 3.7 and sd = 2.6, followed this paper [Link](https://doi.org/10.1016/j.jiph.2023.03.029){target="_blank"}
+
+```{r}
+# run_grid <- expand.grid(y = 2023, w = 1:52,week_ahead = 4)
+# 
+# bart_4w_rt <- mclapply(
+#   X        = 1:nrow(run_grid),
+#   FUN      = function(i) {
+#     bart_4w(
+#       w         = run_grid$w[i],
+#       y         = run_grid$y[i],
+#       week_ahead = run_grid$week_ahead[i],
+#       hfmd_data = hfmd_1324,
+#       lambda = lambda
+#     )
+#   },
+#   mc.cores = cores
+# )
+
+# save(bart_4w_rt,file = "./data/bart_4w_rt.RData")
+
+load("./data/bart_4w_rt.RData")
+
+```
+
+
+::: {.panel-tabset .nav-pills}
+
+### Week 1-13
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_4w_rt |> 
+  plot_bart4w(week_interval = c(1,13))
+```
+
+### Week 14-26
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_4w_rt |> 
+  plot_bart4w(week_interval = c(14,26))
+```
+
+### Week 27-40
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_4w_rt |> 
+  plot_bart4w(week_interval = c(27,40))
+```
+
+### Week 41-52
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_4w_rt |> 
+  plot_bart4w(week_interval = c(41,52))
+```
+
+:::
+
+The horizontal dotted line separates the training (before) and prediction (after) periods at each week. This illustrates how the model can be applied to HFMD surveillance and prediction in real-world settings. When HCDC receives weekly reported case data, the model needs to be re-run at each time point to generate updated forecasts. A 4-week-ahead prediction horizon may be appropriate, as it allows for delays in weekly case reporting. 
+
+The histogram in the training part shows the reported cases. The line with the red confidence interval in the training part represents R(t).
+
+The line with the 2 intervals is the model prediction with 95% and 80% prediction interval.
+
+::: {.callout-note}
+
+The result show that at the early stage of the outbreak the R(t) was under 1. But in week 6-7, we can see the small increase in R(t) while there no sign from the prediction. 
+
+At week 22, R(t) was close to 1.5, and the model predicted an increase in cases.
+
+However, at week 36, when the second wave was triggered, R(t) was < 1, but the model still predicted an increase in cases.
+
+I conclude that R(t) may be helpful for surveillance when the time interval between two outbreaks is long. However, when two successive outbreaks occur close together, R(t) may be delayed; for example, at the second peak, when the outbreak was declining, R(t) increased to above 1.
+
+:::
+
+Then I applied to predict for week 1-26 of 2024
+
+```{r}
+# run_grid <- expand.grid(y = 2024,
+#                         w = 1:26,
+#                         week_ahead = 4)
+# 
+# bart_4w_rt_24 <- mclapply(
+#   X        = 1:nrow(run_grid),
+#   FUN      = function(i) {
+#     bart_4w(
+#       w         = run_grid$w[i],
+#       y         = run_grid$y[i],
+#       week_ahead = run_grid$week_ahead[i],
+#       hfmd_data = hfmd_1324,
+#       lambda = lambda
+#     )
+#   },
+#   mc.cores = cores
+# )
+# 
+# save(bart_4w_rt_24, file = "./data/bart_4w_rt_24.RData")
+
+load("./data/bart_4w_rt_24.RData")
+```
+
+::: {.panel-tabset .nav-pills}
+
+### Week 1-13
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_4w_rt_24 |> 
+  plot_bart4w(week_interval = c(1,13))
+```
+
+### Week 14-26
+
+```{r}
+#| opts.label = "bigplot"
+
+bart_4w_rt_24 |> 
+  plot_bart4w(week_interval = c(14,26))
+```
+
+:::
 
 
 ## ARIMA model
@@ -371,6 +810,8 @@ kpss.test(ts_train_t)
 So I used the box-cox transformation for model
 
 ```{r}
+# year_week_grid <- expand.grid(y = 2023, w = 1:52, week_ahead = 4)
+# 
 # # Explicit cluster setup
 # cl <- makeCluster(cores)
 # 
@@ -382,6 +823,8 @@ So I used the box-cox transformation for model
 # clusterEvalQ(cl, {
 #   library(forecast)
 #   library(dplyr)
+#   library(EpiEstim)    
+#   library(janitor)
 # })
 # 
 # # Run
@@ -394,7 +837,8 @@ So I used the box-cox transformation for model
 #         w         = year_week_grid$w[i],
 #         y         = year_week_grid$y[i],
 #         hfmd_data = hfmd_1324,
-#         lambda    = lambda
+#         lambda    = lambda,
+#         week_ahead = year_week_grid$week_ahead[i]
 #       ),
 #       error = function(e) return(NULL)
 #     )
@@ -404,52 +848,114 @@ So I used the box-cox transformation for model
 # # Always stop cluster when done
 # stopCluster(cl)
 # 
-# results_arima <- bind_rows(sarima_results_list)
-# save(results_arima,file = "results_arima.RData")
+# save(sarima_results_list,file = "./data/results_arima_23.RData")
 
-load("./data/results_arima.RData")
-
+load("./data/results_arima_23.RData")
 ```
 
-Week 1-26, 2023
+Prediction for 2023
+
+::: {.panel-tabset .nav-pills}
+
+### Week 1-13
 
 ```{r}
-#| fig-width: 17
-#| fig-height: 12
-#| out-width: "100%"
+#| opts.label = "bigplot"
 
-results_arima |>
-  filter(week_run <= 26) |>
-  model_plot_w()
+sarima_results_list|> 
+  plot_bart4w(week_interval = c(1,13))
 ```
 
-Week 27-52, 2023
+### Week 14-26
 
 ```{r}
-#| fig-width: 17
-#| fig-height: 12
-#| out-width: "100%"
+#| opts.label = "bigplot"
 
-results_arima |>
-  filter(week_run > 26) |>
-  model_plot_w()
+sarima_results_list|> 
+  plot_bart4w(week_interval = c(13,26))
 ```
 
-Week 1-24, 2024
+### Week 27-40
 
 ```{r}
-#| fig-width: 17
-#| fig-height: 12
-#| out-width: "100%"
+#| opts.label = "bigplot"
 
-# results_arima_24 <- bind_rows(sarima_results_list)
-# 
-# save(results_arima_24,file = "results_arima_24.RData")
-
-load("./data/results_arima_24.RData")
-
-results_arima_24 |> 
-  filter(week_run <= 24) |> 
-  model_plot_w()
+sarima_results_list|> 
+  plot_bart4w(week_interval = c(27,40))
 ```
+
+### Week 41-52
+
+```{r}
+#| opts.label = "bigplot"
+
+sarima_results_list|> 
+  plot_bart4w(week_interval = c(41,52))
+```
+
+:::
+
+::: {.callout-note}
+
+The interesting here is at the second wave, the model predict the outbreak was continuous declining. Until week 40, when we at the first half of the 2nd waves the prediction was good again. 
+
+:::
+
+## Performance comparison
+
+Here I compare the model performance when predicting 2023 outbreak.
+
+```{r}
+pred_bart <- bart_4w_rt |> lapply(\(x) x$future) |> bind_rows()
+pred_sarima <- sarima_results_list |> lapply(\(x) x$future) |> bind_rows()
+
+per_2models_23 <- bind_rows(pred_bart, pred_sarima, .id = "model") |>
+  mutate(
+    model = case_when(model == 1 ~ "bart", .default = "sarima"),
+    cover = case_when(n <= y_upper95 &
+                        n >= y_lower95 ~ T, .default = F)
+  ) |>
+  group_by(model, week_run) |>
+  summarise(
+    rmse = sqrt(mean((n - pred_t)^2, na.rm = TRUE)),
+    mae  = mean(abs(n - pred_t), na.rm = TRUE),
+    mape = mean(abs((n - pred_t) / n), na.rm = TRUE) * 100,
+    picp = mean(cover),
+    pinaw = mean(y_upper95 - y_lower95) / (max(n) - min(n)),
+    penalty = ifelse(picp < .95, exp(-1 * (picp - .95)), 1),
+    cwc = pinaw * penalty,
+    .groups = "drop"
+  ) |>
+  dplyr::select(-c(penalty, picp)) |>
+  pivot_longer(cols = -c(week_run,model))  
+```
+
+```{r}
+per_2models_23 |>
+  ggplot(aes(
+    x = week_run,
+    y = value,
+    group = model,
+    color = model
+  )) +
+  geom_line() +
+  facet_wrap( ~ factor(name, levels = c("rmse", "mae", "mape", "cwc", "pinaw")), scale = "free_y") +
+  theme_bw() +
+  labs(x = "Week forecasting") +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+per_2models_23 |>
+  ggplot(aes(x = model, y = value, fill = model)) +
+  geom_boxplot() +
+  facet_wrap( ~ factor(name, levels = c("rmse", "mae", "mape", "cwc", "pinaw")), scale = "free_y") +
+  theme_bw() +
+  labs(x = "Model") +
+  theme(legend.position = "bottom")
+```
+
+
+
 
