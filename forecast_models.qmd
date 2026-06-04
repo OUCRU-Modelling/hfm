@@ -409,6 +409,16 @@ We can say with HCDC, after reviewing forecasting models, there are various appr
 
 In this document, I have tried two models, BART and SARIMA. For the detail of model please read the paper.
 
+In practice, HCDC will use forecasting model followed this way:
+
+  - Refit the model using data from 2013-the current week
+  
+  - Make prediction for the next 4 weeks
+
+  - Convert to R_t
+
+Assumption of these models, because the training data from 2013 to 2024 when HFMD vaccine have not been introduced, when the HFMD vaccine will be introduced this data should not be used
+
 ## Analysis
 
 ```{r}
@@ -466,17 +476,20 @@ hfmd_1324 |>
 
 First I ran BART model from 1 - 4 weeks forecasting ahead. 
 
-I used the data from 2013 - 2022 for training, and data from 2023 for testing. 
+Data:
 
-I used the data from 2013 - 2023 for training, and data from first 6 months of 2024 for testing 
+```{r}
+head(hfmd_1324 |> as.data.frame() |> dplyr::select(-c(time,week,month,year)))
+```
 
-For BART model with 1 week prediction ahead had 2 predictors: admission week, lag 1 week.
 
-For BART model with 2 week prediction ahead had 3 predictors: admission week, lag 1 week, lag 2 week.
+For BART model predict number of admission 1 week ahead $n_{t+1}$: admission week, number of admission at time $n_t$.
 
-For BART model with 3 week prediction ahead had 4 predictors: admission week, lag 1 week, lag 2 week, lag 3 week
+For BART model predict number of admission 2 weeks ahead $(n_{t+1},n_{t+2})$: admission week, $n_t,n_{t-1}$.
 
-For BART model with 4 week prediction ahead had 5 predictors: admission week, lag 1 week, lag 2 week, lag 3 week, lag 4 week
+For BART model predict number of admission 3 weeks ahead $(n_{t+1},n_{t+2},n_{t+3})$: admission week, $n_t,n_{t-1},n_{t-2}$.
+
+For BART model predict number of admission 4 weeks ahead $(n_{t+1},n_{t+2},n_{t+3},n_{t+4})$: admission week, $n_t,n_{t-1},n_{t-2},n_{t-3}$.
 
 
 ```{r}
@@ -546,7 +559,7 @@ performance <- bart_1t4w |>
     cwc = pinaw * penalty,
     .groups = "drop"
   ) |> 
-  dplyr::select(-c(penalty,picp)) |> 
+  dplyr::select(-c(penalty)) |> 
   pivot_longer(cols = - c(week_run,week_ahead))
 ```
 
@@ -561,7 +574,7 @@ performance |>
     color = factor(week_ahead)
   )) +
   geom_line() +
-  facet_wrap(~factor(name,levels = c("rmse","mae","mape","cwc","pinaw")),scale = "free_y")+
+  facet_wrap(~factor(name,levels = c("rmse","mae","mape","cwc","pinaw","picp")),scale = "free_y")+
   theme_bw() +
   labs(x = "Week forecasting")+
   theme(legend.position = "bottom")
@@ -573,7 +586,7 @@ performance |>
 performance |> 
   ggplot(aes(x = week_ahead, y = value,group = week_ahead))+
   geom_boxplot()+
-  facet_wrap(~factor(name,levels = c("rmse","mae","mape","cwc","pinaw")),scale = "free_y")+
+  facet_wrap(~factor(name,levels = c("rmse","mae","mape","cwc","pinaw","picp")),scale = "free_y")+
   theme_bw()+
   labs(x = "Week ahead")+
   theme(legend.position = "bottom")
@@ -695,11 +708,13 @@ bart_4w_rt |>
 
 :::
 
-The horizontal dotted line separates the training (before) and prediction (after) periods at each week. This illustrates how the model can be applied to HFMD surveillance and prediction in real-world settings. When HCDC receives weekly reported case data, the model needs to be re-run at each time point to generate updated forecasts. A 4-week-ahead prediction horizon may be appropriate, as it allows for delays in weekly case reporting. 
+The vertical dotted line separates the training (before) and prediction (after) periods at each week. This illustrates how the model can be applied to HFMD surveillance and prediction in real-world settings. When HCDC receives weekly reported case data, the model needs to be re-run at each time point to generate updated forecasts. A 4-week-ahead prediction horizon may be appropriate, as it allows for delays in weekly case reporting. 
 
 The histogram in the training part shows the reported cases. The line with the red confidence interval in the training part represents R(t).
 
 The line with the 2 intervals is the model prediction with 95% and 80% prediction interval.
+
+The dots at the prediction part are the actual data
 
 ::: {.callout-note}
 
@@ -926,7 +941,7 @@ per_2models_23 <- bind_rows(pred_bart, pred_sarima, .id = "model") |>
     cwc = pinaw * penalty,
     .groups = "drop"
   ) |>
-  dplyr::select(-c(penalty, picp)) |>
+  dplyr::select(-c(penalty)) |>
   pivot_longer(cols = -c(week_run,model))  
 ```
 
@@ -939,7 +954,7 @@ per_2models_23 |>
     color = model
   )) +
   geom_line() +
-  facet_wrap( ~ factor(name, levels = c("rmse", "mae", "mape", "cwc", "pinaw")), scale = "free_y") +
+  facet_wrap( ~ factor(name, levels = c("rmse", "mae", "mape", "cwc", "pinaw", "picp")), scale = "free_y") +
   theme_bw() +
   labs(x = "Week forecasting") +
   theme(legend.position = "bottom")
@@ -950,7 +965,7 @@ per_2models_23 |>
 per_2models_23 |>
   ggplot(aes(x = model, y = value, fill = model)) +
   geom_boxplot() +
-  facet_wrap( ~ factor(name, levels = c("rmse", "mae", "mape", "cwc", "pinaw")), scale = "free_y") +
+  facet_wrap( ~ factor(name, levels = c("rmse", "mae", "mape", "cwc", "pinaw", "picp")), scale = "free_y") +
   theme_bw() +
   labs(x = "Model") +
   theme(legend.position = "bottom")

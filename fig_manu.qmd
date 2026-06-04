@@ -20,7 +20,8 @@ required <- c(
   "factoextra",
   "fitdistrplus",
   "mgcv",
-  "scam"
+  "scam",
+  "sf"
 )
 ```
 
@@ -288,6 +289,44 @@ df23 <- cases_file |>
          adm_week = as.Date(floor_date(admission_date, "week")),
          age      = round(age1))
 ```
+
+HCMC map
+
+```{r}
+vn_qh <- st_read(dsn = paste0(path2data, "gadm41_VNM.gpkg"), layer = "ADM_ADM_2")
+
+vn_qh1 <- vn_qh %>%
+  clean_names() %>%     ## cho thành chữ thường
+  filter(
+    str_detect(
+      name_1,
+      "Hồ Chí Minh"
+    )
+  )
+qhtp <- vn_qh1[-c(14,21),]
+
+qhtp$geom[qhtp$varname_2 == "Thu Duc"] <- vn_qh1[c("21","24","14"),] %>%
+  st_union()
+
+qhtp <- qhtp %>% st_cast("MULTIPOLYGON")
+
+qhtp$varname_2 <- stri_trans_general(qhtp$varname_2, "latin-ascii") %>%
+  tolower() %>%
+  str_remove("district") %>%
+  trimws(which = "both")
+
+qhtp$nl_name_2 <- c("BC","BTân","BT","CG","CC","GV",
+                    "HM","NB","PN","1","10","11","12",
+                    "3","4","5","6","7","8","TB",
+                    "TP","TĐ")
+
+## children hospital 1 coord
+
+tdnd1 <- data.frame(long = 106.6702,
+                    lat  = 10.7686) %>%
+  st_as_sf(coords = c("long", "lat"), crs = 4326)
+```
+
 
 ## Analysis
 
@@ -1110,8 +1149,7 @@ ggsave("./fig_manuscript/fig3_new2.svg", plot = fig3_new,
 
 ![](./fig_manuscript/fig3_new2.svg)
 
-
-## Confidence interval of expected EV-A71 infections
+### Confidence interval of expected EV-A71 infections
 
 First I estimate the standard error of difference in seroprevalence between 2 successive collection time points by the following formula:
 
@@ -1172,5 +1210,107 @@ expected_incidence |>
     labels = c("12/2022 - 4/2023", "4/2023 - 8/2023", "8/2023 - 12/2023")
   )) +
   theme_bw()
+```
+
+### Correspondence between spatial distribution of serum samples and hopital catchment of CH1
+
+Blood samples distribution
+
+```{r}
+sero_dis <- df_sero |>
+  group_by(district) |>
+  count() |>
+  ungroup() |>
+  mutate(per = n / sum(n)) |>
+  right_join(qhtp, by = join_by(district == varname_2)) |>
+  ggplot() +
+  geom_sf(aes(fill = per, geometry = geom), show.legend = T) +
+  paletteer::scale_fill_paletteer_c(
+    "ggthemes::Classic Red",
+    na.value = "white",
+    labels = scales::label_percent(),
+    name = "Percentage"
+  ) +
+  geom_sf(
+    data = tdnd1,
+    shape = 17,
+    color = "yellow",
+    size = 2
+  ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_colourbar(barwidth = 15), color = "none")
+```
+
+Hospital catchment
+
+```{r}
+hos_catch <- df_cases_ch1_23 |>
+  group_by(district) |>
+  count() |>
+  ungroup() |>
+  mutate(per = n / sum(n)) |>
+  right_join(qhtp, by = join_by(district == varname_2)) |>
+  ggplot() +
+  geom_sf(aes(fill = per, geometry = geom), show.legend = T) +
+  paletteer::scale_fill_paletteer_c(
+    "ggthemes::Classic Blue",
+    na.value = "white",
+    labels = scales::label_percent(),
+    name = "Percentage"
+  )+
+  geom_sf(
+    data = tdnd1,
+    shape = 17,
+    color = "yellow",
+    size = 2
+  ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_colourbar(barwidth = 15), color = "none")
+```
+
+Swabs sample spatial distribution
+
+```{r}
+viro_dis <- df_viro |>
+  mutate(district = case_when(
+    district %in% c("thu duc", "9", "2") ~ "thu duc",
+    .default = district
+  )) |> 
+  group_by(district) |> 
+  count() |> 
+  ungroup() |>
+  mutate(per = n / sum(n)) |>
+  right_join(qhtp, by = join_by(district == varname_2)) |>
+  ggplot() +
+  geom_sf(aes(fill = per, geometry = geom), show.legend = T) +
+  paletteer::scale_fill_paletteer_c(
+    "ggthemes::Classic Green",
+    na.value = "white",
+    labels = scales::label_percent(),
+    name = "Percentage"
+  )+
+  geom_sf(
+    data = tdnd1,
+    shape = 17,
+    color = "yellow",
+    size = 2
+  ) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_colourbar(barwidth = 15), color = "none")
+```
+
+
+```{r}
+#| fig-width: 12
+#| fig-height: 12
+#| out-width: "100%"
+
+hos_catch | sero_dis | viro_dis
 ```
 

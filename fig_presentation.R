@@ -143,6 +143,7 @@ ch1_3times <- ggplot() +
   )) +
   labs(y = "Number of cases", x = "Age (years)") +
   scale_x_continuous(position = "top")+
+  ylim(0,2500)+
   theme_bw() +
   theme(
     axis.text.x = element_text(size = 15),
@@ -206,6 +207,15 @@ ts_ch1_b <- df_cases_ch1_23 %>%
     legend.title = element_text(size = 18)
   ) +
   guides(fill = guide_colourbar(barwidth = 20), color = "none")
+
+sero_ch1_a <- (ch1_3times /
+               age_profile_sp_cm /
+               ts_ch1_b) +
+  plot_layout(heights = c(1, 1, 1))
+
+ggsave("./fig_am/sero_ch1_a.svg",plot = sero_ch1_a,
+       width = 20,height = 16,dpi = 500)
+
 
 age_profile_sp_cm <- outttt |>
   bind_rows() |>
@@ -280,6 +290,12 @@ exp_in_ch1 <- expected_incidence |>
 exp_in_ch1 <- expected_incidence |>
   ggplot() +
   geom_line(aes(x = cohort, y = exp_inc),linewidth = 1) +
+  geom_ribbon(
+    aes(x = cohort, y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
   geom_col(
     data = dat %>%
       bind_rows(.id = "id") %>%
@@ -322,10 +338,18 @@ ggsave("./fig_am/sero_ch1_fn.svg",plot = sero_ch1_fn,
 
 exp_in_ch1.1 <- expected_incidence |>
   mutate(
-    exp_inc = case_when(id != 1 ~ NA,.default = exp_inc)
+    exp_inc = case_when(id != 1 ~ NA,.default = exp_inc),
+    lo_exp_inc = case_when(id != 1 ~ NA,.default = lo_exp_inc),
+    hi_exp_inc = case_when(id != 1 ~ NA,.default = hi_exp_inc)
   ) |>
   ggplot() +
   geom_line(aes(x = cohort, y = exp_inc),linewidth = 1) +
+  geom_ribbon(
+    aes(x = cohort, y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
   geom_col(
     data = dat %>%
       bind_rows(.id = "id") %>%
@@ -368,10 +392,18 @@ ggsave("./fig_am/sero_ch1_c.svg",plot = sero_ch1_c,
 
 exp_in_ch1.2 <- expected_incidence |>
   mutate(
-    exp_inc = case_when(id == 3 ~ NA,.default = exp_inc)
+    exp_inc = case_when(id == 3 ~ NA,.default = exp_inc),
+    lo_exp_inc = case_when(id == 3 ~ NA,.default = lo_exp_inc),
+    hi_exp_inc = case_when(id == 3 ~ NA,.default = hi_exp_inc)
   ) |>
   ggplot() +
   geom_line(aes(x = cohort, y = exp_inc),linewidth = 1) +
+  geom_ribbon(
+    aes(x = cohort, y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
   geom_col(
     data = dat %>%
       bind_rows(.id = "id") %>%
@@ -440,28 +472,28 @@ ts_ch1_viro <- df_cases_ch1_23 %>%
   ) +
   guides(fill = guide_colourbar(barwidth = 20), color = "none")
 
-# per_serotype <- df_viro %>%
-#   group_by(adm_month) %>%
-#   count(sero_gr) %>%
-#   mutate(total = sum(n),
-#          per = n/total) %>%
-#   ggplot(aes(x = adm_month,y=per,fill = sero_gr))+
-#   geom_bar(position="fill", stat="identity")+
-#   scale_x_date(date_breaks = "1 month", date_labels = "%b",
-#                limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")),
-#                name = "Collection month (2023)")+
-#   scale_y_continuous(labels = scales::label_percent())+
-#   labs(fill = "Serotype group",y = "Percentage (%)")+
-#   theme_minimal()+
-#   theme(axis.title.y = element_text(size = 18),
-#         axis.title.x = element_text(size = 18),
-#         axis.ticks.x = element_blank(),
-#         legend.position = "bottom",
-#         plot.tag = element_text(face = "bold", size = 18),
-#         axis.text.x = element_text(size = 18),
-#         axis.text.y = element_text(size = 18),
-#         legend.text = element_text(size = 15),
-#         legend.title = element_text(size = 18))
+per_serotype <- df_viro %>%
+  group_by(adm_month) %>%
+  count(sero_gr) %>%
+  mutate(total = sum(n),
+         per = n/total) %>%
+  ggplot(aes(x = adm_month,y=per,fill = sero_gr))+
+  geom_bar(position="fill", stat="identity")+
+  scale_x_date(date_breaks = "1 month", date_labels = "%b",
+               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")),
+               name = "Collection month (2023)")+
+  scale_y_continuous(labels = scales::label_percent())+
+  labs(fill = "Serotype group",y = "Percentage (%)")+
+  theme_minimal()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))
 
 
 sero_viro_ch1 <- (exp_in_ch1 /
@@ -590,6 +622,13 @@ compare_ev71 <- recontructed_df |>
   ggplot(aes(x = age, y = ev_a71_cases)) +
   geom_col(alpha = 0.3) +
   geom_line(data = expected_incidence, aes(x = cohort, y = exp_inc),linewidth = 1) +
+  geom_ribbon(
+    data = expected_incidence,
+    aes(x = cohort, y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
   scale_x_continuous(position = "top") +
   facet_wrap( ~ period) +
   labs(y = "Number of cases", x = "Age (years)") +
