@@ -716,10 +716,10 @@ window.Quarto = {
 6 2013-02-03  56      6.507755 8.131128 8.263623 8.840728 9.457568</code></pre>
 </div>
 </div>
-<p>For BART model predict number of admission 1 week ahead <span class="math inline">\(n_{t+1}\)</span>: admission week, number of admission at time <span class="math inline">\(n_t\)</span>.</p>
-<p>For BART model predict number of admission 2 weeks ahead <span class="math inline">\((n_{t+1},n_{t+2})\)</span>: admission week, <span class="math inline">\(n_t,n_{t-1}\)</span>.</p>
-<p>For BART model predict number of admission 3 weeks ahead <span class="math inline">\((n_{t+1},n_{t+2},n_{t+3})\)</span>: admission week, <span class="math inline">\(n_t,n_{t-1},n_{t-2}\)</span>.</p>
-<p>For BART model predict number of admission 4 weeks ahead <span class="math inline">\((n_{t+1},n_{t+2},n_{t+3},n_{t+4})\)</span>: admission week, <span class="math inline">\(n_t,n_{t-1},n_{t-2},n_{t-3}\)</span>.</p>
+<p>For BART model predict number of admission 1 week ahead <span class="math inline">\(n_{t+1}\)</span>: admission week, number of admission at time <span class="math inline">\(n_{t}\)</span> for training model.</p>
+<p>For BART model predict number of admission 2 weeks ahead <span class="math inline">\((n_{t+1},n_{t+2})\)</span>: admission week, <span class="math inline">\(n_t,n_{t-1}\)</span> for training model.</p>
+<p>For BART model predict number of admission 3 weeks ahead <span class="math inline">\((n_{t+1},n_{t+2},n_{t+3})\)</span>: admission week, <span class="math inline">\(n_t,n_{t-1},n_{t-2}\)</span> for training model.</p>
+<p>For BART model predict number of admission 4 weeks ahead <span class="math inline">\((n_{t+1},n_{t+2},n_{t+3},n_{t+4})\)</span>: admission week, <span class="math inline">\(n_t,n_{t-1},n_{t-2},n_{t-3}\)</span> for training model.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># run_grid &lt;- expand.grid(y = 2023, w = 1:52,week_ahead = 1:4)</span></span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="co"># </span></span>

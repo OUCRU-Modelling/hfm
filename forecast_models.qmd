@@ -483,13 +483,13 @@ head(hfmd_1324 |> as.data.frame() |> dplyr::select(-c(time,week,month,year)))
 ```
 
 
-For BART model predict number of admission 1 week ahead $n_{t+1}$: admission week, number of admission at time $n_t$.
+For BART model predict number of admission 1 week ahead $n_{t+1}$: admission week, number of admission at time $n_{t}$ for training model. 
 
-For BART model predict number of admission 2 weeks ahead $(n_{t+1},n_{t+2})$: admission week, $n_t,n_{t-1}$.
+For BART model predict number of admission 2 weeks ahead $(n_{t+1},n_{t+2})$: admission week, $n_t,n_{t-1}$ for training model.
 
-For BART model predict number of admission 3 weeks ahead $(n_{t+1},n_{t+2},n_{t+3})$: admission week, $n_t,n_{t-1},n_{t-2}$.
+For BART model predict number of admission 3 weeks ahead $(n_{t+1},n_{t+2},n_{t+3})$: admission week, $n_t,n_{t-1},n_{t-2}$ for training model.
 
-For BART model predict number of admission 4 weeks ahead $(n_{t+1},n_{t+2},n_{t+3},n_{t+4})$: admission week, $n_t,n_{t-1},n_{t-2},n_{t-3}$.
+For BART model predict number of admission 4 weeks ahead $(n_{t+1},n_{t+2},n_{t+3},n_{t+4})$: admission week, $n_t,n_{t-1},n_{t-2},n_{t-3}$ for training model.
 
 
 ```{r}
