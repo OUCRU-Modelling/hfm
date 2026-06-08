@@ -62,6 +62,8 @@ viro_file <- "virology_cleaned.rds"
 
 # Name of outpatient data file
 ch1_outpatient <- "CH1_outpatient_HCM_cleaned.rds"
+
+path2ms_fig <- "/Users/nguyenpnt/OUCRU/HFMD/manuscript/fig/"
 ```
 
 ## Functions
@@ -269,7 +271,7 @@ Case report data:
 ```{r}
 df23 <- cases_file |>
   readRDS2() |> 
-  dplyr::select(dob, admission_date, district, inout, severity, medi_cen) |> 
+  dplyr::select(dob, admission_date, district, gender, inout, severity, medi_cen) |> 
   filter(year(admission_date) == 2023) |> 
   filter_out(is.na(dob)) |> 
   unique() |> 
@@ -327,7 +329,7 @@ tdnd1 <- data.frame(long = 106.6702,
   st_as_sf(coords = c("long", "lat"), crs = 4326)
 ```
 
-## Analysis
+## Results
 
 ### K-mean
 
@@ -361,11 +363,7 @@ time_cut
 So I selected time points at `r time_cut` to seperate two peaks
 
 ```{r}
-#| fig-width: 15
-#| fig-height: 9
-#| out-width: "100%"
-
-df23 |>
+sup1 <- df23 |>
   filter(age1 <= 15) |>
   ggplot(aes(x = admission_date, y = age1, color = wave)) +
   geom_point(size = .5) +
@@ -384,134 +382,92 @@ df23 |>
     legend.text = element_text(size = 18),
     legend.title = element_text(size = 18)
   )
+```
 
+```{r}
 ggsave(
-  "./fig_manuscript/sup2_new.svg",
-  width = 15,
-  height = 9,
-  dpi = 500
-)
-ggsave(
-  "./fig_manuscript/sup2_new.png",
+  paste0(path2ms_fig,"sup1.svg"),
+  plot = sup1,
   width = 15,
   height = 9,
   dpi = 500
 )
 ```
 
-### Description table
+### Table 1
 
 ```{r}
-#| fig-cap: "Table 1: Demographic and clinical characteristics of reported HFMD cases in Ho Chi Minh City in 2023."
-
-### table1
-
 tab_age <-
   df23 |>
-  tbl_summary(by = wave,
-              label = list(age1 ~ "Age (Years)"),
-              digits = list(all_continuous() ~ c(2,2),
-                            all_categorical() ~ c(0,2)),
-              include = c(age1)) |>
-  remove_row_type(type = "missing") 
+  tbl_summary(
+    by = wave,
+    label = list(age1 ~ "Age (Years)",
+                 gender ~ "Gender"),
+    digits = list(all_continuous() ~ c(2, 2), all_categorical() ~ c(0, 2)),
+    include = c(age1,gender)
+  ) |>
+  remove_row_type(type = "missing")
 
 tab_sev <-
-  df23 |> 
-  filter(severity != "Undefined") |> 
-  dplyr::select(wave, severity)  |> 
-  mutate(rn = row_number()) |> 
-  tidyr::spread(severity, severity) |> 
+  df23 |>
+  filter(severity != "Undefined") |>
+  dplyr::select(wave, severity)  |>
+  mutate(rn = row_number()) |>
+  tidyr::spread(severity, severity) |>
   mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) |>
   dplyr::select(-rn) |>
-  tbl_summary(by = wave,
-              statistic = list(
-                all_categorical() ~ "{n} / {N} ({p}%)"
-              ),
-              digits = all_categorical() ~ c(0,0,2)) |>
-  modify_table_body(
-    ~ .x |>
-      mutate(row_type = "level",
-             variable = "wave") %>%
-      {bind_rows(
-        tibble(variable = "wave", row_type = "label", label = "Severity"),
-        .
-      )}
-  )
+  tbl_summary(
+    by = wave,
+    statistic = list(all_categorical() ~ "{n} / {N} ({p}%)"),
+    digits = all_categorical() ~ c(0, 0, 2)
+  ) |>
+  modify_table_body(~ .x |>
+                      mutate(row_type = "level", variable = "wave") %>%
+                      {
+                        bind_rows(tibble(
+                          variable = "wave",
+                          row_type = "label",
+                          label = "Severity"
+                        ),
+                        .)
+                      })
 
 tab_inout <-
   df23 |>
-  filter(inout %in% c("Inpatient","Outpatient")) |> 
+  filter(inout %in% c("Inpatient", "Outpatient")) |>
   select(wave, inout) |>
   mutate(rn = row_number()) |>
   tidyr::spread(inout, inout) |>
   mutate(across(-c(wave, rn), ~ ifelse(is.na(.), 0, 1))) |>
   select(-rn) |>
-  tbl_summary(by = wave,
-              statistic = list(
-                all_categorical() ~ "{n} / {N} ({p}%)"
-              ),
-              digits = all_categorical() ~ c(0,0,2)) |>
-  modify_table_body(
-    ~ .x |>
-      mutate(row_type = "level",
-             variable = "wave") %>%
-      {bind_rows(
-        tibble(variable = "wave", row_type = "label", label = "Treatment"),
-        .
-      )}
-  )
+  tbl_summary(
+    by = wave,
+    statistic = list(all_categorical() ~ "{n} / {N} ({p}%)"),
+    digits = all_categorical() ~ c(0, 0, 2)
+  ) |>
+  modify_table_body(~ .x |>
+                      mutate(row_type = "level", variable = "wave") %>%
+                      {
+                        bind_rows(tibble(
+                          variable = "wave",
+                          row_type = "label",
+                          label = "Treatment"
+                        ),
+                        .)
+                      })
 
-final_table <- tbl_stack(list(tab_age, tab_sev, tab_inout),quiet = TRUE) 
+final_table <- tbl_stack(list(tab_age, tab_sev, tab_inout), quiet = TRUE)
 
 final_table
 ```
 
-### Geography
+### Figure 1
+
+::: {.panel-tabset .nav-pills}
+
+#### Fig 1A
 
 ```{r}
-#| fig-width: 12
-#| fig-height: 12
-#| out-width: "100%"
-
-df23 %>%
-  group_by(adm_week, district) %>%
-  count() %>%
-  ggplot(aes(x = adm_week, y = n)) +
-  geom_col() +
-  scale_x_date(
-    date_breaks = "2 months",
-    date_labels = "%b",
-    name = "Admission week",
-    limits = c(as.Date("2023-01-01"), as.Date("2023-12-31"))
-  ) +
-  theme_bw() +
-  labs(y = "Number of admission") +
-  facet_wrap( ~ district, ncol = 4) +
-  theme(
-    axis.title.x = element_text(size = 15),
-    axis.text.x = element_text(size = 15),
-    axis.ticks.x = element_blank(),
-    legend.position = "none",
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.title.y = element_text(size = 18),
-    axis.text.y = element_text(size = 18),
-    strip.text.x = element_text(size = 18)
-  )
-
-ggsave(
-  "./fig_manuscript/sup1_new.svg",
-  width = 12,
-  height = 12,
-  dpi = 500
-)
-```
-
-### Age distribution
-
-Code to plot time series cases
-
-```{r}
-## figure 1a: time series cases
 f1a <- df23 |>
   group_by(adm_week,wave) |> 
   count() |> 
@@ -539,7 +495,7 @@ f1a <- df23 |>
          color = "none")
 ```
 
-Code to fit GAM to age distribution
+#### Fig 1B
 
 ```{r}
 ## aggregate number of admission cases overtime
@@ -573,7 +529,7 @@ new_data <- expand.grid(age = age_val, time = as.numeric(collection_date_val))
 ## predict
 new_data$pred_gau_bs <- predict(fit_gau_bs, newdata = new_data, type = "response")
 
-f1b_new <- ggplot(new_data) +
+f1b <- ggplot(new_data) +
   geom_raster(aes(x = as.Date(time), y = age, fill = pred_gau_bs), interpolate = TRUE) +
   geom_line(
     data = cohort_lines(),
@@ -609,10 +565,9 @@ f1b_new <- ggplot(new_data) +
     legend.title = element_text(size = 18)
   ) +
   guides(fill = guide_colourbar(barwidth = 25), color = "none")
-
 ```
 
-Fiting age distribution as a function of binary time variable
+#### Fig 1C
 
 ```{r}
 fit1 <- fitdist(df23 %>% filter(age1 > 0 &
@@ -643,7 +598,7 @@ fit_2p <- data.frame(
   )
 )
 
-f1c_new <- ggplot(data = df23) +
+f1c <- ggplot(data = df23) +
   geom_histogram(aes(x = age1, fill = wave),
                  color = "white",
                  alpha = .5) +
@@ -677,74 +632,41 @@ f1c_new <- ggplot(data = df23) +
   )
 ```
 
+:::
+
 ```{r}
 #| fig-width: 15
 #| fig-height: 9
 #| out-width: "100%"
 
+fig1 <- ((f1a | plot_spacer()) /
+           (f1b | wrap_elements(full = f1c  +
+                                  theme(
+                                    plot.margin = margin(-40, 0, 67, 0)
+                                  )))) +
+  plot_layout(widths = c(1, 1))
 
-((f1a | plot_spacer()) /
-   (f1b_new | wrap_elements(full = f1c_new  +
-                              theme(
-                                plot.margin = margin(-40, 0, 67, 0)
-                              )))
-)+
-  plot_layout(widths = c(1,1))
-
-ggsave("./fig_manuscript/fig1_new2.svg",
-       width = 15,height = 9,dpi = 500)
+ggsave(
+  paste0(path2ms_fig,"fig1.svg"),
+  plot = fig1,
+  width = 15,
+  height = 9,
+  dpi = 500
+)
+fig1
 ```
 
-### Age distribution of CH1
+
+### Fig 2
+
+Case report CH1
 
 ```{r}
 df_cases_ch1_23 <- df23 |>
   filter(medi_cen == "Children's hospital 1")
-
-## fig 2C
-ts_ch1 <- df_cases_ch1_23 %>%
-  group_by(adm_week, wave) %>%
-  count() %>%
-  ggplot(aes(x = adm_week, y = n, fill = wave)) +
-  geom_col(alpha = 0.6, color = "black") +
-  scale_x_date(
-    date_breaks = "1 month",
-    date_labels = "%b %Y",
-    name = "Collection date",
-    limits = c(as.Date("2023-01-01"), as.Date("2023-12-31"))
-  ) +
-  scale_y_continuous(limits = c(0, 900), breaks = seq(0, 900, le = 4)) +
-  scale_fill_manual(values = c("#582C83FF", "#FFC72CFF")) +
-  theme_minimal() +
-  annotate(
-    "rect",
-    fill = "grey",
-    xmin = as.Date(c(
-      "2023-01-01", "2023-04-05", "2023-08-02", "2023-12-06"
-    )),
-    xmax = as.Date(c(
-      "2023-01-15", "2023-04-26", "2023-08-30", "2023-12-27"
-    )),
-    ymin = 0,
-    ymax = Inf,
-    alpha = .5
-  ) +
-  labs(y = "Cases") +
-  theme(
-    axis.title.y = element_text(size = 18),
-    axis.title.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    legend.position = "bottom",
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.text.x = element_blank(),
-    axis.text.y = element_text(size = 18),
-    legend.text = element_text(size = 15),
-    legend.title = element_text(size = 18)
-  ) +
-  guides(fill = guide_colourbar(barwidth = 20), color = "none")
 ```
 
-### Outpatient from CH1
+Outpatient admitted to CH1
 
 ```{r}
 expected_age_cm <- ch1_outpatient |> 
@@ -757,10 +679,9 @@ expected_age_cm <- ch1_outpatient |>
                  mutate(age = seq(0,15,le = 512)))
 ```
 
-### Serological data from CH1
+Serological data CH1
 
 ```{r}
-## calculate atk rate as a function of time
 df_sero <- df_sero |>
   as_tibble() |>
   mutate(
@@ -772,47 +693,21 @@ df_sero <- df_sero |>
     col_date2 = as.numeric(col_date),
     across(pos, ~ .x > 0)
   )
+```
 
-outttt <- age_profile_constrained_cohort2(df_sero)
+Constraint algorithm
 
-## fig 2B
-age_profile_sp_cm <- outttt |>
-  bind_rows() |>
-  mutate(
-    col_date = as.Date(collection_time),
-    col_lab = format(col_date, format = "%b %Y"),
-    col_lab = factor(col_lab, levels = c(
-      "Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"
-    ))
-  ) |>
-  ggplot(aes(x = cohort, y = fit)) +
-  geom_line() +
-  geom_ribbon(aes(ymin = lwr, ymax = upr),
-              fill = "blue",
-              alpha = .3) +
-  geom_point(data = df_sero |>
-               mutate(col_lab = factor(
-                 col_time, levels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023")
-               )),
-             aes(x = age, y = pos),
-             shape = "|") +
-  facet_wrap(~ col_lab, nrow = 1) +
-  labs(y = "Seroprevalence (%)", x = "Age (years)", tag = "B") +
-  scale_y_continuous(labels = scales::label_percent(scale = 100),
-                     limits = c(0, 1)) +
-  theme_bw() +
-  theme(
-    axis.title.x = element_text(size = 18),
-    axis.text.x = element_text(size = 18),
-    legend.position = "none",
-    plot.tag = element_text(face = "bold", size = 18),
-    axis.title.y = element_text(size = 18),
-    axis.text.y = element_text(size = 18),
-    strip.text.x = element_text(size = 18)
-  )
+```{r}
+# outttt <- age_profile_constrained_cohort2(df_sero)
+# save(outttt,mean_collection_times,file = paste0(path2ms_fig,"sero.RData"))
+load(paste0(path2ms_fig,"sero.RData"))
+```
 
-## fig 2A
+::: {.panel-tabset .nav-pills}
 
+#### Fig 2A
+
+```{r}
 ouut <- list()
 dat <- list()
 
@@ -848,10 +743,42 @@ expected_incidence <- map2(
   map( ~ left_join(.x, expected_age_cm, by = join_by(cohort == age, period))) %>%
   bind_rows(.id = "id") |>
   mutate(sp_gap = fit.y - fit.x, exp_inc = sp_gap * value)
+```
 
-exp_in_ch1 <- expected_incidence |>
+First I estimate the standard error of difference in seroprevalence between 2 successive collection time points by the following formula:
+
+$$
+SE_{diff} = \sqrt{SE_1^2 + SE_2^2 - 2\rho . SE_1 . SE_2}
+$$
+
+$\rho$ is the assumed correlation of seroprevalence between two successive collection times points. Because we applied the constraint algorithm, I think we assumed two collection time points are dependence. So I choose $\rho = 1$
+
+```{r}
+rho = 1
+
+expected_incidence <- expected_incidence |>
+  mutate(
+    se1 = (upr.x - lwr.x) / (2 * 1.96),
+    se2 = (upr.y - lwr.y) / (2 * 1.96),
+    se.diff = sqrt(se1^2 + se2^2 - 2 * rho * se1 * se2),
+    lo_diff = sp_gap - 1.96 * se.diff,
+    hi_diff = sp_gap + 1.96 * se.diff,
+    hi_exp_inc = hi_diff * value,
+    lo_exp_inc = lo_diff * value
+  ) 
+
+```
+
+```{r}
+fig2a <- expected_incidence |>
   ggplot() +
-  geom_line(aes(x = cohort, y = exp_inc),linewidth = 2) +
+  geom_line(aes(x = cohort, y = exp_inc),linewidth = 1) +
+  geom_ribbon(
+    aes(x = cohort, y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
   geom_col(
     data = dat %>%
       bind_rows(.id = "id") %>%
@@ -867,7 +794,8 @@ exp_in_ch1 <- expected_incidence |>
     id,
     labels = c("12/2022 - 4/2023", "4/2023 - 8/2023", "8/2023 - 12/2023")
   )) +
-  labs(y = "Expected infections", x = "Age (years)", tag = "A") +
+  labs(y = "Number of cases", x = "Age (years)", tag = "A") +
+  scale_x_continuous(position = "top")+
   theme_bw() +
   theme(
     axis.text.x = element_text(size = 15),
@@ -880,8 +808,119 @@ exp_in_ch1 <- expected_incidence |>
     strip.text = element_text(size = 18),
     panel.grid.minor.x = element_blank()
   )
+```
 
-## fig 2D
+#### Fig 2B
+
+```{r}
+fig2b <- outttt |>
+  bind_rows() |>
+  mutate(
+    col_date = as.Date(collection_time),
+    col_lab = format(col_date, format = "%b %Y"),
+    col_lab = factor(col_lab, levels = c(
+      "Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"
+    ))
+  ) |>
+  ggplot(aes(x = cohort, y = fit)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = lwr, ymax = upr),
+              fill = "blue",
+              alpha = .3) +
+  geom_point(data = df_sero |>
+               mutate(col_lab = factor(
+                 col_time, levels = c("Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023")
+               )),
+             aes(x = age, y = pos),
+             shape = "|") +
+  facet_wrap(~ col_lab, nrow = 1) +
+  labs(y = "Seroprevalence (%)", x = "Age (years)", tag = "B") +
+  scale_y_continuous(labels = scales::label_percent(scale = 100),
+                     limits = c(0, 1)) +
+  theme_bw() +
+  theme(
+    axis.title.x = element_text(size = 18),
+    axis.text.x = element_text(size = 18),
+    legend.position = "none",
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    strip.text.x = element_text(size = 18)
+  )
+```
+
+#### Fig 2C
+
+```{r}
+fig2c <- df_cases_ch1_23 %>%
+  group_by(adm_week, wave) %>%
+  count() %>%
+  ggplot(aes(x = adm_week, y = n, fill = wave)) +
+  geom_col(alpha = 0.6, color = "black") +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b %Y",
+    name = "Collection date",
+    limits = c(as.Date("2023-01-01"), as.Date("2023-12-31"))
+  ) +
+  scale_y_continuous(limits = c(0, 900), breaks = seq(0, 900, le = 4)) +
+  scale_fill_manual(values = c("#582C83FF", "#FFC72CFF")) +
+  theme_minimal() +
+  annotate(
+    "rect",
+    fill = "grey",
+    xmin = as.Date(c(
+      "2023-01-01", "2023-04-05", "2023-08-02", "2023-12-06"
+    )),
+    xmax = as.Date(c(
+      "2023-01-15", "2023-04-26", "2023-08-30", "2023-12-27"
+    )),
+    ymin = 0,
+    ymax = Inf,
+    alpha = .5
+  ) +
+  labs(y = "Cases",tag = "C") +
+  theme(
+    axis.title.y = element_text(size = 18),
+    axis.title.x = element_text(size = 18),
+    axis.ticks.x = element_blank(),
+    legend.position = "bottom",
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.text.x = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 18)
+  ) +
+  guides(fill = guide_colourbar(barwidth = 20), color = "none")
+```
+
+:::
+
+```{r}
+#| fig-width: 20
+#| fig-height: 16
+#| out-width: "100%"
+
+fig2 <- (fig2a /
+               fig2b /
+               fig2c) +
+  plot_layout(heights = c(1, 1, 1))
+
+ggsave(
+  paste0(path2ms_fig,"fig2.svg"),
+  plot = fig2,
+  width = 20,
+  height = 16,
+  dpi = 500
+)
+
+fig2
+```
+
+
+heatmap for ch1 (sup fig 3)
+
+```{r}
 df_cases_count_ch1_23 <- df_cases_ch1_23 |>
   group_by(age, time) |>
   count() |>
@@ -903,8 +942,10 @@ collection_date_val <- seq(min(df23$adm_week), max(df23$adm_week), le = 365)
 new_data2 <- expand.grid(age = age_val, time = as.numeric(collection_date_val))
 
 new_data2$pred_gau_bs_ch1 <- predict(fit_gau_bs_ch1, newdata = new_data2, type = "response")
+```
 
-hm_ch1 <- ggplot(new_data2) +
+```{r}
+sup3b <- ggplot(new_data2) +
   geom_raster(aes(x = as.Date(time), y = age, fill = pred_gau_bs_ch1), interpolate = TRUE) +
   geom_line(
     data = cohort_lines(),
@@ -920,10 +961,10 @@ hm_ch1 <- ggplot(new_data2) +
   scale_x_date(date_breaks = "1 month", date_labels = "%b") +
   scale_fill_viridis_c(option = "turbo", n.breaks = 10) +
   theme_minimal() +
-  labs(x = "Admission date",
+  labs(x = "Admission Week",
        y = "Age (years)",
        fill = "Number of\nadmissions",
-       tag = "D") +
+       tag = "B") +
   theme_minimal() +
   scale_y_reverse(name = "Age (years)",
                   lim = rev(c(-0.5, 6.5)),
@@ -934,7 +975,7 @@ hm_ch1 <- ggplot(new_data2) +
     axis.ticks.x = element_blank(),
     legend.position = "bottom",
     plot.tag = element_text(face = "bold", size = 18),
-    axis.text.x = element_blank(),
+    axis.text.x = element_text(size = 18),
     axis.text.y = element_text(size = 18),
     legend.text = element_text(size = 15),
     legend.title = element_text(size = 18)
@@ -942,21 +983,7 @@ hm_ch1 <- ggplot(new_data2) +
   guides(fill = guide_colourbar(barwidth = 25), color = "none")
 ```
 
-```{r}
-fig2 <- exp_in_ch1/
-  age_profile_sp_cm/
-  (ts_ch1+labs(tag="C"))/
-  (hm_ch1+labs(tag="D"))
-
-ggsave("./fig_manuscript/fig2_new.svg",plot = fig2, 
-       width = 15,height = 20,dpi = 500)
-```
-
-![](./fig_manuscript/fig2_new.svg)
-
-### Virological data
-
-Percentage per serotype
+### Fig 3
 
 ```{r}
 per_serotype <- df_viro %>%
@@ -998,36 +1025,28 @@ new_data2 <- expand.grid(age_adm = age_val,
                          time = as.numeric(collection_date_val))
 
 new_data2$pred <- predict(model_viro_age_time, newdata = new_data2, type = "response")
-
-
-ev_a71_age_time_p <- ggplot() +
-  geom_raster(data = new_data2, 
-              aes(x = as.Date(time), y = age_adm, fill = pred), interpolate = TRUE) +
-  scale_fill_viridis_c(option = "turbo",n.breaks = 10) +
-  geom_line(
-    data = cohort_lines(viro = TRUE),
-    aes(x = date, y = age, group = cohort,color = trend),
-    linewidth = 0.25,
-    alpha = 0.3
-  ) +
-  labs(x = "Week", y = "Age", fill = "Smoothed EV-A71 percentage")+
-  scale_x_date(date_breaks = "1 month", date_labels = "%b", name = "Collection date in 2023",
-               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31")))+
-  theme_classic()+
-  scale_y_reverse(name = "Age (years)",lim= rev(c(-0.5,6.5)),breaks = seq(-1,7))+
-  theme(axis.title.y = element_text(size = 18),
-        axis.title.x = element_text(size = 18),
-        legend.position = "bottom",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.text.x = element_text(size = 18),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 18))+
-  guides(fill=guide_colourbar(barwidth=25),
-         color = "none")
 ```
 
 Reconstruct epicurve
+
+Model perecentage of EV-A71 as a function of age and time
+
+```{r}
+
+## model ev-a71 percentage as a function of time and age
+
+model_viro_age_time <- gam(pos ~ s(age_adm) + s(time) + ti(age_adm,time),
+                           family = binomial,method = "REML",data = df_viro)
+
+collection_date_val <- seq(min(df_viro$time),
+                           max(df_viro$time), le = 365)
+
+new_data2 <- expand.grid(age_adm = age_val,
+                         time = as.numeric(collection_date_val))
+
+new_data2$pred <- predict(model_viro_age_time, newdata = new_data2, type = "response")
+```
+
 
 ```{r}
 cases_fit <- fit_gau_bs_ch1 |>  
@@ -1064,43 +1083,15 @@ recontructed_cases_count_df <- recontructed_df |>
             ev71_cases = sum(ev71_c),
             ev71_cases_u = sum(ev71_u),
             ev71_cases_l = sum(ev71_l)) 
-
-f3a <- recontructed_cases_count_df |> 
-  ggplot(aes(x = week))+
-  geom_line(aes(y = cases),linetype = "dashed")+
-  # geom_ribbon(aes(ymin = cases_u,ymax = cases_l),fill = "blue",alpha = .3)+
-  geom_line(aes(y = ev71_cases))+
-  geom_ribbon(aes(ymin = ev71_cases_u,ymax = ev71_cases_l),fill = "red",alpha = .3)+
-  geom_col(data = df_cases_count_ch1_23 |>
-             mutate(day = as.Date(time),
-                    week = as.Date(floor_date(day, "week")))|>
-             group_by(week) |>
-             summarise(cases = sum(n)),
-           aes(x = week, y  = cases),alpha = .3)+
-  geom_point(data = df_viro, aes(x = admission_date, y = pos*1000),shape = "|",size = 2)+
-  scale_x_date(date_breaks = "1 month",
-               date_labels = "%b",
-               name = "Collection date",
-               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31"))) +
-  labs(x = "Admission day (2023)",y = "Total number of cases",tag = "A") +
-  theme_minimal()+
-  theme(axis.title.y = element_text(size = 18),
-        axis.title.x = element_text(size = 18),
-        axis.ticks.x = element_blank(),
-        legend.position = "bottom",
-        plot.tag = element_text(face = "bold", size = 18),
-        axis.text.x = element_blank(),
-        axis.text.y = element_text(size = 18),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 18))+
-  guides(fill=guide_colourbar(barwidth=20),
-         color = "none")
 ```
 
-Reconstruct histogram for EV-A71
+
+::: {.panel-tabset .nav-pills}
+
+#### Fig 3A
 
 ```{r}
-compare_ev71 <- recontructed_df |>
+fig3a <- recontructed_df |>
   mutate(
     day = as.Date(time),
     week = as.Date(floor_date(day, "week")),
@@ -1119,13 +1110,20 @@ compare_ev71 <- recontructed_df |>
   ) |>
   ggplot(aes(x = age, y = ev_a71_cases)) +
   geom_col(alpha = 0.3) +
-  geom_line(data = expected_incidence, aes(x = cohort, y = exp_inc)) +
-  scale_x_continuous(limits = c(0, 15), breaks = seq(0, 15, by = 5)) +
+  geom_line(data = expected_incidence, aes(x = cohort, y = exp_inc),linewidth = 1) +
+  geom_ribbon(
+    data = expected_incidence,
+    aes(x = cohort, y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
+    alpha = 0.2,
+    fill = "blue"
+  ) +
+  coord_cartesian(ylim = c(0, 2500)) +
+  scale_x_continuous(position = "top") +
   facet_wrap( ~ period) +
-  labs(y = "Expected infections", x = "Age (years)", tag = "A") +
+  labs(y = "Number of cases", x = "Age (years)", tag = "A") +
   theme_bw() +
   theme(
-    axis.text.x = element_text(size = 18),
+    axis.text.x = element_text(size = 15),
     axis.text.y = element_text(size = 18),
     legend.text = element_text(size = 18),
     plot.tag = element_text(face = "bold", size = 18),
@@ -1137,165 +1135,264 @@ compare_ev71 <- recontructed_df |>
   )
 ```
 
-```{r}
-fig3_new <- (compare_ev71+labs(tag="A"))/
-  (f3a+labs(tag="B"))/
-  (per_serotype+labs(tag="C"))
 
-ggsave("./fig_manuscript/fig3_new2.svg", plot = fig3_new,
-       width = 13,height = 15,dpi = 500)
-```
-
-![](./fig_manuscript/fig3_new2.svg)
-
-### Confidence interval of expected EV-A71 infections
-
-First I estimate the standard error of difference in seroprevalence between 2 successive collection time points by the following formula:
-
-$$
-SE_{diff} = \sqrt{SE_1^2 + SE_2^2 - 2\rho . SE_1 . SE_2}
-$$
-
-$\rho$ is the assumed correlation of seroprevalence between two successive collection times points. Because we applied the constraint algorithm, I think we assumed two collection time points are dependence. So I choose $\rho = 1$
+#### Fig 3B
 
 ```{r}
-rho = 1
+fig3b <- recontructed_cases_count_df |>
+  ggplot(aes(x = week))+
+  geom_line(aes(y = cases),linetype = "dashed")+
+  # geom_ribbon(aes(ymin = cases_u,ymax = cases_l),fill = "blue",alpha = .3)+
+  geom_line(aes(y = ev71_cases))+
+  geom_ribbon(aes(ymin = ev71_cases_u,ymax = ev71_cases_l),fill = "red",alpha = .3)+
+  geom_col(data = df_cases_count_ch1_23 |>
+             mutate(day = as.Date(time),
+                    week = as.Date(floor_date(day, "week")))|>
+             group_by(week) |>
+             summarise(cases = sum(n)),
+           aes(x = week, y  = cases),alpha = .3)+
+  geom_point(data = df_viro, aes(x = admission_date, y = pos*900),shape = "|",size = 2)+
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b",
+               name = "Collection date",
+               limits = c(as.Date("2023-01-01"),as.Date("2023-12-31"))) +
+  scale_y_continuous(limits = c(0,900),breaks = seq(0,900, le = 4))+
+  labs(x = "Admission day (2023)",y = "Cases", tag = "B") +
+  theme_minimal()+
+  theme(axis.title.y = element_text(size = 18),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = "bottom",
+        plot.tag = element_text(face = "bold", size = 18),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size = 18),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 18))+
+  guides(fill=guide_colourbar(barwidth=20),
+         color = "none")
 ```
 
-Then estimate the point estimate and se of seroprevalence different between two successive collection time points. Then estimate the expected EV-A71 infections
+
+#### Fig 3C
 
 ```{r}
-expected_incidence <- expected_incidence |>
-  mutate(
-    se1 = (upr.x - lwr.x) / (2 * 1.96),
-    se2 = (upr.y - lwr.y) / (2 * 1.96),
-    se.diff = sqrt(se1^2 + se2^2 - 2 * rho * se1 * se2),
-    lo_diff = sp_gap - 1.96 * se.diff,
-    hi_diff = sp_gap + 1.96 * se.diff,
-    hi_exp_inc = hi_diff * value,
-    lo_exp_inc = lo_diff * value
-  ) 
+fig3c <- df_viro %>%
+  group_by(adm_month) %>%
+  count(sero_gr) %>%
+  mutate(total = sum(n), per = n / total) %>%
+  ggplot(aes(
+    x = adm_month,
+    y = per,
+    fill = factor(sero_gr, levels = c("neg", "Other", "CV-A6", "EV", "EV-A71"))
+  )) +
+  geom_bar(position = "fill", stat = "identity") +
+  geom_text(
+    aes(label = total, y = 1),
+    stat = "unique",
+    vjust = -0.5,
+    size = 8
+  ) +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b",
+    limits = c(as.Date("2023-01-01"), as.Date("2023-12-31")),
+    name = "Collection month (2023)"
+  ) +
+  scale_y_continuous(labels = scales::label_percent()) +  # extra space for label
+  scale_fill_manual(
+    values = c(
+      "neg"    = "#00B0F6",
+      "Other"  = "#E76BF3",
+      "CV-A6"  = "#00BF7D",
+      "EV"     = "#E59866",
+      "EV-A71" = "#F8766D"
+    )
+  ) +
+  labs(y = "Percentage (%)", fill = "Serotype group", tag = "C") +
+  theme_minimal() +
+  theme(
+    axis.title.y  = element_text(size = 18),
+    axis.title.x  = element_text(size = 18),
+    axis.ticks.x  = element_blank(),
+    legend.position = "bottom",
+    plot.tag      = element_text(face = "bold", size = 18),
+    axis.text.x   = element_text(size = 18),
+    axis.text.y   = element_text(size = 18),
+    legend.text   = element_text(size = 15),
+    legend.title  = element_text(size = 18)
+  )
 ```
 
-Then plot it
+
+:::
+
+```{r}
+#| fig-width: 20
+#| fig-height: 16
+#| out-width: "100%"
+
+fig3c <- fig3c + coord_cartesian(clip = "off")
+
+fig3 <- (fig3a /
+           fig3b /
+           fig3c) +
+  plot_layout(heights = c(1, 1, 1))
+
+ggsave(
+  paste0(path2ms_fig,"fig3.svg"),
+  plot = fig3,
+  width = 20,
+  height = 16,
+  dpi = 500
+)
+
+fig3
+```
+
+
+## Supplementary fig
+
+### Sup fig 1 
+
+```{r}
+#| fig-width: 15
+#| fig-height: 9
+#| out-width: "100%"
+
+sup1
+```
+
+### Sup fig 2: geography
 
 ```{r}
 #| fig-width: 12
-#| fig-height: 8
+#| fig-height: 12
 #| out-width: "100%"
 
-expected_incidence |>
-  ggplot(aes(x = cohort)) +
-  geom_line(aes(y = exp_inc)) +
-  geom_ribbon(
-    aes(y = exp_inc, ymin = lo_exp_inc, ymax = hi_exp_inc),
-    alpha = 0.2,
-    fill = "blue"
+sup2 <- df23 %>%
+  group_by(adm_week, district) %>%
+  count() %>%
+  ggplot(aes(x = adm_week, y = n)) +
+  geom_col() +
+  scale_x_date(
+    date_breaks = "2 months",
+    date_labels = "%b",
+    name = "Admission week",
+    limits = c(as.Date("2023-01-01"), as.Date("2023-12-31"))
   ) +
-  coord_cartesian(ylim = c(0, 2500)) +
-  geom_col(
-    data = dat %>%
-      bind_rows(.id = "id") %>%
-      filter(age1 > 0) |>
-      group_by(id, age) |>
-      count(),
-    aes(x = age, y = n),
-    color = "white",
-    fill = "black",
-    alpha = 0.2
+  theme_bw() +
+  labs(y = "Number of admission") +
+  facet_wrap( ~ district, ncol = 4) +
+  theme(
+    axis.title.x = element_text(size = 15),
+    axis.text.x = element_text(size = 15),
+    axis.ticks.x = element_blank(),
+    legend.position = "none",
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.title.y = element_text(size = 18),
+    axis.text.y = element_text(size = 18),
+    strip.text.x = element_text(size = 18)
+  )
+
+ggsave(
+  paste0(path2ms_fig,"sup2.svg"),
+  plot = sup2,
+  width = 12,
+  height = 12,
+  dpi = 500
+)
+
+sup2
+```
+
+### Sup fig 3
+
+```{r}
+sup3a <- df_cases_ch1_23 %>%
+  group_by(adm_week, wave) %>%
+  count() %>%
+  ggplot(aes(x = adm_week, y = n, fill = wave)) +
+  geom_col(alpha = 0.6, color = "black") +
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b %Y",
+    name = "Collection date",
+    limits = c(as.Date("2023-01-01"), as.Date("2023-12-31"))
   ) +
-  facet_wrap(~ factor(
-    id,
-    labels = c("12/2022 - 4/2023", "4/2023 - 8/2023", "8/2023 - 12/2023")
-  )) +
-  theme_bw()
+  scale_y_continuous(limits = c(0, 900), breaks = seq(0, 900, le = 4)) +
+  scale_fill_manual(values = c("#582C83FF", "#FFC72CFF")) +
+  theme_minimal() +
+  labs(y = "Cases", tag = "A") +
+  theme(
+    axis.title.y = element_text(size = 18),
+    axis.title.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "bottom",
+    plot.tag = element_text(face = "bold", size = 18),
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(size = 18),
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 18)
+  ) +
+  guides(fill = guide_colourbar(barwidth = 20), color = "none")
 ```
-
-Calculate number for manuscript
-
-Fig A
-
-12/22 - 4/23:
 
 ```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  filter(id == 1)
+#| fig-width: 20
+#| fig-height: 16
+#| out-width: "100%"
+
+sup3 <- (sup3a /
+           sup3b) +
+  plot_layout(heights = c(1, 1, 1))
+
+ggsave(
+  paste0(path2ms_fig,"sup3.svg"),
+  plot = sup3,
+  width = 20,
+  height = 16,
+  dpi = 500
+)
+
+sup3
 ```
 
-Median \[Q1,Q3\]
+
+### Sup fig 4: Correspondence between spatial distribution of serum samples and hopital catchment of CH1
+
+::: {.panel-tabset .nav-pills}
+
+#### Hospital catchment
 
 ```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  ungroup() |> 
-  filter(id == 1 & age %in% 1:3) |> 
-  summarise(median = median(n),
-            q1 = quantile(n, 0.25),
-            q3 = quantile(n, 0.75))
+hos_catch <- df_cases_ch1_23 |>
+  group_by(district) |>
+  count() |>
+  ungroup() |>
+  mutate(per = n / sum(n)) |>
+  right_join(qhtp, by = join_by(district == varname_2)) |>
+  ggplot() +
+  geom_sf(aes(fill = per, geometry = geom), show.legend = T) +
+  paletteer::scale_fill_paletteer_c(
+    "ggthemes::Classic Blue",
+    na.value = "white",
+    labels = scales::label_percent(),
+    name = "Percentage"
+  )+
+  geom_sf(
+    data = tdnd1,
+    shape = 17,
+    color = "yellow",
+    size = 2
+  ) +
+  labs(tag = "A")+
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_colourbar(barwidth = 15), color = "none")
 ```
 
-4/23 - 8/23:
-
-```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  filter(id == 2)
-```
-
-Median \[Q1,Q3\]
-
-```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  ungroup() |> 
-  filter(id == 2 & age %in% 1:6) |> 
-  summarise(median = median(n),
-            q1 = quantile(n, 0.25),
-            q3 = quantile(n, 0.75))
-```
-
-8/23 - 12/23:
-
-```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  filter(id == 3)
-```
-
-Median \[Q1,Q3\]
-
-```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  ungroup() |> 
-  filter(id == 3 & age %in% 1:7) |> 
-  summarise(median = median(n),
-            q1 = quantile(n, 0.25),
-            q3 = quantile(n, 0.75))
-```
-
-### Correspondence between spatial distribution of serum samples and hopital catchment of CH1
-
-Blood samples distribution
+#### Blood samples distribution
 
 ```{r}
 sero_dis <- df_sero |>
@@ -1319,41 +1416,13 @@ sero_dis <- df_sero |>
     size = 2
   ) +
   theme_void() +
+  labs(tag = "B")+
   theme(legend.position = "bottom",
         legend.title = element_blank())+
   guides(fill = guide_colourbar(barwidth = 15), color = "none")
 ```
 
-Hospital catchment
-
-```{r}
-hos_catch <- df_cases_ch1_23 |>
-  group_by(district) |>
-  count() |>
-  ungroup() |>
-  mutate(per = n / sum(n)) |>
-  right_join(qhtp, by = join_by(district == varname_2)) |>
-  ggplot() +
-  geom_sf(aes(fill = per, geometry = geom), show.legend = T) +
-  paletteer::scale_fill_paletteer_c(
-    "ggthemes::Classic Blue",
-    na.value = "white",
-    labels = scales::label_percent(),
-    name = "Percentage"
-  )+
-  geom_sf(
-    data = tdnd1,
-    shape = 17,
-    color = "yellow",
-    size = 2
-  ) +
-  theme_void() +
-  theme(legend.position = "bottom",
-        legend.title = element_blank())+
-  guides(fill = guide_colourbar(barwidth = 15), color = "none")
-```
-
-Swabs sample spatial distribution
+#### Swabs sample spatial distribution
 
 ```{r}
 viro_dis <- df_viro |>
@@ -1380,16 +1449,118 @@ viro_dis <- df_viro |>
     color = "yellow",
     size = 2
   ) +
+  labs(tag = "C")+
   theme_void() +
   theme(legend.position = "bottom",
         legend.title = element_blank())+
   guides(fill = guide_colourbar(barwidth = 15), color = "none")
 ```
 
+:::
+
 ```{r}
 #| fig-width: 12
-#| fig-height: 12
+#| fig-height: 6
 #| out-width: "100%"
 
-hos_catch | sero_dis | viro_dis
+sup4 <- hos_catch | sero_dis | viro_dis
+
+ggsave(
+  paste0(path2ms_fig,"sup4.svg"),
+  plot = sup4,
+  width = 12,
+  height = 6,
+  dpi = 500
+)
+
+sup4
+
 ```
+
+## Statistical analysis
+
+### Fig 2A
+
+::: {.panel-tabset .nav-pills}
+
+#### 12/22 - 4/23
+
+Max
+
+```{r}
+dat %>%
+  bind_rows(.id = "id") %>%
+  filter(age1 > 0) |>
+  group_by(id, age) |>
+  count() |> 
+  filter(id == 1)
+```
+
+Median \[Q1,Q3\]
+
+```{r}
+dat %>%
+  bind_rows(.id = "id") %>%
+  filter(age1 > 0) |>
+  group_by(id, age) |>
+  count() |> 
+  ungroup() |> 
+  filter(id == 1 & age %in% 1:3) |> 
+  summarise(median = median(n),
+            q1 = quantile(n, 0.25),
+            q3 = quantile(n, 0.75))
+```
+
+#### 4/23 - 8/23
+
+```{r}
+dat %>%
+  bind_rows(.id = "id") %>%
+  filter(age1 > 0) |>
+  group_by(id, age) |>
+  count() |> 
+  filter(id == 2)
+```
+
+Median \[Q1,Q3\]
+
+```{r}
+dat %>%
+  bind_rows(.id = "id") %>%
+  filter(age1 > 0) |>
+  group_by(id, age) |>
+  count() |> 
+  ungroup() |> 
+  filter(id == 2 & age %in% 1:6) |> 
+  summarise(median = median(n),
+            q1 = quantile(n, 0.25),
+            q3 = quantile(n, 0.75))
+```
+
+#### 8/23 - 12/23
+
+```{r}
+dat %>%
+  bind_rows(.id = "id") %>%
+  filter(age1 > 0) |>
+  group_by(id, age) |>
+  count() |> 
+  filter(id == 3)
+```
+
+Median \[Q1,Q3\]
+
+```{r}
+dat %>%
+  bind_rows(.id = "id") %>%
+  filter(age1 > 0) |>
+  group_by(id, age) |>
+  count() |> 
+  ungroup() |> 
+  filter(id == 3 & age %in% 1:7) |> 
+  summarise(median = median(n),
+            q1 = quantile(n, 0.25),
+            q3 = quantile(n, 0.75))
+```
+
+:::
