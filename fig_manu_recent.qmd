@@ -860,7 +860,7 @@ fig2c <- df_cases_ch1_23 %>%
   scale_x_date(
     date_breaks = "1 month",
     date_labels = "%b %Y",
-    name = "Collection date",
+    name = "Admission week",
     limits = c(as.Date("2023-01-01"), as.Date("2023-12-31"))
   ) +
   scale_y_continuous(limits = c(0, 900), breaks = seq(0, 900, le = 4)) +
@@ -1344,7 +1344,7 @@ sup3a <- df_cases_ch1_23 %>%
 
 sup3 <- (sup3a /
            sup3b) +
-  plot_layout(heights = c(1, 1, 1))
+  plot_layout(heights = c(1, 1))
 
 ggsave(
   paste0(path2ms_fig,"sup3.svg"),
@@ -1383,12 +1383,13 @@ hos_catch <- df_cases_ch1_23 |>
     data = tdnd1,
     shape = 17,
     color = "yellow",
-    size = 2
+    size = 5
   ) +
   labs(tag = "A")+
   theme_void() +
   theme(legend.position = "bottom",
-        legend.title = element_blank())+
+        legend.title = element_blank(),
+        plot.tag = element_text(face = "bold", size = 18))+
   guides(fill = guide_colourbar(barwidth = 15), color = "none")
 ```
 
@@ -1413,12 +1414,13 @@ sero_dis <- df_sero |>
     data = tdnd1,
     shape = 17,
     color = "yellow",
-    size = 2
+    size = 5
   ) +
   theme_void() +
   labs(tag = "B")+
   theme(legend.position = "bottom",
-        legend.title = element_blank())+
+        legend.title = element_blank(),
+        plot.tag = element_text(face = "bold", size = 18))+
   guides(fill = guide_colourbar(barwidth = 15), color = "none")
 ```
 
@@ -1447,12 +1449,13 @@ viro_dis <- df_viro |>
     data = tdnd1,
     shape = 17,
     color = "yellow",
-    size = 2
+    size = 5
   ) +
   labs(tag = "C")+
   theme_void() +
   theme(legend.position = "bottom",
-        legend.title = element_blank())+
+        legend.title = element_blank(),
+        plot.tag = element_text(face = "bold", size = 18))+
   guides(fill = guide_colourbar(barwidth = 15), color = "none")
 ```
 
@@ -1479,24 +1482,11 @@ sup4
 
 ## Statistical analysis
 
-### Fig 2A
+### Fig 2A: case report
 
 ::: {.panel-tabset .nav-pills}
 
 #### 12/22 - 4/23
-
-Max
-
-```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  filter(id == 1)
-```
-
-Median \[Q1,Q3\]
 
 ```{r}
 dat %>%
@@ -1505,11 +1495,12 @@ dat %>%
   group_by(id, age) |>
   count() |> 
   ungroup() |> 
-  filter(id == 1 & age %in% 1:3) |> 
-  summarise(median = median(n),
-            q1 = quantile(n, 0.25),
-            q3 = quantile(n, 0.75))
+  filter(id == 1) |> 
+  mutate(per = n*100/sum(n)) |> 
+  as.data.frame()
 ```
+
+
 
 #### 4/23 - 8/23
 
@@ -1519,22 +1510,10 @@ dat %>%
   filter(age1 > 0) |>
   group_by(id, age) |>
   count() |> 
-  filter(id == 2)
-```
-
-Median \[Q1,Q3\]
-
-```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
   ungroup() |> 
-  filter(id == 2 & age %in% 1:6) |> 
-  summarise(median = median(n),
-            q1 = quantile(n, 0.25),
-            q3 = quantile(n, 0.75))
+  filter(id == 2) |> 
+  mutate(per = n*100/sum(n))|> 
+  as.data.frame()
 ```
 
 #### 8/23 - 12/23
@@ -1545,22 +1524,212 @@ dat %>%
   filter(age1 > 0) |>
   group_by(id, age) |>
   count() |> 
-  filter(id == 3)
+  ungroup() |> 
+  filter(id == 3) |> 
+  mutate(per = n*100/sum(n))|> 
+  as.data.frame()
 ```
 
-Median \[Q1,Q3\]
+:::
+
+### Fig 2A: expected incidence
+
+::: {.panel-tabset .nav-pills}
+
+#### 12/22 - 4/23
 
 ```{r}
-dat %>%
-  bind_rows(.id = "id") %>%
-  filter(age1 > 0) |>
-  group_by(id, age) |>
-  count() |> 
-  ungroup() |> 
-  filter(id == 3 & age %in% 1:7) |> 
-  summarise(median = median(n),
-            q1 = quantile(n, 0.25),
-            q3 = quantile(n, 0.75))
+expected_incidence |> 
+  filter(id == 1) |> 
+  select(id,cohort,exp_inc,hi_exp_inc,lo_exp_inc) |> 
+  summarise(median = median(exp_inc),
+            q1 = quantile(exp_inc, 0.25),
+            q3 = quantile(exp_inc, 0.75)) |> 
+  as.data.frame()
 ```
+
+Those age groups have the expected incidence higher than the median are considered as highly contribute
+
+```{r}
+expected_incidence |> 
+  select(id,cohort,exp_inc,hi_exp_inc,lo_exp_inc) |> 
+  filter(id == 1 & cohort <= 9) |> 
+  summarise(mean = median(exp_inc),
+            sd = sd(exp_inc)) |> 
+  as.data.frame()
+```
+
+
+#### 04/23 - 08/23
+
+```{r}
+expected_incidence |> 
+  select(id,cohort,exp_inc,hi_exp_inc,lo_exp_inc) |> 
+  filter(id == 2 & cohort <= 1 ) |> 
+  summarise(mean = mean(exp_inc),
+            sd = sd(exp_inc)) |> 
+  as.data.frame()
+```
+
+
+#### 08/23 - 12/23
+
+find the mean expected ev-a71 infections
+
+```{r}
+expected_incidence |> 
+  select(id,cohort,exp_inc,hi_exp_inc,lo_exp_inc) |> 
+  filter(id == 3) |> 
+  summarise(mean = mean(exp_inc)) |> 
+  as.data.frame()
+```
+
+those age group has the expected incidence higher then mean is considered mainly contribute to the outbreak
+
+```{r}
+expected_incidence |> 
+  select(id,cohort,exp_inc,hi_exp_inc,lo_exp_inc) |> 
+  filter(id == 3 & exp_inc >= 94.89) |> 
+  pull(cohort) |> 
+  range()
+```
+
+caculate the mean and sd of those age group
+
+```{r}
+expected_incidence |> 
+  select(id,cohort,exp_inc,hi_exp_inc,lo_exp_inc) |> 
+  filter(id == 3 & cohort <= 7 & cohort >= 2) |> 
+  summarise(mean = mean(exp_inc),
+            sd = sd(exp_inc)) |> 
+  as.data.frame()
+```
+
+
+:::
+
+### Fig 2B
+
+```{r}
+fig2b_df <- outttt |>
+  bind_rows(.id = "id") |>
+  mutate(
+    col_date = as.Date(collection_time),
+    col_lab = format(col_date, format = "%b %Y"),
+    col_lab = factor(col_lab, levels = c(
+      "Dec 2022", "Apr 2023", "Aug 2023", "Dec 2023"
+    ))
+  )
+```
+
+::: {.panel-tabset .nav-pills}
+
+#### Dec 22
+
+Seroprevalence in children under 5 years old
+
+```{r}
+fig2b_df |>
+  filter(id == 1 & cohort <= 5) |>
+  reframe(across(c(fit, lwr, upr), \(x) range(x) * 100)) |>
+  as.data.frame()
+```
+
+Seroprevalence in children higher than 5 years old
+
+```{r}
+fig2b_df |>
+  filter(id == 1 & cohort > 5) |>
+  reframe(across(c(fit, lwr, upr), \(x) range(x) * 100)) |> 
+  as.data.frame()
+```
+
+#### April 2023
+
+Find in which age group the sp increase
+
+```{r}
+expected_incidence |>
+  filter(id == 1) |>
+  select(cohort, sp_gap) |>
+  mutate(
+    prev_sign  = lag(sign(sp_gap)),
+    sign_change = sign(sp_gap) != prev_sign,
+    direction  = case_when(
+      sign_change & sp_gap < 0 ~ "turned negative",
+      sign_change & sp_gap > 0 ~ "turned positive"
+    )
+  ) |>
+  filter(sign_change)
+```
+
+Which mean that the seroprevalence increased in children under 11.5 years old and over 13.5 years old
+
+find range
+
+```{r}
+list(
+  above = fig2b_df |> filter(id == 1 & cohort >= 13.5),
+  below = fig2b_df |> filter(id == 1 & cohort <= 11.5)
+) |>
+  map(\(df) df |>
+    reframe(across(c(fit, lwr, upr), \(x) range(x) * 100)) |>
+    mutate(across(everything(), \(x) format(round(x, 2), nsmall = 2)))
+  )
+```
+
+#### August 2023
+
+Find in which age group the sp increase
+
+```{r}
+expected_incidence |>
+  filter(id == 2) |>
+  select(cohort, sp_gap) |>
+  mutate(
+    prev_sign  = lag(sign(sp_gap)),
+    sign_change = sign(sp_gap) != prev_sign,
+    direction  = case_when(
+      sign_change & sp_gap < 0 ~ "turned negative",
+      sign_change & sp_gap > 0 ~ "turned positive"
+    )
+  ) |>
+  filter(sign_change)
+```
+
+Just select the under 8.5 years old age group
+
+```{r}
+fig2b_df |>
+  filter(id == 3 & cohort <= 8.5) |>
+  reframe(across(c(fit, lwr, upr), \(x) range(x) * 100)) |> 
+  as.data.frame()
+```
+
+#### Dec 23
+
+```{r}
+expected_incidence |>
+  filter(id == 3) |>
+  select(cohort, sp_gap) |>
+  mutate(
+    prev_sign  = lag(sign(sp_gap)),
+    sign_change = sign(sp_gap) != prev_sign,
+    direction  = case_when(
+      sign_change & sp_gap < 0 ~ "turned negative",
+      sign_change & sp_gap > 0 ~ "turned positive"
+    )
+  ) |>
+  filter(sign_change)
+```
+
+```{r}
+fig2b_df |>
+  filter(id == 4 & cohort <= 8.5) |>
+  reframe(across(c(fit, lwr, upr), \(x) range(x) * 100)) |> 
+  as.data.frame()
+```
+
+
 
 :::
